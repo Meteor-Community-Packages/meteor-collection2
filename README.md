@@ -29,7 +29,6 @@ Books = new Meteor.Collection2("books", {
             type: String,
             label: "Brief summary",
             optional: true,
-            rows: 8,
             max: 1000
         }
     }
