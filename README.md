@@ -1,2 +1,0 @@
-meteor-collection2
-==================
