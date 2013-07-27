@@ -8,6 +8,9 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 When defining your models, use `new Meteor.Collection2()` instead of `new Meteor.Collection()`. It works the same, but you can specify `schema` and `virtualFields` properties in the options.
 
 ## Example
+
+Define the schema for your collection when creating it:
+
 ```js
 Books = new Meteor.Collection2("books", {
     schema: {
@@ -25,6 +28,11 @@ Books = new Meteor.Collection2("books", {
             label: "Number of copies",
             min: 0
         },
+        lastCheckedOut: {
+            type: Date,
+            label: "Last date this book was checked out",
+            optional: true
+        },
         summary: {
             type: String,
             label: "Brief summary",
@@ -32,6 +40,28 @@ Books = new Meteor.Collection2("books", {
             max: 1000
         }
     }
+});
+```
+
+Do an insert:
+
+```js
+Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
+  //The insert will fail, error will be set,
+  //and result will be undefined because "copies" is required.
+  //
+  //The list of errors is available by calling Books.simpleSchema().invalidKeys()
+});
+```
+
+Or do an update:
+
+```js
+Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
+  //The update will fail, error will be set,
+  //and result will be undefined because "copies" is required.
+  //
+  //The list of errors is available by calling Books.simpleSchema().invalidKeys()
 });
 ```
 
@@ -52,7 +82,7 @@ check(doc, MyCollection2.simpleSchema());
 ## Why Use It?
 
 In addition to getting all of the benefits provided by the `simple-schema` package,
-you Collection2 sets up automatic property filtering, type conversion, and,
+Collection2 sets up automatic property filtering, type conversion, and,
 most importantly, validation, on both the client and the server, whenever you do
 a normal `insert()` or `update()`. Once you've defined the schema, you no longer
 have to worry about invalid data. Collection2 makes sure that nothing can get
@@ -77,6 +107,32 @@ will have the first argument (`error`) set to a generic error. Generally speakin
 you would probably use the reactive methods provided by SimpleSchema to display
 the specific error messages to the user somewhere. The autoform package provides
 some handlebars helpers for this purpose.
+
+## More Details
+
+For the curious, this is exactly what Collection2 does before every insert or update:
+
+1. Removes properties from your document or $set object if they are not explicitly listed in the schema.
+2. Automatically converts some properties to match what the schema expects, if possible.
+3. Validates your document or $set or $unset objects.
+4. Performs the insert or update like normal, only if it was valid.
+
+In reality, Collection2 is simply calling SimpleSchema methods to do these things. The following
+is the gist of the entire package:
+
+```js
+//clean up doc
+doc = schema.filter(doc);
+doc = schema.autoTypeConvert(doc);
+//validate doc
+schema.validate(doc);
+
+if (schema.valid()) {
+    //perform insert or update
+} else {
+    //pass error to callback or throw it
+}
+```
 
 ## Virtual Fields
 
