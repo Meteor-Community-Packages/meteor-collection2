@@ -67,7 +67,7 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
 
 ## Schema Format
 
-The schema object format is actually dictated by the `simple-schema` package,
+The schema object format is actually dictated by the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
 which is installed when you install `collection2`. See that documentation. If
 you need to get the actual SimpleSchema for any reason, such as to access any
 of the methods on it or pass it to `check()`, you can do so by calling
@@ -81,7 +81,7 @@ check(doc, MyCollection2.simpleSchema());
 
 ## Why Use It?
 
-In addition to getting all of the benefits provided by the `simple-schema` package,
+In addition to getting all of the benefits provided by the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
 Collection2 sets up automatic property filtering, type conversion, and,
 most importantly, validation, on both the client and the server, whenever you do
 a normal `insert()` or `update()`. Once you've defined the schema, you no longer
@@ -95,9 +95,9 @@ See the SimpleSchema documentation for more details.
 
 ### AutoForms
 
-Another great reason to use Collection2 is so that you can use the autoform package.
+Another great reason to use Collection2 is so that you can use the [autoform](https://github.com/aldeed/meteor-autoform) package.
 AutoForm makes use of Collection2 to help you quickly develop forms that do complex inserts
-and updates with automatic client and server validation. Refer to the AutoForm
+and updates with automatic client and server validation. Refer to the [autoform](https://github.com/aldeed/meteor-autoform)
 documentation for more information.
 
 ## What Happens When The Document Is Invalid?
