@@ -6,9 +6,6 @@
     "version": "0.1.0",
     "git": "https://github.com/aldeed/meteor-collection2.git",
     "packages": {
-        "simple-schema": {
-            "git": "https://github.com/aldeed/meteor-simple-schema.git",
-            "branch": "master"
-        }
+        "simple-schema": "0.1.0"
     }
 }
