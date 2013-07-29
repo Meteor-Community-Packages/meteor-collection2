@@ -14,7 +14,7 @@ Meteor.Collection2 = function(name, options) {
     }
 
     //get the virtual fields
-    self._virtualFields = options.virtualFields || {};
+    self._virtualFields = options.virtualFields;
     if ("virtualFields" in options) {
         delete options.virtualFields;
     }
@@ -23,7 +23,7 @@ Meteor.Collection2 = function(name, options) {
     if (typeof name === "object" && (name instanceof Meteor.Collection || name instanceof Meteor.SmartCollection)) {
         existingCollection = name;
         //set up virtual fields
-        if (self._virtualFields.length) {
+        if (self._virtualFields) {
             userTransform = existingCollection._transform;
             options.transform = function(doc) {
                 //add all virtual fields to document whenever it's passed to a callback
@@ -40,7 +40,7 @@ Meteor.Collection2 = function(name, options) {
         self._collection = existingCollection;
     } else {
         //set up virtual fields
-        if (self._virtualFields.length) {
+        if (self._virtualFields) {
             userTransform = options.transform;
             options.transform = function(doc) {
                 //add all virtual fields to document whenever it's passed to a callback
