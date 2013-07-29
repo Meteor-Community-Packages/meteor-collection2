@@ -36,7 +36,7 @@ Meteor.Collection2 = function(name, options) {
             existingCollection._transform = Deps._makeNonreactive(options.transform);
         }
         //update the collection
-        self._name = existingCollection.name;
+        self._name = existingCollection._name;
         self._collection = existingCollection;
     } else {
         //set up virtual fields
