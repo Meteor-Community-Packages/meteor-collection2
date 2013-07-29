@@ -1,24 +1,60 @@
 Meteor.Collection2 = function(name, options) {
-    var self = this, userTransform = options.transform;
+    var self = this, userTransform, existingCollection;
+
+    if (!(self instanceof Meteor.Collection2)) {
+        throw new Error('use "new" to construct a Meteor.Collection2');
+    }
+
     options = options || {};
-    self._name = name;
+
+    //set up simpleSchema
     self._simpleSchema = new SimpleSchema(options.schema);
     if ("schema" in options) {
         delete options.schema;
     }
+
+    //get the virtual fields
     self._virtualFields = options.virtualFields || {};
     if ("virtualFields" in options) {
         delete options.virtualFields;
     }
-    options.transform = function(doc) {
-        //add all virtual fields to document whenever it's passed to a callback
-        _.each(self._virtualFields, function(func, fieldName, list) {
-            doc[fieldName] = func(doc);
-        });
-        //support user-supplied transformation function as well
-        return userTransform ? userTransform(doc) : doc;
-    };
-    self._collection = new Meteor.Collection(name, options);
+    
+    //create or update the collection
+    if (name instanceof Meteor.Collection || name instanceof Meteor.SmartCollection) {
+        existingCollection = name;
+        //set up virtual fields
+        if (self._virtualFields.length) {
+            userTransform = existingCollection._transform;
+            options.transform = function(doc) {
+                //add all virtual fields to document whenever it's passed to a callback
+                _.each(self._virtualFields, function(func, fieldName, list) {
+                    doc[fieldName] = func(doc);
+                });
+                //support user-supplied transformation function as well
+                return userTransform ? userTransform(doc) : doc;
+            };
+            existingCollection._transform = Deps._makeNonreactive(options.transform);
+        }
+        //update the collection
+        self._name = existingCollection.name;
+        self._collection = existingCollection;
+    } else {
+        //set up virtual fields
+        if (self._virtualFields.length) {
+            userTransform = options.transform;
+            options.transform = function(doc) {
+                //add all virtual fields to document whenever it's passed to a callback
+                _.each(self._virtualFields, function(func, fieldName, list) {
+                    doc[fieldName] = func(doc);
+                });
+                //support user-supplied transformation function as well
+                return userTransform ? userTransform(doc) : doc;
+            };
+        }
+        //create the collection
+        self._name = name;
+        self._collection = new Meteor.Collection(name, options);
+    }
 };
 
 _.extend(Meteor.Collection2.prototype, {
