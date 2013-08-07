@@ -131,11 +131,11 @@ _.extend(Meteor.Collection2.prototype, {
     },
     insert: function(/* arguments */) {
         var args = _.toArray(arguments);
-        this._insertOrUpdate("insert", args);
+        return this._insertOrUpdate("insert", args);
     },
     update: function(/* arguments */) {
         var args = _.toArray(arguments);
-        this._insertOrUpdate("update", args);
+        return this._insertOrUpdate("update", args);
     },
     remove: function(/* arguments */) {
         var self = this, collection = self._collection;
