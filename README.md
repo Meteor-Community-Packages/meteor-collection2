@@ -70,13 +70,13 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
 The schema object format is actually dictated by the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
 which is installed when you install `collection2`. See that documentation. If
 you need to get the actual SimpleSchema for any reason, such as to access any
-of the methods on it or pass it to `check()`, you can do so by calling
+of the methods on it or pass it to `checkSchema()`, you can do so by calling
 `MyCollection2.simpleSchema()`.
 
 For example:
 
 ```js
-check(doc, MyCollection2.simpleSchema());
+checkSchema(doc, MyCollection2.simpleSchema());
 ```
 
 ## Why Use It?
@@ -92,6 +92,25 @@ Collection2 (more specifically, SimpleSchema) probably can't support every inser
 but it can support the most common scenarios. Normal objects as well as $set and $unset
 objects are supported. It understands basic dot notation in your $set and $unset keys.
 See the SimpleSchema documentation for more details.
+
+### SmartCollections
+
+If you want to use a SmartCollection, provided by the
+[smart-collections](https://github.com/arunoda/meteor-smart-collections) package,
+you can. Create the SmartCollection object, and then pass it as the first argument
+of the Collection2 constructor function.
+
+```js
+BooksSC = new Meteor.SmartCollection("books");
+Books = new Meteor.Collection2(BooksSC, {
+    schema: {
+        //keys
+    }
+});
+```
+
+Then use `Books` instead of `BooksSC` throughout your code, and you will gain the
+benefits of both SmartCollection and Collection2.
 
 ### AutoForms
 
