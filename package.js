@@ -3,11 +3,9 @@ Package.describe({
 });
 
 Package.on_use(function(api) {
+    api.use('simple-schema', ['client', 'server']);
     if (typeof api.imply !== "undefined") {
         api.imply('simple-schema', ['client', 'server']);
-    } else {
-        //backwards compatibility with pre-0.6.5 meteor
-        api.use('simple-schema', ['client', 'server']);
     }
     api.use('underscore', ['client', 'server']);
     api.use('deps', 'client');
