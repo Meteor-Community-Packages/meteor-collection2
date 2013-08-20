@@ -55,6 +55,19 @@ Meteor.Collection2 = function(name, options) {
         self._name = name;
         self._collection = new Meteor.Collection(name, options);
     }
+    //Validate from the real collection, too.
+    //This prevents doing C2._collection.insert(invalidDoc) (and update) on the client
+    self._collection.deny({
+        insert: function(userId, doc) {
+            self._simpleSchema.validate(doc);
+            return !self._simpleSchema.valid();
+        },
+        update: function(userId, doc, fields, modifier) {
+            self._simpleSchema.validate(modifier);
+            return !self._simpleSchema.valid();
+        },
+        fetch: []
+    });
 };
 
 _.extend(Meteor.Collection2.prototype, {
