@@ -74,6 +74,14 @@ Meteor.Collection2 = function(name, options) {
         },
         fetch: []
     });
+    //set up check for uniqueness
+    self._simpleSchema.validator(function (key, val, def) {
+        if (def.unique) {
+            var test = {};
+            test[key] = val;
+            return self._collection.findOne(test) ? "notUnique" : true;
+        }
+    });
 };
 
 _.extend(Meteor.Collection2.prototype, {

@@ -5,6 +5,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.1.7
+
+* Add `unique: true` support
+* Allow an existing SimpleSchema to be passed in to the constructor
+
 ### 0.1.6
 
 Fixed security/data integrity issue. Upgrade as soon as possible to ensure your app is secure.

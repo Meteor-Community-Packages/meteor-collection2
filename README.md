@@ -80,6 +80,17 @@ For example:
 check(doc, MyCollection2.simpleSchema().match());
 ```
 
+## Unique
+
+In addition to all the other schema options documented in the 
+[simple-schema](https://github.com/aldeed/meteor-simple-schema) package, the
+collection2 package adds one more: `unique`. Set this to true in your schema
+to ensure that non-unique values will never be set for the key. You may want
+to ensure a unique mongo index on the server as well.
+
+The error message for this is very generic. It's best to define your own using
+`MyCollection2.simpleSchema().messages()`. The error type string is "notUnique".
+
 ## Why Use It?
 
 In addition to getting all of the benefits provided by the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
@@ -123,9 +134,9 @@ documentation for more information.
 ## What Happens When The Document Is Invalid?
 
 The callback you specify as the last argument of your `insert()` or `update()` call
-will have the first argument (`error`) set to a generic error. Generally speaking,
+will have the first argument (`error`) set to a generic error. But generally speaking,
 you would probably use the reactive methods provided by SimpleSchema to display
-the specific error messages to the user somewhere. The autoform package provides
+the specific error messages to the user somewhere. The [autoform](https://github.com/aldeed/meteor-autoform) package provides
 some handlebars helpers for this purpose.
 
 ## More Details
