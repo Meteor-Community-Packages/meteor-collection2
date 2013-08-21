@@ -6,12 +6,18 @@ Meteor.Collection2 = function(name, options) {
     }
 
     options = options || {};
+    
+    if (!("schema" in options)) {
+        throw new Error('Meteor.Collection2 options must define a schema');
+    }
 
     //set up simpleSchema
-    self._simpleSchema = new SimpleSchema(options.schema);
-    if ("schema" in options) {
-        delete options.schema;
+    if (options.schema instanceof SimpleSchema) {
+        self._simpleSchema = options.schema;
+    } else {
+        self._simpleSchema = new SimpleSchema(options.schema);
     }
+    delete options.schema;
 
     //get the virtual fields
     self._virtualFields = options.virtualFields;

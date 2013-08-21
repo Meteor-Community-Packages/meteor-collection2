@@ -70,13 +70,14 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
 The schema object format is actually dictated by the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
 which is installed when you install `collection2`. See that documentation. If
 you need to get the actual SimpleSchema for any reason, such as to access any
-of the methods on it or pass it to `checkSchema()`, you can do so by calling
-`MyCollection2.simpleSchema()`.
+of the methods on it, you can do so by calling `MyCollection2.simpleSchema()`.
+You can alternatively specify an already-created SimpleSchema object for `schema`
+in the constructor options.
 
 For example:
 
 ```js
-checkSchema(doc, MyCollection2.simpleSchema());
+check(doc, MyCollection2.simpleSchema().match());
 ```
 
 ## Why Use It?
