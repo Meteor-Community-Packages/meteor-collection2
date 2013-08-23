@@ -1,3 +1,9 @@
+// ToDo:
+// [ ] autoValue update tests and examples
+// [ ] real security for denyInsert and denyUpdate
+// [ ] _insertOrUpdate function: remove and warn autoValues fields
+// [ ] add a _autoValueKeys private attribute and use it in _.each
+
 Meteor.Collection2 = function(name, options) {
     var self = this, userTransform, existingCollection;
 
@@ -132,6 +138,45 @@ _.extend(Meteor.Collection2.prototype, {
                     Meteor._debug(type + " failed: " + (err.reason || err.stack));
             };
         }
+
+        //find and call `autoValue` fields
+        _.each(schema.schema(), function (attributes, fieldName) { // Should iteratate self._autoValueKeys
+            if (!('autoValue' in attributes))
+                return
+            
+            if (typeof attributes.autoValue !== "function")
+                throw new Error('autoValue option must be a function')
+
+            if ((type === "insert" && attributes.denyInsert !== true) || (type === "update" && attributes.denyUpdate !== true)) {
+                var autoValue = attributes.autoValue(doc, type);
+                if (autoValue === undefined)
+                    return
+
+                if (type === "insert")
+                    doc[fieldName] = autoValue;
+
+                else if (type === "update") {
+                    var mongoModifier = false;
+                    
+                    // If autoValue is a mongoModifier like {$inc: 1}, we update the document to return
+                    // {$inc: {fieldName: 1}}
+                    _.each(['$inc', '$push', '$addToSet', '$pull', '$pop', '$slice'], function($elm) {
+                        if (autoValue.hasOwnProperty($elm)){
+                            if (!($elm in doc))
+                                doc[$elm] = {};
+                            doc[$elm][fieldName] = {}[fieldName] = autoValue[$elm];
+                            mongoModifier = true;
+                        }
+                    });
+                    // If autoValue isn't a mongoModifier, we do a {$set: {fieldName: autoValue}}
+                    if (!mongoModifier) {
+                        if (!('$set' in doc))
+                            doc.$set = {};
+                        doc.$set[fieldName] = autoValue;
+                    }
+                }
+            }
+        });
 
         //clean up doc
         doc = schema.filter(doc);

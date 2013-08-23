@@ -191,4 +191,80 @@ Persons = new Meteor.Collection2("persons", {
 });
 ```
 
+## denyInsert and denyUpdate rules
+
+Collection2 add `denyInsert` and `denyUpdate` to the SimpleSchema options. Those options are set to `false` by default.
+If you set `denyUpdate` to true, a collection update that modify this field will failed. For instance:
+```js
+Posts = new Meteor.Collection2('posts', {
+    title: {
+        type: String
+    },
+    content: {
+        type: String
+    },
+    createdAt: {
+        type: Date,
+        denyUpdate: true
+    }
+});
+
+var postId = Posts.insert({title: 'Hello', content: 'World', createdAt: new Date});
+```
+If you use the `autoform` package, the `createdAt` field won't be present on the update form.
+
+Similarly there is a `denyInsert` option that require the field to be define only on update. If you set `denyInsert` to true, you will need to set `optional: true` as well. 
+
+## autoValue
+
+```js
+{
+    createdAt: {
+        type: Date,
+        value: function() {
+            return new Date();
+        },
+        denyUpdate: true
+    },
+
+    updatedAt: {
+        type: Date,
+        value: function() {
+            return new Date();
+        }
+        denyInsert: true,
+        optional: true
+    },
+
+    checksum: {
+        type: String,
+        value: function(doc) {
+            return Meteor._srp.SHA256(doc.content);
+        }
+    },
+
+    updatesHistory: {
+        type: [{date: Date, content: String}],
+        value: function(doc) {
+            var updatesHistory = doc.updatesHistory || [];
+            updatesHistory.push({
+                date: new Date,
+                content: doc.content
+            });
+            return updatesHistory
+        }
+    },
+
+    htmlContent: {
+        type: String,
+        value: function(doc) {
+            if (Meteor.isServer) {
+                return MarkdownToHTML(doc.MarkdownContent);
+            }
+        }
+    }
+}
+```
+
+
 This adds the virtual field to documents retrieved with `find()`, etc., which means you could now do `{{fullName}}` in your HTML as if fullName were actually stored in the MongoDB collection.
