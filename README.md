@@ -191,6 +191,8 @@ Persons = new Meteor.Collection2("persons", {
 });
 ```
 
+This adds the virtual field to documents retrieved with `find()`, etc., which means you could now do `{{fullName}}` in your HTML as if fullName were actually stored in the MongoDB collection.
+
 ## denyInsert and denyUpdate rules
 
 Collection2 add `denyInsert` and `denyUpdate` to the SimpleSchema options. Those options are set to `false` by default.
@@ -265,6 +267,3 @@ Similarly there is a `denyInsert` option that require the field to be define onl
     }
 }
 ```
-
-
-This adds the virtual field to documents retrieved with `find()`, etc., which means you could now do `{{fullName}}` in your HTML as if fullName were actually stored in the MongoDB collection.
