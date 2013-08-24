@@ -1,9 +1,3 @@
-// ToDo:
-// [ ] autoValue update tests and examples
-// [ ] real security for denyInsert and denyUpdate
-// [ ] _insertOrUpdate function: remove and warn autoValues fields
-// [ ] add a _autoValueKeys private attribute and use it in _.each
-
 Meteor.Collection2 = function(name, options) {
     var self = this, userTransform, existingCollection;
 
@@ -30,7 +24,28 @@ Meteor.Collection2 = function(name, options) {
     if ("virtualFields" in options) {
         delete options.virtualFields;
     }
-    
+
+    //populate _denyUpdateKeys, _denyInsertKeys and _autoValues
+    self._denyInsertKeys = [];
+    self._denyUpdateKeys = [];
+    self._autoValues = {insert: {}, update: {}};
+    _.each(self._simpleSchema.schema(), function (options, fieldName) {
+        if (options.denyInsert === true) {
+            self._denyInsertKeys.push(fieldName);
+        }
+        if (options.denyUpdate === true) {
+            self._denyUpdateKeys.push(fieldName);
+        }
+        if ('autoValue' in options) {
+            if (typeof options.autoValue !== 'function')
+                throw new Error('autoValue option must be a function')
+            if (options.denyUpdate !== true)
+                self._autoValues.update[fieldName] = options.autoValue;
+            if (options.denyInsert !== true)
+                self._autoValues.insert[fieldName] = options.autoValue;
+        }
+    });
+
     //create or update the collection
     if (typeof name === "object" && (name instanceof Meteor.Collection || name instanceof Meteor.SmartCollection)) {
         existingCollection = name;
@@ -139,41 +154,35 @@ _.extend(Meteor.Collection2.prototype, {
             };
         }
 
-        //find and call `autoValue` fields
-        _.each(schema.schema(), function (attributes, fieldName) { // Should iteratate self._autoValueKeys
-            if (!('autoValue' in attributes))
-                return
+        //call and populate `autoValue` fields in the doc
+        _.each(self._autoValues[type], function (func, fieldName) {
+            var autoValue = func(doc, type);
             
-            if (typeof attributes.autoValue !== "function")
-                throw new Error('autoValue option must be a function')
+            if (autoValue === undefined)
+                return
 
-            if ((type === "insert" && attributes.denyInsert !== true) || (type === "update" && attributes.denyUpdate !== true)) {
-                var autoValue = attributes.autoValue(doc, type);
-                if (autoValue === undefined)
-                    return
+            if (type === "insert")
+                doc[fieldName] = autoValue;
 
-                if (type === "insert")
-                    doc[fieldName] = autoValue;
-
-                else if (type === "update") {
-                    var mongoModifier = false;
-                    
-                    // If autoValue is a mongoModifier like {$inc: 1}, we update the document to return
-                    // {$inc: {fieldName: 1}}
-                    _.each(['$inc', '$push', '$addToSet', '$pull', '$pop', '$slice'], function($elm) {
-                        if (autoValue.hasOwnProperty($elm)){
-                            if (!($elm in doc))
-                                doc[$elm] = {};
-                            doc[$elm][fieldName] = {}[fieldName] = autoValue[$elm];
-                            mongoModifier = true;
-                        }
-                    });
-                    // If autoValue isn't a mongoModifier, we do a {$set: {fieldName: autoValue}}
-                    if (!mongoModifier) {
-                        if (!('$set' in doc))
-                            doc.$set = {};
-                        doc.$set[fieldName] = autoValue;
+            else if (type === "update") {
+                var mongoModifier = false;
+                
+                // If autoValue is a mongoModifier like {$inc: 1}, we update the document to have
+                // {$inc: {fieldName: 1}}
+                _.each(['$inc', '$push', '$addToSet', '$pull', '$pop', '$slice'], function($elm) {
+                    if (autoValue.hasOwnProperty($elm)){
+                        if (!($elm in doc))
+                            doc[$elm] = {};
+                        doc[$elm][fieldName] = {}[fieldName] = autoValue[$elm];
+                        mongoModifier = true;
                     }
+                });
+                // If autoValue isn't a mongoModifier but a simple object like a string, a number or
+                // an array, we do a {$set: {fieldName: autoValue}}
+                if (!mongoModifier) {
+                    if (!('$set' in doc))
+                        doc.$set = {};
+                    doc.$set[fieldName] = autoValue;
                 }
             }
         });
