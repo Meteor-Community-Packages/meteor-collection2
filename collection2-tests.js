@@ -54,6 +54,19 @@ var alwaysTrueFunction = function() { return true };
 if (Meteor.isServer)
     Posts.allow({insert: alwaysTrueFunction, update: alwaysTrueFunction, remove: alwaysTrueFunction});
 
+Tinytest.add("Collection2 - denyInsert and denyUpdate", function(test) {
+    var postId = Posts.insert({title: 'Hello', content: 'World'});
+    var randomId = Posts.findOne(postId).randomId;
+
+    Posts.update(postId, {$set: {randomId: 'hacked'}});
+    test.equal(Posts.findOne(postId).randomId, randomId, 'expect randomId to be unchanged after trying to update it');
+    
+    if (Meteor.isClient)  {
+        Posts._collection.update(postId, {$set: {randomId: 'hacked'}});
+        test.equal(Posts.findOne(postId).randomId, randomId, 'expect randomId to be unchanged after trying to update it');
+    }
+});
+
 Tinytest.add("Collection2 - autovalues", function (test) {
     var postId = Posts.insert({title: 'Hello', content: 'World'});
     var post = Posts.findOne(postId);
@@ -67,8 +80,4 @@ Tinytest.add("Collection2 - autovalues", function (test) {
     test.equal(post.updatedAt.toTimeString(), (new Date).toTimeString(), 'expect the updatedAt field to be updated with the current date');
     test.equal(post.firstWord, 'Edited', 'expect the firstWord to be edited after insert');
     test.equal(post.nbUpdates, 1);
-});
-
-Tinytest.add("Collection2 - denyInsert and denyUpdate", function(test) {
-
 });

@@ -87,10 +87,19 @@ Meteor.Collection2 = function(name, options) {
     self._collection.deny({
         insert: function(userId, doc) {
             self._simpleSchema.validate(doc);
+            _.each(self._denyInsertKeys, function(key) {
+                if (key in doc)
+                    return false
+            });
             return !self._simpleSchema.valid();
         },
         update: function(userId, doc, fields, modifier) {
             self._simpleSchema.validate(modifier);
+            _.each(self._denyUpdateKeys, function(key) {
+                console.log(key, fields)
+                if (key in fields)
+                    return false
+            });
             return !self._simpleSchema.valid();
         },
         fetch: []
@@ -212,6 +221,11 @@ _.extend(Meteor.Collection2.prototype, {
     },
     insert: function(/* arguments */) {
         var args = _.toArray(arguments);
+        // doc = args[0]
+        // for (key in doc) {
+        //     if (key in self.denyInsert)
+        //         throw Error
+        // }
         return this._insertOrUpdate("insert", args);
     },
     update: function(/* arguments */) {
