@@ -61,16 +61,36 @@ Meteor.Collection2 = function(name, options) {
         self._name = name;
         self._collection = new Meteor.Collection(name, options);
     }
+    // Rules added by the user with the `.deny` method
+    self._denyRules = {}
     //Validate from the real collection, too.
     //This prevents doing C2._collection.insert(invalidDoc) (and update) on the client
     self._collection.deny({
         insert: function(userId, doc) {
             self._simpleSchema.validate(doc);
-            return !self._simpleSchema.valid();
+            if (!self._simpleSchema.valid())
+                return true
+
+            if ('insert' in self._denyRules) 
+                return self._denyRules.insert.apply(self._collection, arguments)
+
+            return false
         },
         update: function(userId, doc, fields, modifier) {
             self._simpleSchema.validate(modifier);
-            return !self._simpleSchema.valid();
+            if (!self._simpleSchema.valid())
+                return true
+
+            if ('update' in self._denyRules) 
+                return self._denyRules.update.apply(self._collection, arguments)
+
+            return false
+        },
+        remove: function(userId, doc) {
+            if ('remove' in self._denyRules) 
+                return self._denyRules.remove.apply(self._collection, arguments)
+
+            return false
         },
         fetch: []
     });
@@ -168,13 +188,13 @@ _.extend(Meteor.Collection2.prototype, {
         var self = this, collection = self._collection;
         return collection.remove.apply(collection, arguments);
     },
-    allow: function(/* arguments */) {
+    allow: function(rules) {
         var self = this, collection = self._collection;
         return collection.allow.apply(collection, arguments);
     },
-    deny: function(/* arguments */) {
-        var self = this, collection = self._collection;
-        return collection.deny.apply(collection, arguments);
+    deny: function(rules) {
+        var self = this;
+        self._denyRules = rules;
     },
     simpleSchema: function() {
         return this._simpleSchema;
