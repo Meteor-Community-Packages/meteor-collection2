@@ -29,20 +29,20 @@ Meteor.Collection2 = function(name, options) {
     self._denyInsertKeys = [];
     self._denyUpdateKeys = [];
     self._autoValues = {insert: {}, update: {}};
-    _.each(self._simpleSchema.schema(), function (options, fieldName) {
-        if (options.denyInsert === true) {
+    _.each(self._simpleSchema.schema(), function (definition, fieldName) {
+        if (definition.denyInsert === true) {
             self._denyInsertKeys.push(fieldName);
         }
-        if (options.denyUpdate === true) {
+        if (definition.denyUpdate === true) {
             self._denyUpdateKeys.push(fieldName);
         }
-        if ('autoValue' in options) {
-            if (typeof options.autoValue !== 'function')
+        if ('autoValue' in definition) {
+            if (typeof definition.autoValue !== 'function')
                 throw new Error('autoValue option must be a function')
-            if (options.denyUpdate !== true)
-                self._autoValues.update[fieldName] = options.autoValue;
-            if (options.denyInsert !== true)
-                self._autoValues.insert[fieldName] = options.autoValue;
+            if (definition.denyUpdate !== true)
+                self._autoValues.update[fieldName] = definition.autoValue;
+            if (definition.denyInsert !== true)
+                self._autoValues.insert[fieldName] = definition.autoValue;
         }
     });
 
