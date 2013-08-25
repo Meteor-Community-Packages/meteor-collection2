@@ -223,7 +223,7 @@ Similarly there is a `denyInsert` option that require the field to be define onl
 {
     createdAt: {
         type: Date,
-        value: function() {
+        autoValue: function() {
             return new Date();
         },
         denyUpdate: true
@@ -231,36 +231,43 @@ Similarly there is a `denyInsert` option that require the field to be define onl
 
     updatedAt: {
         type: Date,
-        value: function() {
+        autoValue: function() {
             return new Date();
         }
         denyInsert: true,
         optional: true
     },
 
-    checksum: {
+    firstWord: {
         type: String,
-        value: function(doc) {
-            return Meteor._srp.SHA256(doc.content);
+        autoValue: function(doc) {
+            // You need to check first that there is a content attribute
+            // in the document because one can update other fields without
+            // setting the content field (for instance a 
+            // {$set: {title: 'newTitle'}} operation)
+            if ('content' in doc)
+                return doc.content.split(' ')[0];
         }
     },
 
     updatesHistory: {
         type: [{date: Date, content: String}],
-        value: function(doc) {
-            var updatesHistory = doc.updatesHistory || [];
-            updatesHistory.push({
-                date: new Date,
-                content: doc.content
-            });
-            return updatesHistory
-        }
+        autoValue: function(doc) {
+            if ('content' in doc)
+                return {
+                    $push: {
+                        date: new Date,
+                        content: doc.content
+                    }
+                }
+        },
+        denyInsert: true
     },
 
     htmlContent: {
         type: String,
-        value: function(doc) {
-            if (Meteor.isServer) {
+        autoValue: function(doc) {
+            if (Meteor.isServer && 'MarkdownContent' in doc) {
                 return MarkdownToHTML(doc.MarkdownContent);
             }
         }
