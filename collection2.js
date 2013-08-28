@@ -18,6 +18,9 @@ Meteor.Collection2 = function(name, options) {
         self._simpleSchema = new SimpleSchema(options.schema);
     }
     delete options.schema;
+    
+    //store a generic validation context
+    self._validationContext = self._simpleSchema.newContext();
 
     //get the virtual fields
     self._virtualFields = options.virtualFields;
@@ -65,12 +68,14 @@ Meteor.Collection2 = function(name, options) {
     //This prevents doing C2._collection.insert(invalidDoc) (and update) on the client
     self._collection.deny({
         insert: function(userId, doc) {
-            self._simpleSchema.validate(doc);
-            return !self._simpleSchema.valid();
+            doc = self._simpleSchema.clean(doc);
+            self._validationContext.validate(doc);
+            return !self._validationContext.isValid();
         },
         update: function(userId, doc, fields, modifier) {
-            self._simpleSchema.validate(modifier);
-            return !self._simpleSchema.valid();
+            modifier = self._simpleSchema.clean(modifier);
+            self._validationContext.validate(modifier, {modifier: true});
+            return !self._validationContext.isValid();
         },
         fetch: []
     });
@@ -97,6 +102,7 @@ _.extend(Meteor.Collection2.prototype, {
         var self = this,
                 collection = self._collection,
                 schema = self._simpleSchema,
+                context = self._validationContext,
                 doc, callback, error;
 
         if (!args.length) {
@@ -134,17 +140,16 @@ _.extend(Meteor.Collection2.prototype, {
         }
 
         //clean up doc
-        doc = schema.filter(doc);
-        doc = schema.autoTypeConvert(doc);
+        doc = schema.clean(doc);
         //validate doc
-        schema.validate(doc);
+        context.validate(doc, {modifier: (type === "update")});
 
-        if (schema.valid()) {
+        if (context.isValid()) {
             if (type === "insert") {
-                args[0] = doc; //update to reflect whitelist and typeconvert changes
+                args[0] = doc; //update to reflect cleaned doc
                 return collection.insert.apply(collection, args);
             } else {
-                args[1] = doc; //update to reflect whitelist and typeconvert changes
+                args[1] = doc; //update to reflect cleaned doc
                 return collection.update.apply(collection, args);
             }
         } else {
@@ -178,5 +183,8 @@ _.extend(Meteor.Collection2.prototype, {
     },
     simpleSchema: function() {
         return this._simpleSchema;
+    },
+    validationContext: function() {
+        return this._validationContext;
     }
 });
