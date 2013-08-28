@@ -62,7 +62,12 @@ Meteor.Collection2 = function(name, options) {
         }
         //create the collection
         self._name = name;
-        self._collection = new Meteor.Collection(name, options);
+        if ("smart" in options && options.smart === true) {
+            delete options.smart;
+            self._collection = new Meteor.SmartCollection(name, options);
+        } else {
+            self._collection = new Meteor.Collection(name, options);
+        }
     }
     //Validate from the real collection, too.
     //This prevents doing C2._collection.insert(invalidDoc) (and update) on the client

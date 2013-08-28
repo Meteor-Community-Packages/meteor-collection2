@@ -104,7 +104,9 @@ into your database if it doesn't match the schema.
 
 If you want to use a SmartCollection, provided by the
 [smart-collections](https://github.com/arunoda/meteor-smart-collections) package,
-you can. Create the SmartCollection object, and then pass it as the first argument
+you can.
+
+One way is to create the SmartCollection object, and then pass it as the first argument
 of the Collection2 constructor function.
 
 ```js
@@ -118,6 +120,17 @@ Books = new Meteor.Collection2(BooksSC, {
 
 Then use `Books` instead of `BooksSC` throughout your code, and you will gain the
 benefits of both SmartCollection and Collection2.
+
+Another way is to use the `smart: true` option:
+
+```js
+Books = new Meteor.Collection2("books", {
+    smart: true,
+    schema: {
+        //keys
+    }
+});
+```
 
 ### AutoForms
 
