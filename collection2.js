@@ -15,7 +15,11 @@ Meteor.Collection2 = function(name, options) {
     if (options.schema instanceof SimpleSchema) {
         self._simpleSchema = options.schema;
     } else {
-        self._simpleSchema = new SimpleSchema(options.schema);
+        self._simpleSchema = new SimpleSchema(options.schema, {
+            additionalKeyPatterns: {
+                unique: Match.Optional(Boolean)
+            }
+        });
     }
     delete options.schema;
 
