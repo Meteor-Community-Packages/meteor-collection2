@@ -78,13 +78,17 @@ Meteor.Collection2 = function(name, options) {
     self._collection.deny({
         insert: function(userId, doc) {
             doc = self._simpleSchema.clean(doc);
-            self._validationContexts[self._validationContext].validate(doc);
-            return !self._validationContexts[self._validationContext].isValid();
+            //get a throwaway context here to avoid mixing up contexts
+            var context = self._simpleSchema.newContext();
+            context.validate(doc);
+            return !context.isValid();
         },
         update: function(userId, doc, fields, modifier) {
             modifier = self._simpleSchema.clean(modifier);
-            self._validationContexts[self._validationContext].validate(modifier, {modifier: true});
-            return !self._validationContexts[self._validationContext].isValid();
+            //get a throwaway context here to avoid mixing up contexts
+            var context = self._simpleSchema.newContext();
+            context.validate(modifier, {modifier: true});
+            return !context.isValid();
         },
         fetch: []
     });
