@@ -23,8 +23,6 @@ Meteor.Collection2 = function(name, options) {
     self._validationContexts = {
         default: self._simpleSchema.newContext()
     };
-    //store a generic validation context
-    self._validationContext = "default";
 
     //get the virtual fields
     self._virtualFields = options.virtualFields;
@@ -106,8 +104,7 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
     var self = this,
             collection = self._collection,
             schema = self._simpleSchema,
-            context = self._validationContext,
-            doc, callback, error;
+            context, doc, callback, error, options;
 
     if (!args.length) {
         throw new Error(type + " requires an argument");
@@ -115,12 +112,27 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
 
     if (type === "insert") {
         doc = args[0];
+        options = args[1];
     } else if (type === "update") {
         doc = args[1];
+        options = args[2];
     } else {
         throw new Error("invalid type argument");
     }
-
+    
+    //determine which validation context to use
+    if (options === void 0 || options instanceof Function || !_.isObject(options) || typeof options.validationContext !== "string") {
+        context = "default";
+    } else {
+        context = options.validationContext;
+        ensureContext(self, context);
+    }
+    
+    //remove the options from insert now that we're done with them
+    if (type === "insert" && args[1] !== void 0 && !(args[1] instanceof Function)) {
+        args.splice(1, 1);
+    }
+    
     //figure out callback situation
     if (args.length && args[args.length - 1] instanceof Function) {
         callback = args[args.length - 1];
@@ -174,49 +186,40 @@ Meteor.Collection2.prototype.simpleSchema = function() {
     return this._simpleSchema;
 };
 
-Meteor.Collection2.prototype.currentContext = function(name) {
-    var self = this;
-    if (name) {
-        //set current context, creating it first if necessary
-        self._validationContexts[name] = self._validationContexts[name] || self._simpleSchema.newContext();
-        self._validationContext = name;
-    } else {
-        //get current context
-        return self._validationContext;
-    }
-};
-
 Meteor.Collection2.prototype.namedContext = function(name) {
     var self = this;
-    self._validationContexts[name] = self._validationContexts[name] || self._simpleSchema.newContext();
+    ensureContext(self, name);
     return self._validationContexts[name];
 };
 
-Meteor.Collection2.prototype.ensureContext = function(name) {
-    var self = this;
-    self._validationContexts[name] = self._validationContexts[name] || self._simpleSchema.newContext();
-};
-
-Meteor.Collection2.prototype.validate = function(doc, isModifier) {
+Meteor.Collection2.prototype.validate = function(doc, options) {
     var self = this, schema = self._simpleSchema;
+    
+    //figure out the validation context name and make sure it exists
+    var context = _.isObject(options) && typeof options.validationContext === "string" ? options.validationContext : "default";
+    ensureContext(self, context);
     
     //clean doc
     doc = schema.clean(doc);
     //validate doc
-    self._validationContexts[self._validationContext].validate(doc, {modifier: isModifier});
+    self._validationContexts[context].validate(doc, options);
 
-    return self._validationContexts[self._validationContext].isValid();
+    return self._validationContexts[context].isValid();
 };
 
-Meteor.Collection2.prototype.validateOne = function(doc, keyName, isModifier) {
+Meteor.Collection2.prototype.validateOne = function(doc, keyName, options) {
     var self = this, schema = self._simpleSchema;
+    
+    //figure out the validation context name and make sure it exists
+    var context = _.isObject(options) && typeof options.validationContext === "string" ? options.validationContext : "default";
+    ensureContext(self, context);
     
     //clean doc
     doc = schema.clean(doc);
     //validate doc
-    self._validationContexts[self._validationContext].validateOne(doc, keyName, {modifier: isModifier});
+    self._validationContexts[context].validateOne(doc, keyName, options);
 
-    return !self._validationContexts[self._validationContext].keyIsInvalid(keyName);
+    return !self._validationContexts[context].keyIsInvalid(keyName);
 };
 
 //Pass-through Methods
@@ -244,4 +247,10 @@ Meteor.Collection2.prototype.find = function(/* arguments */) {
 Meteor.Collection2.prototype.findOne = function(/* arguments */) {
     var self = this, collection = self._collection;
     return collection.findOne.apply(collection, arguments);
+};
+
+//Private Methods
+
+var ensureContext = function(c2, name) {
+    c2._validationContexts[name] = c2._validationContexts[name] || c2._simpleSchema.newContext();
 };
