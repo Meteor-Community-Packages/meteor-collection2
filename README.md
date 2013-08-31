@@ -46,22 +46,24 @@ Books = new Meteor.Collection2("books", {
 Do an insert:
 
 ```js
+Books.currentContext("newBook");
 Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
   //The insert will fail, error will be set,
   //and result will be undefined because "copies" is required.
   //
-  //The list of errors is available by calling Books.validationContext().invalidKeys()
+  //The list of errors is available by calling Books.namedContext("newBook").invalidKeys()
 });
 ```
 
 Or do an update:
 
 ```js
+Books.currentContext("updateBook");
 Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
   //The update will fail, error will be set,
   //and result will be undefined because "copies" is required.
   //
-  //The list of errors is available by calling Books.validationContext().invalidKeys()
+  //The list of errors is available by calling Books.namedContext("updateBook").invalidKeys()
 });
 ```
 
@@ -78,6 +80,39 @@ For example:
 
 ```js
 check(doc, MyCollection2.simpleSchema());
+```
+
+## Validation Contexts
+
+In the examples above, note that we first set the context in which to validate
+the document before inserting or updating.
+If you skip this step, a context named "default" is used. Once set, the
+current context never changes until you change it, so it's generally best
+to set it just before every insert or update. The current context is not sync'd
+between client and server.
+
+Contexts let you keep multiple separate lists of invalid keys for a single collection2.
+In practice you might be able to get away with always using the "default" context.
+It depends on what you're doing. If you're using the context's reactive methods
+to update UI elements, you might find the need to use multiple contexts. For example,
+you might want one context for inserts and one for updates, or you might want
+a different context for each form on a page.
+
+## Validating Without Inserting or Updating
+
+It's also possible to validate a document using the current collection context
+without performing the actual insert or update:
+
+```js
+Books.validate({title: "Ulysses", author: "James Joyce"}, false);
+```
+
+Set the second argument to true if the document is a mongo modifier object.
+
+You can also validate just one key in the document using the current collection context:
+
+```js
+Books.validateOne({title: "Ulysses", author: "James Joyce"}, "title", false);
 ```
 
 ## Unique
@@ -163,7 +198,7 @@ is the gist of the entire package:
 //clean up doc
 doc = schema.clean(doc);
 //validate doc
-context.validate(doc, {modifier: (type === "update")});
+context.validate(doc);
 
 if (context.isValid()) {
     //perform insert or update
