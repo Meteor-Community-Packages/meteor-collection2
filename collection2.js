@@ -17,6 +17,9 @@ Meteor.Collection2 = function(name, options) {
     } else {
         self._simpleSchema = new SimpleSchema(options.schema, {
             additionalKeyPatterns: {
+                autoValue: Match.Optional(Function),
+                denyInsert: Match.Optional(Boolean),
+                denyUpdate: Match.Optional(Boolean),
                 unique: Match.Optional(Boolean)
             }
         });
