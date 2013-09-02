@@ -50,7 +50,7 @@ Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) 
   //The insert will fail, error will be set,
   //and result will be undefined because "copies" is required.
   //
-  //The list of errors is available by calling Books.simpleSchema().invalidKeys()
+  //The list of errors is available by calling Books.namedContext("default").invalidKeys()
 });
 ```
 
@@ -61,7 +61,7 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
   //The update will fail, error will be set,
   //and result will be undefined because "copies" is required.
   //
-  //The list of errors is available by calling Books.simpleSchema().invalidKeys()
+  //The list of errors is available by calling Books.namedContext("default").invalidKeys()
 });
 ```
 
@@ -77,12 +77,59 @@ in the constructor options.
 For example:
 
 ```js
-check(doc, MyCollection2.simpleSchema().match());
+check(doc, MyCollection2.simpleSchema());
+```
+
+## Validation Contexts
+
+In the examples above, note that we retrieved the "default" validation context
+to access the SimpleSchema reactive validation methods. Contexts let you keep
+multiple separate lists of invalid keys for a single collection2.
+In practice you might be able to get away with always using the "default" context.
+It depends on what you're doing. If you're using the context's reactive methods
+to update UI elements, you might find the need to use multiple contexts. For example,
+you might want one context for inserts and one for updates, or you might want
+a different context for each form on a page.
+
+To use a specific named validation context, use the `validationContext` option
+when calling `insert` or `update`:
+
+```js
+Books.insert({title: "Ulysses", author: "James Joyce"}, { validationContext: "insertForm" }, function(error, result) {
+  //The list of errors is available by calling Books.namedContext("insertForm").invalidKeys()
+});
+
+Books.update(book._id, {$unset: {copies: 1}}, { validationContext: "updateForm" }, function(error, result) {
+  //The list of errors is available by calling Books.namedContext("updateForm").invalidKeys()
+});
+```
+
+## Validating Without Inserting or Updating
+
+It's also possible to validate a document without performing the actual insert or update:
+
+```js
+Books.validate({title: "Ulysses", author: "James Joyce"}, {modifier: false});
+```
+
+Set the modifier option to true if the document is a mongo modifier object.
+
+You can also validate just one key in the document:
+
+```js
+Books.validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false});
+```
+
+And this is how you specify a certain validation context:
+
+```js
+Books.validate({title: "Ulysses", author: "James Joyce"}, {modifier: false, validationContext: "insertForm"});
+Books.validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false, validationContext: "insertForm"});
 ```
 
 ## Unique
 
-In addition to all the other schema options documented in the 
+In addition to all the other schema validation options documented in the 
 [simple-schema](https://github.com/aldeed/meteor-simple-schema) package, the
 collection2 package adds one more: `unique`. Set this to true in your schema
 to ensure that non-unique values will never be set for the key. You may want
@@ -100,16 +147,13 @@ a normal `insert()` or `update()`. Once you've defined the schema, you no longer
 have to worry about invalid data. Collection2 makes sure that nothing can get
 into your database if it doesn't match the schema.
 
-Collection2 (more specifically, SimpleSchema) probably can't support every insert or update object you throw at it,
-but it can support the most common scenarios. Normal objects as well as $set and $unset
-objects are supported. It understands basic dot notation in your $set and $unset keys.
-See the SimpleSchema documentation for more details.
-
 ### SmartCollections
 
 If you want to use a SmartCollection, provided by the
 [smart-collections](https://github.com/arunoda/meteor-smart-collections) package,
-you can. Create the SmartCollection object, and then pass it as the first argument
+you can.
+
+One way is to create the SmartCollection object, and then pass it as the first argument
 of the Collection2 constructor function.
 
 ```js
@@ -124,6 +168,17 @@ Books = new Meteor.Collection2(BooksSC, {
 Then use `Books` instead of `BooksSC` throughout your code, and you will gain the
 benefits of both SmartCollection and Collection2.
 
+Another way is to use the `smart: true` option:
+
+```js
+Books = new Meteor.Collection2("books", {
+    smart: true,
+    schema: {
+        //keys
+    }
+});
+```
+
 ### AutoForms
 
 Another great reason to use Collection2 is so that you can use the [autoform](https://github.com/aldeed/meteor-autoform) package.
@@ -135,7 +190,7 @@ documentation for more information.
 
 The callback you specify as the last argument of your `insert()` or `update()` call
 will have the first argument (`error`) set to a generic error. But generally speaking,
-you would probably use the reactive methods provided by SimpleSchema to display
+you would probably use the reactive methods provided by the SimpleSchema validation context to display
 the specific error messages to the user somewhere. The [autoform](https://github.com/aldeed/meteor-autoform) package provides
 some handlebars helpers for this purpose.
 
@@ -143,9 +198,9 @@ some handlebars helpers for this purpose.
 
 For the curious, this is exactly what Collection2 does before every insert or update:
 
-1. Removes properties from your document or $set object if they are not explicitly listed in the schema.
+1. Removes properties from your document or mongo modifier object if they are not explicitly listed in the schema.
 2. Automatically converts some properties to match what the schema expects, if possible.
-3. Validates your document or $set or $unset objects.
+3. Validates your document or mongo modifier object.
 4. Performs the insert or update like normal, only if it was valid.
 
 In reality, Collection2 is simply calling SimpleSchema methods to do these things. The following
@@ -153,17 +208,24 @@ is the gist of the entire package:
 
 ```js
 //clean up doc
-doc = schema.filter(doc);
-doc = schema.autoTypeConvert(doc);
+doc = schema.clean(doc);
 //validate doc
-schema.validate(doc);
+context.validate(doc);
 
-if (schema.valid()) {
+if (context.isValid()) {
     //perform insert or update
 } else {
     //pass error to callback or throw it
 }
 ```
+
+This same check happens on both the client and the server for client-initiated actions.
+Validation even happens if you insert or update the wrapped Meteor.Collection
+directly from the client, bypassing the Meteor.Collection2, so your data is secure.
+
+If you need to do something wonky, there is one way to insert or update without
+validation. You can call insert or update on the underlying Meteor.Collection
+from trusted server code (`MyCollection2._collection.insert(obj)`).
 
 ## Virtual Fields
 
@@ -268,7 +330,7 @@ Similarly there is a `denyInsert` option that require the field to be define onl
     },
     'updatesHistory.$.content': {
         type: String
-    }
+    },
 
     htmlContent: {
         type: String,
