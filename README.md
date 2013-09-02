@@ -3,6 +3,14 @@ Collection2
 
 A smart package for Meteor that extends Meteor.Collection to provide support for specifying a schema and then validating against that schema when inserting and updating. Also adds support for virtual fields.
 
+## Installation
+
+Install using Meteorite. When in a Meteorite-managed app directory, enter:
+
+```
+$ mrt add collection2
+```
+
 ## Basic Usage
 
 When defining your models, use `new Meteor.Collection2()` instead of `new Meteor.Collection()`. It works the same, but you can specify `schema` and `virtualFields` properties in the options.
@@ -342,3 +350,12 @@ Similarly there is a `denyInsert` option that require the field to be define onl
     }
 }
 ```
+
+## Contributing
+
+Anyone is welcome to contribute. Fork, make and test your changes (`meteor test-packages ./`),
+and then submit a pull request.
+
+### Major Contributors
+
+@mquandalle
