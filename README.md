@@ -251,7 +251,7 @@ Similarly there is a `denyInsert` option that require the field to be define onl
     },
 
     updatesHistory: {
-        type: [{date: Date, content: String}],
+        type: Object,
         autoValue: function(doc) {
             if ('content' in doc)
                 return {
@@ -263,6 +263,12 @@ Similarly there is a `denyInsert` option that require the field to be define onl
         },
         denyInsert: true
     },
+    'updatesHistory.$.date': {
+        type: Date
+    },
+    'updatesHistory.$.content': {
+        type: String
+    }
 
     htmlContent: {
         type: String,
