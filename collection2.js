@@ -75,12 +75,14 @@ Meteor.Collection2 = function(name, options) {
     //This prevents doing C2._collection.insert(invalidDoc) (and update) on the client
     self._collection.deny({
         insert: function(userId, doc) {
+            var self = this;
             //get a throwaway context here to avoid mixing up contexts
             var context = self._simpleSchema.newContext();
             context.validate(doc);
             return !context.isValid();
         },
         update: function(userId, doc, fields, modifier) {
+            var self = this;
             //get a throwaway context here to avoid mixing up contexts
             var context = self._simpleSchema.newContext();
             context.validate(modifier, {modifier: true});
