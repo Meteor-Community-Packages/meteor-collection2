@@ -5,6 +5,13 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.2.0
+
+*(Backwards-compatibility break!)*
+
+* Updated to use multiple validation contexts; changed API a bit
+* You can now pass `smart: true` option to use a SmartCollection without pre-creating it
+
 ### 0.1.7
 
 * Add `unique: true` support
