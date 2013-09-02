@@ -103,7 +103,6 @@ Meteor.Collection2 = function(name, options) {
     //This prevents doing C2._collection.insert(invalidDoc) (and update) on the client
     self._collection.deny({
         insert: function(userId, doc) {
-            self._simpleSchema.validate(doc);
             _.each(self._denyInsertKeys, function(key) {
                 if (key in doc)
                     return false
@@ -114,7 +113,6 @@ Meteor.Collection2 = function(name, options) {
             return !context.isValid();
         },
         update: function(userId, doc, fields, modifier) {
-            self._simpleSchema.validate(modifier);
             _.each(self._denyUpdateKeys, function(key) {
                 console.log(key, fields)
                 if (key in fields)
