@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.2.1
+
+Remove extra auto-added keys from doc in the insert deny function. Ensures that valid objects are recognized as valid on the server.
+
 ### 0.2.0
 
 *(Backwards-compatibility break!)*
