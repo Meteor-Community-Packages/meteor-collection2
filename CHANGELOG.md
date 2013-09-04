@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.2.3
+
+Remove smart-collections weak dependency until weak dependencies work properly
+
 ### 0.2.2
 
 Minor improvements to SmartCollection integration
