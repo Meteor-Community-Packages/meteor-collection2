@@ -187,6 +187,9 @@ Books = new Meteor.Collection2("books", {
 });
 ```
 
+If you have not added the `smart-collections` package to your app, the `smart: true`
+option will not do anything.
+
 ### AutoForms
 
 Another great reason to use Collection2 is so that you can use the [autoform](https://github.com/aldeed/meteor-autoform) package.

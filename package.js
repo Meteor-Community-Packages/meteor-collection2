@@ -7,6 +7,7 @@ Package.on_use(function(api) {
     if (typeof api.imply !== "undefined") {
         api.imply('simple-schema', ['client', 'server']);
     }
+    api.use('smart-collections', ['client', 'server'], {weak: true});
     api.use('underscore', ['client', 'server']);
     api.use('deps', ['client', 'server']);
     api.add_files(['collection2.js'], ['client', 'server']);
