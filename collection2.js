@@ -25,7 +25,7 @@ Meteor.Collection2 = function(name, options) {
 
     //store a generic validation context
     self._validationContexts = {
-        default: self._simpleSchema.newContext()
+        "default": self._simpleSchema.newContext()
     };
 
     //get the virtual fields

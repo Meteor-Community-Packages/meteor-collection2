@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.2.4
+
+Fix IE<10 errors
+
 ### 0.2.3
 
 Remove smart-collections weak dependency until weak dependencies work properly
