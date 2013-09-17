@@ -28,7 +28,7 @@ Meteor.Collection2 = function(name, options) {
 
     //store a generic validation context
     self._validationContexts = {
-        default: self._simpleSchema.newContext()
+        "default": self._simpleSchema.newContext()
     };
 
     //get the virtual fields
@@ -92,8 +92,12 @@ Meteor.Collection2 = function(name, options) {
         }
         //create the collection
         self._name = name;
-        if ("smart" in options && options.smart === true) {
+        var useSmart;
+        if ("smart" in options) {
+            useSmart = options.smart;
             delete options.smart;
+        }
+        if (useSmart === true && "SmartCollection" in Meteor) {
             self._collection = new Meteor.SmartCollection(name, options);
         } else {
             self._collection = new Meteor.Collection(name, options);
@@ -170,7 +174,7 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
     } else {
         throw new Error("invalid type argument");
     }
-    
+
     //determine which validation context to use
     if (options === void 0 || options instanceof Function || !_.isObject(options) || typeof options.validationContext !== "string") {
         context = "default";
@@ -178,12 +182,12 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
         context = options.validationContext;
         ensureContext(self, context);
     }
-    
+
     //remove the options from insert now that we're done with them
     if (type === "insert" && args[1] !== void 0 && !(args[1] instanceof Function)) {
         args.splice(1, 1);
     }
-    
+
     //figure out callback situation
     if (args.length && args[args.length - 1] instanceof Function) {
         callback = args[args.length - 1];
@@ -279,11 +283,11 @@ Meteor.Collection2.prototype.namedContext = function(name) {
 
 Meteor.Collection2.prototype.validate = function(doc, options) {
     var self = this, schema = self._simpleSchema;
-    
+
     //figure out the validation context name and make sure it exists
     var context = _.isObject(options) && typeof options.validationContext === "string" ? options.validationContext : "default";
     ensureContext(self, context);
-    
+
     //clean doc
     doc = schema.clean(doc);
     //validate doc
@@ -294,11 +298,11 @@ Meteor.Collection2.prototype.validate = function(doc, options) {
 
 Meteor.Collection2.prototype.validateOne = function(doc, keyName, options) {
     var self = this, schema = self._simpleSchema;
-    
+
     //figure out the validation context name and make sure it exists
     var context = _.isObject(options) && typeof options.validationContext === "string" ? options.validationContext : "default";
     ensureContext(self, context);
-    
+
     //clean doc
     doc = schema.clean(doc);
     //validate doc

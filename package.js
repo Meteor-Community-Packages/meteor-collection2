@@ -12,8 +12,11 @@ Package.on_use(function(api) {
     api.add_files(['collection2.js'], ['client', 'server']);
 });
 
-Package.on_test(function(api) {
-  api.use('collection2', ['client', 'server']);
-  api.use(['test-helpers', 'tinytest'], ['client', 'server']);
+Package.on_test(function (api) {
+  api.use('collection2');
+  api.use(['test-helpers', 'tinytest', 'underscore', 'ejson', 'ordered-dict',
+           'random', 'deps']);
+
+  api.add_files('collection2.tests.js', ['client', 'server']);
   api.add_files("collection2-tests.js", ['client', 'server']);
 });

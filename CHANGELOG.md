@@ -9,6 +9,19 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 * Add `autoValue` support
 * Add `denyInsert` and `denyUpdate` options
+
+### 0.2.4
+
+Fix IE<10 errors
+
+### 0.2.3
+
+Remove smart-collections weak dependency until weak dependencies work properly
+
+### 0.2.2
+
+Minor improvements to SmartCollection integration
+
 ### 0.2.1
 
 Remove extra auto-added keys from doc in the insert deny function. Ensures that valid objects are recognized as valid on the server.
