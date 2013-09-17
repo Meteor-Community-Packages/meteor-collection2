@@ -1,5 +1,5 @@
 Package.describe({
-    summary: "Wraps Meteor.Collection to provide support for automatic validation of insert and update operations on the client and server, plus simple virtual field support."
+    summary: 'Wraps Meteor.Collection to provide support for automatic validation of insert and update operations on the client and server, plus simple virtual field support.'
 });
 
 Package.on_use(function(api) {
@@ -17,6 +17,8 @@ Package.on_test(function (api) {
   api.use(['test-helpers', 'tinytest', 'underscore', 'ejson', 'ordered-dict',
            'random', 'deps']);
 
-  api.add_files('collection2.tests.js', ['client', 'server']);
-  api.add_files("collection2-tests.js", ['client', 'server']);
+  api.add_files('tests/globals.js', ['client', 'server']);
+  api.add_files('tests/server.js', 'server');
+  api.add_files('tests/client.js', 'client');
+  api.add_files('tests/both.js', ['client', 'server']);
 });
