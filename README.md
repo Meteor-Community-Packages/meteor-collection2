@@ -266,6 +266,94 @@ Persons = new Meteor.Collection2("persons", {
 
 This adds the virtual field to documents retrieved with `find()`, etc., which means you could now do `{{fullName}}` in your HTML as if fullName were actually stored in the MongoDB collection.
 
+## denyInsert and denyUpdate rules
+
+Collection2 add `denyInsert` and `denyUpdate` to the SimpleSchema options. Those options are set to `false` by default.
+If you set `denyUpdate` to true, a collection update that modify this field will failed. For instance:
+```js
+Posts = new Meteor.Collection2('posts', {
+    title: {
+        type: String
+    },
+    content: {
+        type: String
+    },
+    createdAt: {
+        type: Date,
+        denyUpdate: true
+    }
+});
+
+var postId = Posts.insert({title: 'Hello', content: 'World', createdAt: new Date});
+```
+If you use the `autoform` package, the `createdAt` field won't be present on the update form.
+
+Similarly there is a `denyInsert` option that require the field to be define only on update. If you set `denyInsert` to true, you will need to set `optional: true` as well. 
+
+## autoValue
+
+```js
+{
+    createdAt: {
+        type: Date,
+        autoValue: function() {
+            return new Date();
+        },
+        denyUpdate: true
+    },
+
+    updatedAt: {
+        type: Date,
+        autoValue: function() {
+            return new Date();
+        }
+        denyInsert: true,
+        optional: true
+    },
+
+    firstWord: {
+        type: String,
+        autoValue: function(doc) {
+            // You need to check first that there is a content attribute
+            // in the document because one can update other fields without
+            // setting the content field (for instance a 
+            // {$set: {title: 'newTitle'}} operation)
+            if ('content' in doc)
+                return doc.content.split(' ')[0];
+        }
+    },
+
+    updatesHistory: {
+        type: Object,
+        autoValue: function(doc) {
+            if ('content' in doc)
+                return {
+                    $push: {
+                        date: new Date,
+                        content: doc.content
+                    }
+                }
+        },
+        denyInsert: true
+    },
+    'updatesHistory.$.date': {
+        type: Date
+    },
+    'updatesHistory.$.content': {
+        type: String
+    },
+
+    htmlContent: {
+        type: String,
+        autoValue: function(doc) {
+            if (Meteor.isServer && 'MarkdownContent' in doc) {
+                return MarkdownToHTML(doc.MarkdownContent);
+            }
+        }
+    }
+}
+```
+
 ## Contributing
 
 Anyone is welcome to contribute. Fork, make and test your changes (`meteor test-packages ./`),

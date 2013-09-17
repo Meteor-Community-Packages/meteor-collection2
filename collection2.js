@@ -17,6 +17,9 @@ Meteor.Collection2 = function(name, options) {
     } else {
         self._simpleSchema = new SimpleSchema(options.schema, {
             additionalKeyPatterns: {
+                forceValue: Match.Optional(Function),
+                denyInsert: Match.Optional(Boolean),
+                denyUpdate: Match.Optional(Boolean),
                 unique: Match.Optional(Boolean)
             }
         });
@@ -33,6 +36,27 @@ Meteor.Collection2 = function(name, options) {
     if ("virtualFields" in options) {
         delete options.virtualFields;
     }
+
+    //populate _denyUpdateKeys, _denyInsertKeys and _forceValues
+    self._denyInsertKeys = [];
+    self._denyUpdateKeys = [];
+    self._forceValues = {insert: {}, update: {}};
+    _.each(self._simpleSchema.schema(), function (definition, fieldName) {
+        if (definition.denyInsert === true) {
+            self._denyInsertKeys.push(fieldName);
+        }
+        if (definition.denyUpdate === true) {
+            self._denyUpdateKeys.push(fieldName);
+        }
+        if ('forceValue' in definition) {
+            if (typeof definition.forceValue !== 'function')
+                throw new Error('forceValue option must be a function')
+            if (definition.denyUpdate !== true)
+                self._forceValues.update[fieldName] = definition.forceValue;
+            if (definition.denyInsert !== true)
+                self._forceValues.insert[fieldName] = definition.forceValue;
+        }
+    });
 
     //create or update the collection
     if (name instanceof Meteor.Collection || ("SmartCollection" in Meteor && name instanceof Meteor.SmartCollection)) {
@@ -99,13 +123,21 @@ Meteor.Collection2 = function(name, options) {
                     }
                 });
             }
-
+            
+            _.each(self._denyInsertKeys, function(key) {
+                if (key in doc)
+                    return false
+            });
             //get a throwaway context here to avoid mixing up contexts
             var context = self._simpleSchema.newContext();
             context.validate(docCopy);
             return !context.isValid();
         },
         update: function(userId, doc, fields, modifier) {
+            _.each(self._denyUpdateKeys, function(key) {
+                if (key in fields)
+                    return false
+            });
             //get a throwaway context here to avoid mixing up contexts
             var context = self._simpleSchema.newContext();
             context.validate(modifier, {modifier: true});
@@ -173,7 +205,28 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
     }
 
     //clean up doc
+    console.log(1, doc)
     doc = schema.clean(doc);
+    console.log(2, doc)
+
+    //call and populate `forceValue` fields in the doc
+    doc = schema.expandObj(doc);
+    console.log(3, doc)
+    _.each(self._forceValues[type], function (func, fieldName) {
+        var forceValue = func(doc, type);
+        
+        if (forceValue === undefined)
+            return
+        
+        if (type === 'update' && !(looksLikeModifier(forceValue)))
+            doc[fieldName] = {$set: forceValue}
+        else
+            doc[fieldName] = forceValue
+    });
+    console.log(4, doc)
+    doc = schema.collapseObj(doc)
+    console.log(5, doc)
+
     //validate doc
     self._validationContexts[context].validate(doc, {modifier: (type === "update")});
 
@@ -276,4 +329,15 @@ Meteor.Collection2.prototype.findOne = function(/* arguments */) {
 
 var ensureContext = function(c2, name) {
     c2._validationContexts[name] = c2._validationContexts[name] || c2._simpleSchema.newContext();
+};
+
+
+/// XXX This function is duplicate in SimpleSchema
+var looksLikeModifier = function(obj) {
+    for (var key in obj) {
+        if (obj.hasOwnProperty(key) && key.substring(0, 1) === "$") {
+            return true;
+        }
+    }
+    return false;
 };

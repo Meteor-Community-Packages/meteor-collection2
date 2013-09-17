@@ -5,6 +5,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### next
+
+* Add `autoValue` support
+* Add `denyInsert` and `denyUpdate` options
+
 ### 0.2.4
 
 Fix IE<10 errors
