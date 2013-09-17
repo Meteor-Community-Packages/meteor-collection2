@@ -17,7 +17,7 @@ Meteor.Collection2 = function(name, options) {
     } else {
         self._simpleSchema = new SimpleSchema(options.schema, {
             additionalKeyPatterns: {
-                autoValue: Match.Optional(Function),
+                forceValue: Match.Optional(Function),
                 denyInsert: Match.Optional(Boolean),
                 denyUpdate: Match.Optional(Boolean),
                 unique: Match.Optional(Boolean)
@@ -37,10 +37,10 @@ Meteor.Collection2 = function(name, options) {
         delete options.virtualFields;
     }
 
-    //populate _denyUpdateKeys, _denyInsertKeys and _autoValues
+    //populate _denyUpdateKeys, _denyInsertKeys and _forceValues
     self._denyInsertKeys = [];
     self._denyUpdateKeys = [];
-    self._autoValues = {insert: {}, update: {}};
+    self._forceValues = {insert: {}, update: {}};
     _.each(self._simpleSchema.schema(), function (definition, fieldName) {
         if (definition.denyInsert === true) {
             self._denyInsertKeys.push(fieldName);
@@ -48,13 +48,13 @@ Meteor.Collection2 = function(name, options) {
         if (definition.denyUpdate === true) {
             self._denyUpdateKeys.push(fieldName);
         }
-        if ('autoValue' in definition) {
-            if (typeof definition.autoValue !== 'function')
-                throw new Error('autoValue option must be a function')
+        if ('forceValue' in definition) {
+            if (typeof definition.forceValue !== 'function')
+                throw new Error('forceValue option must be a function')
             if (definition.denyUpdate !== true)
-                self._autoValues.update[fieldName] = definition.autoValue;
+                self._forceValues.update[fieldName] = definition.forceValue;
             if (definition.denyInsert !== true)
-                self._autoValues.insert[fieldName] = definition.autoValue;
+                self._forceValues.insert[fieldName] = definition.forceValue;
         }
     });
 
@@ -207,35 +207,35 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
     //clean up doc
     doc = schema.clean(doc);
 
-    //call and populate `autoValue` fields in the doc
-    _.each(self._autoValues[type], function (func, fieldName) {
-        var autoValue = func(doc, type);
+    //call and populate `forceValue` fields in the doc
+    _.each(self._forceValues[type], function (func, fieldName) {
+        var forceValue = func(doc, type);
         
-        if (autoValue === undefined)
+        if (forceValue === undefined)
             return
 
         if (type === "insert")
-            doc[fieldName] = autoValue;
+            doc[fieldName] = forceValue;
 
         else if (type === "update") {
             var mongoModifier = false;
             
-            // If autoValue is a mongoModifier like {$inc: 1}, we update the document to have
+            // If forceValue is a mongoModifier like {$inc: 1}, we update the document to have
             // {$inc: {fieldName: 1}}
             _.each(['$inc', '$push', '$addToSet', '$pull', '$pop', '$slice'], function($elm) {
-                if (autoValue.hasOwnProperty($elm)){
+                if (forceValue.hasOwnProperty($elm)){
                     if (!($elm in doc))
                         doc[$elm] = {};
-                    doc[$elm][fieldName] = {}[fieldName] = autoValue[$elm];
+                    doc[$elm][fieldName] = {}[fieldName] = forceValue[$elm];
                     mongoModifier = true;
                 }
             });
-            // If autoValue isn't a mongoModifier but a simple object like a string, a number or
-            // an array, we do a {$set: {fieldName: autoValue}}
+            // If forceValue isn't a mongoModifier but a simple object like a string, a number or
+            // an array, we do a {$set: {fieldName: forceValue}}
             if (!mongoModifier) {
                 if (!('$set' in doc))
                     doc.$set = {};
-                doc.$set[fieldName] = autoValue;
+                doc.$set[fieldName] = forceValue;
             }
         }
     });

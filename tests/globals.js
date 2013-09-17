@@ -8,7 +8,7 @@ Posts = new Meteor.Collection2('posts', {
     },
     randomId: {
       type: String,
-      autoValue: function() {
+      forceValue: function() {
         // From http://stackoverflow.com/questions/1349404/generate-a-string-of-5-random-characters-in-javascript
         var text = "";
         var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -22,7 +22,7 @@ Posts = new Meteor.Collection2('posts', {
     },
     updatedAt: {
       type: Date,
-      autoValue: function() {
+      forceValue: function() {
         return new Date();
       },
       denyInsert: true,
@@ -30,7 +30,7 @@ Posts = new Meteor.Collection2('posts', {
     },
     nbUpdates: {
       type: Number,
-      autoValue: function(doc, operation) {
+      forceValue: function(doc, operation) {
         if (operation === 'insert')
           return 0
         else
@@ -39,7 +39,7 @@ Posts = new Meteor.Collection2('posts', {
     },
     firstWord: {
       type: String,
-      autoValue: function(doc, operation) {
+      forceValue: function(doc, operation) {
         if (operation === 'insert' && 'content' in doc)
           return doc.content.split(' ')[0]
         else if ('$set' in doc && 'content' in doc.$set)

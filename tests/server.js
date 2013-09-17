@@ -43,7 +43,6 @@ Tinytest.addAsync('Collection2 - test insert deny', function (test, onComplete) 
     } else {
       // Server
       test.isFalse(!!error, 'We expected the insert not to trigger an error since field "copies" are set to 1');
-      console.log(error);
       test.isTrue(!!result, 'result should be defined');
 
       var invalidKeys = Books.namedContext("default").invalidKeys();
@@ -94,7 +93,7 @@ Tinytest.addAsync("Collection2 - denyInsert and denyUpdate on embedded collectio
 
 });
 
-Tinytest.addAsync("Collection2 - autoValues", function (test, onComplete) {
+Tinytest.addAsync("Collection2 - forceValues", function (test, onComplete) {
   Posts.insert({title: 'Hello', content: 'World'}, function(err, postId) {
     var post = Posts.findOne({_id: postId});
 
