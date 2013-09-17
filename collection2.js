@@ -205,40 +205,27 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
     }
 
     //clean up doc
+    console.log(1, doc)
     doc = schema.clean(doc);
+    console.log(2, doc)
 
     //call and populate `forceValue` fields in the doc
+    doc = schema.expandObj(doc);
+    console.log(3, doc)
     _.each(self._forceValues[type], function (func, fieldName) {
         var forceValue = func(doc, type);
         
         if (forceValue === undefined)
             return
-
-        if (type === "insert")
-            doc[fieldName] = forceValue;
-
-        else if (type === "update") {
-            var mongoModifier = false;
-            
-            // If forceValue is a mongoModifier like {$inc: 1}, we update the document to have
-            // {$inc: {fieldName: 1}}
-            _.each(['$inc', '$push', '$addToSet', '$pull', '$pop', '$slice'], function($elm) {
-                if (forceValue.hasOwnProperty($elm)){
-                    if (!($elm in doc))
-                        doc[$elm] = {};
-                    doc[$elm][fieldName] = {}[fieldName] = forceValue[$elm];
-                    mongoModifier = true;
-                }
-            });
-            // If forceValue isn't a mongoModifier but a simple object like a string, a number or
-            // an array, we do a {$set: {fieldName: forceValue}}
-            if (!mongoModifier) {
-                if (!('$set' in doc))
-                    doc.$set = {};
-                doc.$set[fieldName] = forceValue;
-            }
-        }
+        
+        if (type === 'update' && !(looksLikeModifier(forceValue)))
+            doc[fieldName] = {$set: forceValue}
+        else
+            doc[fieldName] = forceValue
     });
+    console.log(4, doc)
+    doc = schema.collapseObj(doc)
+    console.log(5, doc)
 
     //validate doc
     self._validationContexts[context].validate(doc, {modifier: (type === "update")});
@@ -342,4 +329,15 @@ Meteor.Collection2.prototype.findOne = function(/* arguments */) {
 
 var ensureContext = function(c2, name) {
     c2._validationContexts[name] = c2._validationContexts[name] || c2._simpleSchema.newContext();
+};
+
+
+/// XXX This function is duplicate in SimpleSchema
+var looksLikeModifier = function(obj) {
+    for (var key in obj) {
+        if (obj.hasOwnProperty(key) && key.substring(0, 1) === "$") {
+            return true;
+        }
+    }
+    return false;
 };
