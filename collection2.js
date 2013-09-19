@@ -113,6 +113,23 @@ Meteor.Collection2 = function(name, options) {
         },
         fetch: []
     });
+    //when the insecure package is used, we will confuse developers if we
+    //don't add allow functions because the deny functions that we added
+    //will "turn off" the insecure package
+    if (Package.insecure) {
+        self._collection.allow({
+            insert: function() {
+                return true;
+            },
+            update: function() {
+                return true;
+            },
+            remove: function() {
+                return true;
+            },
+            fetch: []
+        });
+    }
     //set up check for uniqueness
     self._simpleSchema.validator(function(key, val, def) {
         if (def.unique) {
