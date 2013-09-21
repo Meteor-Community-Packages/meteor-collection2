@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.2.6
+
+Backwards compatibility fix
+
 ### 0.2.5
 
 Don't require allow functions when insecure package is in use
