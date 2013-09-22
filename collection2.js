@@ -116,7 +116,7 @@ Meteor.Collection2 = function(name, options) {
     //when the insecure package is used, we will confuse developers if we
     //don't add allow functions because the deny functions that we added
     //will "turn off" the insecure package
-    if (Package && Package.insecure) { //Package is not available pre-0.6.5
+    if (typeof Package === 'object' && Package.insecure) { //Package is not available pre-0.6.5
         self._collection.allow({
             insert: function() {
                 return true;
