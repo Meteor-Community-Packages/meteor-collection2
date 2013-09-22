@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.2.7
+
+No changes
+
 ### 0.2.6
 
 Backwards compatibility fix
