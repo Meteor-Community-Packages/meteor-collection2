@@ -142,7 +142,10 @@ Meteor.Collection2 = function(name, options) {
         if (def.unique) {
             test = {};
             test[key] = val;
-            if (op !== null && self._selector) { //updating
+            if (op !== null) { //updating
+                if (!self._selector) {
+                  return true; //we can't determine whether we have a notUnique error
+                } 
                 //find count of all with key = val
                 totalUsing = self._collection.find(test).count();
                 if (totalUsing === 0)

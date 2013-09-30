@@ -37,7 +37,7 @@ books = new Meteor.Collection2("books", {
 if (Meteor.isServer) {
   // Empty the test db
   books.remove({});
-  Meteor.publish("books", function () {
+  Meteor.publish("books", function() {
     return books.find();
   });
 
@@ -174,7 +174,7 @@ Tinytest.addAsync('Collection2 - Insert Unique', function(test, next) {
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
     books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
-      
+
       test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
       test.isFalse(!!result, 'result should not be defined');
 
@@ -194,15 +194,28 @@ Tinytest.addAsync('Collection2 - Insert Unique', function(test, next) {
 Tinytest.addAsync('Collection2 - Update Unique', function(test, next) {
   var isbn1 = "978-1840226355";
   var isbn2 = "1840226358";
-  
+
   var selector = {isbn: isbn1};
   if (Meteor.isClient) {
     //untrusted code may only update by ID
     selector = books.findOne(selector)._id;
   }
+
+  //test validation without actual updating
   
+  //we don't know whether this would result in a non-unique value or not because
+  //we don't know which documents we'd be changing; therefore, no notUnique error
+  books.validate({$set: {isbn: isbn1}}, {modifier: true});
+  var invalidKeys = books.namedContext("default").invalidKeys();
+  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+  
+  books.validateOne({$set: {isbn: isbn1}}, "isbn", {modifier: true});
+  invalidKeys = books.namedContext("default").invalidKeys();
+  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+
+  //test update calls
   books.update(selector, {$set: {isbn: isbn1}}, function(error) {
-    
+
     test.isFalse(!!error, 'We expected the update not to trigger an error since isbn is used only by the doc being updated');
 
     var invalidKeys = books.namedContext("default").invalidKeys();

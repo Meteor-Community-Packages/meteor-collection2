@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.2.10
+
+Fix `unique: true` checking for validate() and validateOne()
+
 ### 0.2.9
 
 Fix `unique: true` checking for updates
