@@ -109,7 +109,13 @@ Meteor.Collection2 = function(name, options) {
             //get a throwaway context here to avoid mixing up contexts
             var context = self._simpleSchema.newContext();
             context.validate(modifier, {modifier: true});
-            return !context.isValid();
+            // Ignore any notUnique errors until we can figure out how to make them accurate
+            // i.e., don't count any docs that will be updated by this update selector
+            // if that is even possible.
+            // Note that unique validation is still done on the client, so that would catch
+            // most non-malicious errors. Implementing a unique index in mongo will protect against the rest.
+            var keys = context.invalidKeys();
+            return !context.isValid() && _.where(keys, {type: "notUnique"}).length !== keys.length;
         },
         fetch: []
     });
@@ -131,10 +137,33 @@ Meteor.Collection2 = function(name, options) {
         });
     }
     //set up check for uniqueness
-    self._simpleSchema.validator(function(key, val, def) {
+    self._simpleSchema.validator(function(key, val, def, op) {
+        var test, totalUsing, usingAndBeingUpdated, sel;
         if (def.unique) {
-            var test = {};
+            test = {};
             test[key] = val;
+            if (op !== null && self._selector) { //updating
+                //find count of all with key = val
+                totalUsing = self._collection.find(test).count();
+                if (totalUsing === 0)
+                    return true;
+
+                //find all that match selector for current update operation and also have key = val already
+                sel = self._selector;
+                if (typeof sel === "string")
+                  sel = {_id: sel};
+                
+                if (key in sel && sel[key] !== val) {
+                  //if we're selecting on the unique key with a different value, usingAndBeingUpdated must be 0
+                  usingAndBeingUpdated = 0;
+                } else {
+                  sel[key] = val;
+                  usingAndBeingUpdated = self._collection.find(sel).count();
+                }
+                
+                //if first count > second count, not unique
+                return totalUsing > usingAndBeingUpdated ? "notUnique" : true;
+            }
             return self._collection.findOne(test) ? "notUnique" : true;
         }
     });
@@ -150,10 +179,12 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
         throw new Error(type + " requires an argument");
     }
 
+    self._selector = null; //reset
     if (type === "insert") {
         doc = args[0];
         options = args[1];
     } else if (type === "update") {
+        self._selector = args[0];
         doc = args[1];
         options = args[2];
     } else {
@@ -193,6 +224,7 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
     doc = schema.clean(doc);
     //validate doc
     self._validationContexts[context].validate(doc, {modifier: (type === "update")});
+    self._selector = null; //reset
 
     if (self._validationContexts[context].isValid()) {
         if (type === "insert") {

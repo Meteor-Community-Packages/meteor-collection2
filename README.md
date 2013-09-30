@@ -143,6 +143,11 @@ collection2 package adds one more: `unique`. Set this to true in your schema
 to ensure that non-unique values will never be set for the key. You may want
 to ensure a unique mongo index on the server as well.
 
+Note: This check is currently not 100% foolproof for updates. It is possible
+for a malicious user to bypass the check. This is not a fixable issue given
+the current core Meteor APIs, but you can guard against misuse by 
+ensuring a unique mongo index on the server.
+
 The error message for this is very generic. It's best to define your own using
 `MyCollection2.simpleSchema().messages()`. The error type string is "notUnique".
 
