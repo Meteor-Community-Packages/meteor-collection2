@@ -202,13 +202,13 @@ Tinytest.addAsync('Collection2 - Update Unique', function(test, next) {
   }
 
   //test validation without actual updating
-  
+
   //we don't know whether this would result in a non-unique value or not because
   //we don't know which documents we'd be changing; therefore, no notUnique error
   books.validate({$set: {isbn: isbn1}}, {modifier: true});
   var invalidKeys = books.namedContext("default").invalidKeys();
   test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-  
+
   books.validateOne({$set: {isbn: isbn1}}, "isbn", {modifier: true});
   invalidKeys = books.namedContext("default").invalidKeys();
   test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');

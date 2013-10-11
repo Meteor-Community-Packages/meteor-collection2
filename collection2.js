@@ -1,331 +1,331 @@
 Meteor.Collection2 = function(name, options) {
-    var self = this, userTransform, existingCollection;
+  var self = this, userTransform, existingCollection;
 
-    if (!(self instanceof Meteor.Collection2)) {
-        throw new Error('use "new" to construct a Meteor.Collection2');
-    }
+  if (!(self instanceof Meteor.Collection2)) {
+    throw new Error('use "new" to construct a Meteor.Collection2');
+  }
 
-    options = options || {};
+  options = options || {};
 
-    if (!("schema" in options)) {
-        throw new Error('Meteor.Collection2 options must define a schema');
-    }
+  if (!("schema" in options)) {
+    throw new Error('Meteor.Collection2 options must define a schema');
+  }
 
-    //set up simpleSchema
-    if (options.schema instanceof SimpleSchema) {
-        self._simpleSchema = options.schema;
-    } else {
-        self._simpleSchema = new SimpleSchema(options.schema, {
-            additionalKeyPatterns: {
-                unique: Match.Optional(Boolean)
-            }
+  //set up simpleSchema
+  if (options.schema instanceof SimpleSchema) {
+    self._simpleSchema = options.schema;
+  } else {
+    self._simpleSchema = new SimpleSchema(options.schema, {
+      additionalKeyPatterns: {
+        unique: Match.Optional(Boolean)
+      }
+    });
+  }
+  delete options.schema;
+
+  //store a generic validation context
+  self._validationContexts = {
+    "default": self._simpleSchema.newContext()
+  };
+
+  //get the virtual fields
+  self._virtualFields = options.virtualFields;
+  if ("virtualFields" in options) {
+    delete options.virtualFields;
+  }
+
+  //create or update the collection
+  if (name instanceof Meteor.Collection || ("SmartCollection" in Meteor && name instanceof Meteor.SmartCollection)) {
+    existingCollection = name;
+    //set up virtual fields
+    if (self._virtualFields) {
+      userTransform = existingCollection._transform;
+      options.transform = function(doc) {
+        //add all virtual fields to document whenever it's passed to a callback
+        _.each(self._virtualFields, function(func, fieldName, list) {
+          doc[fieldName] = func(doc);
         });
+        //support user-supplied transformation function as well
+        return userTransform ? userTransform(doc) : doc;
+      };
+      existingCollection._transform = Deps._makeNonreactive(options.transform);
     }
-    delete options.schema;
-
-    //store a generic validation context
-    self._validationContexts = {
-        "default": self._simpleSchema.newContext()
-    };
-
-    //get the virtual fields
-    self._virtualFields = options.virtualFields;
-    if ("virtualFields" in options) {
-        delete options.virtualFields;
+    //update the collection
+    self._name = existingCollection._name;
+    self._collection = existingCollection;
+  } else {
+    //set up virtual fields
+    if (self._virtualFields) {
+      userTransform = options.transform;
+      options.transform = function(doc) {
+        //add all virtual fields to document whenever it's passed to a callback
+        _.each(self._virtualFields, function(func, fieldName, list) {
+          doc[fieldName] = func(doc);
+        });
+        //support user-supplied transformation function as well
+        return userTransform ? userTransform(doc) : doc;
+      };
     }
-
-    //create or update the collection
-    if (name instanceof Meteor.Collection || ("SmartCollection" in Meteor && name instanceof Meteor.SmartCollection)) {
-        existingCollection = name;
-        //set up virtual fields
-        if (self._virtualFields) {
-            userTransform = existingCollection._transform;
-            options.transform = function(doc) {
-                //add all virtual fields to document whenever it's passed to a callback
-                _.each(self._virtualFields, function(func, fieldName, list) {
-                    doc[fieldName] = func(doc);
-                });
-                //support user-supplied transformation function as well
-                return userTransform ? userTransform(doc) : doc;
-            };
-            existingCollection._transform = Deps._makeNonreactive(options.transform);
-        }
-        //update the collection
-        self._name = existingCollection._name;
-        self._collection = existingCollection;
+    //create the collection
+    self._name = name;
+    var useSmart;
+    if ("smart" in options) {
+      useSmart = options.smart;
+      delete options.smart;
+    }
+    if (useSmart === true && "SmartCollection" in Meteor) {
+      self._collection = new Meteor.SmartCollection(name, options);
     } else {
-        //set up virtual fields
-        if (self._virtualFields) {
-            userTransform = options.transform;
-            options.transform = function(doc) {
-                //add all virtual fields to document whenever it's passed to a callback
-                _.each(self._virtualFields, function(func, fieldName, list) {
-                    doc[fieldName] = func(doc);
-                });
-                //support user-supplied transformation function as well
-                return userTransform ? userTransform(doc) : doc;
-            };
+      self._collection = new Meteor.Collection(name, options);
+    }
+  }
+  //Validate from the real collection, too.
+  //This prevents doing C2._collection.insert(invalidDoc) (and update) on the client
+  self._collection.deny({
+    insert: function(userId, doc) {
+      // At this point the _id has been autogenerated and added to doc,
+      // and any virtual fields have been added,
+      // which makes it different from what we validated on the client.
+      // Clone doc, remove _id and virtual fields, and validate the clone
+      var docCopy = _.clone(doc);
+      if ("_id" in docCopy && !self._simpleSchema.allowsKey("_id")) {
+        //remove _id only if _id doesn't have a definition in the schema
+        delete docCopy["_id"];
+      }
+      if (self._virtualFields) {
+        _.each(self._virtualFields, function(func, fieldName) {
+          if (fieldName in docCopy) {
+            delete docCopy[fieldName];
+          }
+        });
+      }
+
+      //get a throwaway context here to avoid mixing up contexts
+      var context = self._simpleSchema.newContext();
+      context.validate(docCopy);
+      return !context.isValid();
+    },
+    update: function(userId, doc, fields, modifier) {
+      //get a throwaway context here to avoid mixing up contexts
+      var context = self._simpleSchema.newContext();
+      context.validate(modifier, {modifier: true});
+      // Ignore any notUnique errors until we can figure out how to make them accurate
+      // i.e., don't count any docs that will be updated by this update selector
+      // if that is even possible.
+      // Note that unique validation is still done on the client, so that would catch
+      // most non-malicious errors. Implementing a unique index in mongo will protect against the rest.
+      var keys = context.invalidKeys();
+      return !context.isValid() && _.where(keys, {type: "notUnique"}).length !== keys.length;
+    },
+    fetch: []
+  });
+  //when the insecure package is used, we will confuse developers if we
+  //don't add allow functions because the deny functions that we added
+  //will "turn off" the insecure package
+  if (typeof Package === 'object' && Package.insecure) { //Package is not available pre-0.6.5
+    self._collection.allow({
+      insert: function() {
+        return true;
+      },
+      update: function() {
+        return true;
+      },
+      remove: function() {
+        return true;
+      },
+      fetch: []
+    });
+  }
+  //set up check for uniqueness
+  self._simpleSchema.validator(function(key, val, def, op) {
+    var test, totalUsing, usingAndBeingUpdated, sel;
+    if (def.unique) {
+      test = {};
+      test[key] = val;
+      if (op !== null) { //updating
+        if (!self._selector) {
+          return true; //we can't determine whether we have a notUnique error
         }
-        //create the collection
-        self._name = name;
-        var useSmart;
-        if ("smart" in options) {
-            useSmart = options.smart;
-            delete options.smart;
-        }
-        if (useSmart === true && "SmartCollection" in Meteor) {
-            self._collection = new Meteor.SmartCollection(name, options);
+        //find count of all with key = val
+        totalUsing = self._collection.find(test).count();
+        if (totalUsing === 0)
+          return true;
+
+        //find all that match selector for current update operation and also have key = val already
+        sel = self._selector;
+        if (typeof sel === "string")
+          sel = {_id: sel};
+
+        if (key in sel && sel[key] !== val) {
+          //if we're selecting on the unique key with a different value, usingAndBeingUpdated must be 0
+          usingAndBeingUpdated = 0;
         } else {
-            self._collection = new Meteor.Collection(name, options);
+          sel[key] = val;
+          usingAndBeingUpdated = self._collection.find(sel).count();
         }
-    }
-    //Validate from the real collection, too.
-    //This prevents doing C2._collection.insert(invalidDoc) (and update) on the client
-    self._collection.deny({
-        insert: function(userId, doc) {
-            // At this point the _id has been autogenerated and added to doc,
-            // and any virtual fields have been added,
-            // which makes it different from what we validated on the client.
-            // Clone doc, remove _id and virtual fields, and validate the clone
-            var docCopy = _.clone(doc);
-            if ("_id" in docCopy && !self._simpleSchema.allowsKey("_id")) {
-                //remove _id only if _id doesn't have a definition in the schema
-                delete docCopy["_id"];
-            }
-            if (self._virtualFields) {
-                _.each(self._virtualFields, function(func, fieldName) {
-                    if (fieldName in docCopy) {
-                        delete docCopy[fieldName];
-                    }
-                });
-            }
 
-            //get a throwaway context here to avoid mixing up contexts
-            var context = self._simpleSchema.newContext();
-            context.validate(docCopy);
-            return !context.isValid();
-        },
-        update: function(userId, doc, fields, modifier) {
-            //get a throwaway context here to avoid mixing up contexts
-            var context = self._simpleSchema.newContext();
-            context.validate(modifier, {modifier: true});
-            // Ignore any notUnique errors until we can figure out how to make them accurate
-            // i.e., don't count any docs that will be updated by this update selector
-            // if that is even possible.
-            // Note that unique validation is still done on the client, so that would catch
-            // most non-malicious errors. Implementing a unique index in mongo will protect against the rest.
-            var keys = context.invalidKeys();
-            return !context.isValid() && _.where(keys, {type: "notUnique"}).length !== keys.length;
-        },
-        fetch: []
-    });
-    //when the insecure package is used, we will confuse developers if we
-    //don't add allow functions because the deny functions that we added
-    //will "turn off" the insecure package
-    if (typeof Package === 'object' && Package.insecure) { //Package is not available pre-0.6.5
-        self._collection.allow({
-            insert: function() {
-                return true;
-            },
-            update: function() {
-                return true;
-            },
-            remove: function() {
-                return true;
-            },
-            fetch: []
-        });
+        //if first count > second count, not unique
+        return totalUsing > usingAndBeingUpdated ? "notUnique" : true;
+      }
+      return self._collection.findOne(test) ? "notUnique" : true;
     }
-    //set up check for uniqueness
-    self._simpleSchema.validator(function(key, val, def, op) {
-        var test, totalUsing, usingAndBeingUpdated, sel;
-        if (def.unique) {
-            test = {};
-            test[key] = val;
-            if (op !== null) { //updating
-                if (!self._selector) {
-                  return true; //we can't determine whether we have a notUnique error
-                } 
-                //find count of all with key = val
-                totalUsing = self._collection.find(test).count();
-                if (totalUsing === 0)
-                    return true;
-
-                //find all that match selector for current update operation and also have key = val already
-                sel = self._selector;
-                if (typeof sel === "string")
-                  sel = {_id: sel};
-                
-                if (key in sel && sel[key] !== val) {
-                  //if we're selecting on the unique key with a different value, usingAndBeingUpdated must be 0
-                  usingAndBeingUpdated = 0;
-                } else {
-                  sel[key] = val;
-                  usingAndBeingUpdated = self._collection.find(sel).count();
-                }
-                
-                //if first count > second count, not unique
-                return totalUsing > usingAndBeingUpdated ? "notUnique" : true;
-            }
-            return self._collection.findOne(test) ? "notUnique" : true;
-        }
-    });
+  });
 };
 
 Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
-    var self = this,
-            collection = self._collection,
-            schema = self._simpleSchema,
-            context, doc, callback, error, options;
+  var self = this,
+          collection = self._collection,
+          schema = self._simpleSchema,
+          context, doc, callback, error, options;
 
-    if (!args.length) {
-        throw new Error(type + " requires an argument");
-    }
+  if (!args.length) {
+    throw new Error(type + " requires an argument");
+  }
 
-    self._selector = null; //reset
+  self._selector = null; //reset
+  if (type === "insert") {
+    doc = args[0];
+    options = args[1];
+  } else if (type === "update") {
+    self._selector = args[0];
+    doc = args[1];
+    options = args[2];
+  } else {
+    throw new Error("invalid type argument");
+  }
+
+  //determine which validation context to use
+  if (options === void 0 || options instanceof Function || !_.isObject(options) || typeof options.validationContext !== "string") {
+    context = "default";
+  } else {
+    context = options.validationContext;
+    ensureContext(self, context);
+  }
+
+  //remove the options from insert now that we're done with them
+  if (type === "insert" && args[1] !== void 0 && !(args[1] instanceof Function)) {
+    args.splice(1, 1);
+  }
+
+  //figure out callback situation
+  if (args.length && args[args.length - 1] instanceof Function) {
+    callback = args[args.length - 1];
+  }
+  if (Meteor.isClient && !callback) {
+    // Client can't block, so it can't report errors by exception,
+    // only by callback. If they forget the callback, give them a
+    // default one that logs the error, so they aren't totally
+    // baffled if their writes don't work because their database is
+    // down.
+    callback = function(err) {
+      if (err)
+        Meteor._debug(type + " failed: " + (err.reason || err.stack));
+    };
+  }
+
+  //clean up doc
+  doc = schema.clean(doc);
+  //validate doc
+  self._validationContexts[context].validate(doc, {modifier: (type === "update")});
+  self._selector = null; //reset
+
+  if (self._validationContexts[context].isValid()) {
     if (type === "insert") {
-        doc = args[0];
-        options = args[1];
-    } else if (type === "update") {
-        self._selector = args[0];
-        doc = args[1];
-        options = args[2];
+      args[0] = doc; //update to reflect cleaned doc
+      return collection.insert.apply(collection, args);
     } else {
-        throw new Error("invalid type argument");
+      args[1] = doc; //update to reflect cleaned doc
+      return collection.update.apply(collection, args);
     }
-
-    //determine which validation context to use
-    if (options === void 0 || options instanceof Function || !_.isObject(options) || typeof options.validationContext !== "string") {
-        context = "default";
-    } else {
-        context = options.validationContext;
-        ensureContext(self, context);
+  } else {
+    error = new Error("failed validation");
+    if (callback) {
+      callback(error);
+      return null;
     }
-
-    //remove the options from insert now that we're done with them
-    if (type === "insert" && args[1] !== void 0 && !(args[1] instanceof Function)) {
-        args.splice(1, 1);
-    }
-
-    //figure out callback situation
-    if (args.length && args[args.length - 1] instanceof Function) {
-        callback = args[args.length - 1];
-    }
-    if (Meteor.isClient && !callback) {
-        // Client can't block, so it can't report errors by exception,
-        // only by callback. If they forget the callback, give them a
-        // default one that logs the error, so they aren't totally
-        // baffled if their writes don't work because their database is
-        // down.
-        callback = function(err) {
-            if (err)
-                Meteor._debug(type + " failed: " + (err.reason || err.stack));
-        };
-    }
-
-    //clean up doc
-    doc = schema.clean(doc);
-    //validate doc
-    self._validationContexts[context].validate(doc, {modifier: (type === "update")});
-    self._selector = null; //reset
-
-    if (self._validationContexts[context].isValid()) {
-        if (type === "insert") {
-            args[0] = doc; //update to reflect cleaned doc
-            return collection.insert.apply(collection, args);
-        } else {
-            args[1] = doc; //update to reflect cleaned doc
-            return collection.update.apply(collection, args);
-        }
-    } else {
-        error = new Error("failed validation");
-        if (callback) {
-            callback(error);
-            return null;
-        }
-        throw error;
-    }
+    throw error;
+  }
 };
 
 Meteor.Collection2.prototype.insert = function(/* arguments */) {
-    var args = _.toArray(arguments);
-    return this._insertOrUpdate("insert", args);
+  var args = _.toArray(arguments);
+  return this._insertOrUpdate("insert", args);
 };
 
 Meteor.Collection2.prototype.update = function(/* arguments */) {
-    var args = _.toArray(arguments);
-    return this._insertOrUpdate("update", args);
+  var args = _.toArray(arguments);
+  return this._insertOrUpdate("update", args);
 };
 
 Meteor.Collection2.prototype.simpleSchema = function() {
-    return this._simpleSchema;
+  return this._simpleSchema;
 };
 
 Meteor.Collection2.prototype.namedContext = function(name) {
-    var self = this;
-    ensureContext(self, name);
-    return self._validationContexts[name];
+  var self = this;
+  ensureContext(self, name);
+  return self._validationContexts[name];
 };
 
 Meteor.Collection2.prototype.validate = function(doc, options) {
-    var self = this, schema = self._simpleSchema;
+  var self = this, schema = self._simpleSchema;
 
-    //figure out the validation context name and make sure it exists
-    var context = _.isObject(options) && typeof options.validationContext === "string" ? options.validationContext : "default";
-    ensureContext(self, context);
+  //figure out the validation context name and make sure it exists
+  var context = _.isObject(options) && typeof options.validationContext === "string" ? options.validationContext : "default";
+  ensureContext(self, context);
 
-    //clean doc
-    doc = schema.clean(doc);
-    //validate doc
-    self._validationContexts[context].validate(doc, options);
+  //clean doc
+  doc = schema.clean(doc);
+  //validate doc
+  self._validationContexts[context].validate(doc, options);
 
-    return self._validationContexts[context].isValid();
+  return self._validationContexts[context].isValid();
 };
 
 Meteor.Collection2.prototype.validateOne = function(doc, keyName, options) {
-    var self = this, schema = self._simpleSchema;
+  var self = this, schema = self._simpleSchema;
 
-    //figure out the validation context name and make sure it exists
-    var context = _.isObject(options) && typeof options.validationContext === "string" ? options.validationContext : "default";
-    ensureContext(self, context);
+  //figure out the validation context name and make sure it exists
+  var context = _.isObject(options) && typeof options.validationContext === "string" ? options.validationContext : "default";
+  ensureContext(self, context);
 
-    //clean doc
-    doc = schema.clean(doc);
-    //validate doc
-    self._validationContexts[context].validateOne(doc, keyName, options);
+  //clean doc
+  doc = schema.clean(doc);
+  //validate doc
+  self._validationContexts[context].validateOne(doc, keyName, options);
 
-    return !self._validationContexts[context].keyIsInvalid(keyName);
+  return !self._validationContexts[context].keyIsInvalid(keyName);
 };
 
 //Pass-through Methods
 
 Meteor.Collection2.prototype.remove = function(/* arguments */) {
-    var self = this, collection = self._collection;
-    return collection.remove.apply(collection, arguments);
+  var self = this, collection = self._collection;
+  return collection.remove.apply(collection, arguments);
 };
 
 Meteor.Collection2.prototype.allow = function(/* arguments */) {
-    var self = this, collection = self._collection;
-    return collection.allow.apply(collection, arguments);
+  var self = this, collection = self._collection;
+  return collection.allow.apply(collection, arguments);
 };
 
 Meteor.Collection2.prototype.deny = function(/* arguments */) {
-    var self = this, collection = self._collection;
-    return collection.deny.apply(collection, arguments);
+  var self = this, collection = self._collection;
+  return collection.deny.apply(collection, arguments);
 };
 
 Meteor.Collection2.prototype.find = function(/* arguments */) {
-    var self = this, collection = self._collection;
-    return collection.find.apply(collection, arguments);
+  var self = this, collection = self._collection;
+  return collection.find.apply(collection, arguments);
 };
 
 Meteor.Collection2.prototype.findOne = function(/* arguments */) {
-    var self = this, collection = self._collection;
-    return collection.findOne.apply(collection, arguments);
+  var self = this, collection = self._collection;
+  return collection.findOne.apply(collection, arguments);
 };
 
 //Private Methods
 
 var ensureContext = function(c2, name) {
-    c2._validationContexts[name] = c2._validationContexts[name] || c2._simpleSchema.newContext();
+  c2._validationContexts[name] = c2._validationContexts[name] || c2._simpleSchema.newContext();
 };
