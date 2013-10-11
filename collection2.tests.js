@@ -54,7 +54,7 @@ if (Meteor.isServer) {
         },
         remove: function() {
           return true;
-        },
+        }
       });
     },
     denyAll: function() {
@@ -68,9 +68,9 @@ if (Meteor.isServer) {
         },
         remove: function() {
           return false;
-        },
+        }
       });
-    },
+    }
   });
 } else {
   Meteor.subscribe("books");
@@ -234,6 +234,52 @@ Tinytest.addAsync('Collection2 - Update Unique', function(test, next) {
     });
   });
 });
+
+//upserts are server only when this package is used
+if (Meteor.isServer) {
+
+  Tinytest.addAsync('Collection2 - Upsert', function(test, next) {
+    //test validation without actual updating
+
+    //invalid
+    books.validate({$set: {title: "Ulysses", author: "James Joyce"}}, {modifier: true, upsert: true});
+    var invalidKeys = books.namedContext("default").invalidKeys();
+    test.equal(invalidKeys.length, 1, 'We should get one invalidKeys back because copies is missing');
+
+    books.validateOne({$set: {title: "Ulysses", author: "James Joyce"}}, "copies", {modifier: true, upsert: true});
+    invalidKeys = books.namedContext("default").invalidKeys();
+    test.equal(invalidKeys.length, 1, 'We should get one invalidKeys back because copies is missing');
+
+    //valid
+    books.validate({$set: {title: "Ulysses", author: "James Joyce", copies: 1}}, {modifier: true, upsert: true});
+    var invalidKeys = books.namedContext("default").invalidKeys();
+    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+
+    books.validateOne({$set: {title: "Ulysses", author: "James Joyce"}}, "author", {modifier: true, upsert: true});
+    invalidKeys = books.namedContext("default").invalidKeys();
+    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+
+    //test update calls
+    books.upsert({title: "Ulysses", author: "James Joyce"}, {$set: {copies: 1}}, function(error) {
+
+      test.isFalse(!!error, 'We expected the upsert not to trigger an error since the selector values should be used');
+
+      var invalidKeys = books.namedContext("default").invalidKeys();
+      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+
+      books.upsert({title: "Ulysses", author: "James Joyce"}, {$set: {copies: 1}}, {upsert: true}, function(error) {
+
+        test.isFalse(!!error, 'We expected the update/upsert not to trigger an error since the selector values should be used');
+
+        var invalidKeys = books.namedContext("default").invalidKeys();
+        test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+
+        next();
+      });
+    });
+  });
+
+}
 
 //Test API:
 //test.isFalse(v, msg)

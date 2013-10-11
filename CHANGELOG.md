@@ -5,10 +5,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
-### NEXT
+### 0.2.11
 
 * Add `check` dependency
 * Add `upsert` support
+* Use `transform: null` for the deny/allow callbacks
 
 ### 0.2.10
 

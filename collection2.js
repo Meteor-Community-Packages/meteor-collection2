@@ -92,6 +92,10 @@ Meteor.Collection2 = function(name, options) {
         //remove _id only if _id doesn't have a definition in the schema
         delete docCopy["_id"];
       }
+
+      //the virtualFields should not be present because we set transform: null,
+      //but we'll check for them in case it's an older version of Meteor that
+      //doesn't recognize the null transform flag
       if (self._virtualFields) {
         _.each(self._virtualFields, function(func, fieldName) {
           if (fieldName in docCopy) {
@@ -106,6 +110,9 @@ Meteor.Collection2 = function(name, options) {
       return !context.isValid();
     },
     update: function(userId, doc, fields, modifier) {
+      //NOTE: This will never be an upsert because client-side upserts
+      //are not allowed once you define allow/deny functions
+
       //get a throwaway context here to avoid mixing up contexts
       var context = self._simpleSchema.newContext();
       context.validate(modifier, {modifier: true});
@@ -117,7 +124,8 @@ Meteor.Collection2 = function(name, options) {
       var keys = context.invalidKeys();
       return !context.isValid() && _.where(keys, {type: "notUnique"}).length !== keys.length;
     },
-    fetch: []
+    fetch: [],
+    transform: null
   });
   //when the insecure package is used, we will confuse developers if we
   //don't add allow functions because the deny functions that we added
@@ -133,7 +141,8 @@ Meteor.Collection2 = function(name, options) {
       remove: function() {
         return true;
       },
-      fetch: []
+      fetch: [],
+      transform: null
     });
   }
   //set up check for uniqueness
@@ -176,7 +185,7 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
   var self = this,
           collection = self._collection,
           schema = self._simpleSchema,
-          context, doc, callback, error, options;
+          context, doc, callback, error, options, isUpsert;
 
   if (!args.length) {
     throw new Error(type + " requires an argument");
@@ -186,31 +195,41 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
   if (type === "insert") {
     doc = args[0];
     options = args[1];
-  } else if (type === "update") {
+    callback = args[2];
+  } else if (type === "update" || type === "upsert") {
     self._selector = args[0];
     doc = args[1];
     options = args[2];
+    callback = args[3];
   } else {
     throw new Error("invalid type argument");
   }
 
+  if (!callback && typeof options === "function") {
+    callback = options;
+    options = {};
+  }
+
+  options = options || {};
+
+  //if update was called with upsert:true or upsert was called, flag as an upsert
+  isUpsert = (type === "upsert" || (type === "update" && options.upsert === true));
+
   //determine which validation context to use
-  if (options === void 0 || options instanceof Function || !_.isObject(options) || typeof options.validationContext !== "string") {
+  if (typeof options.validationContext !== "string") {
     context = "default";
   } else {
     context = options.validationContext;
     ensureContext(self, context);
   }
 
-  //remove the options from insert now that we're done with them
-  if (type === "insert" && args[1] !== void 0 && !(args[1] instanceof Function)) {
+  //remove the options from insert now that we're done with them;
+  //the real insert does not have an options argument
+  if (type === "insert" && args[1] !== void 0 && !(typeof args[1] === "function")) {
     args.splice(1, 1);
   }
 
-  //figure out callback situation
-  if (args.length && args[args.length - 1] instanceof Function) {
-    callback = args[args.length - 1];
-  }
+  //add a default callback function if we're on the client and no callback was given
   if (Meteor.isClient && !callback) {
     // Client can't block, so it can't report errors by exception,
     // only by callback. If they forget the callback, give them a
@@ -225,17 +244,37 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
 
   //clean up doc
   doc = schema.clean(doc);
+
+  //On the server, upserts are possible; SimpleSchema handles upserts pretty
+  //well by default, but it will not know about the fields in the selector,
+  //which are also stored in the database if an insert is performed. So we
+  //will allow these fields to be considered for validation by adding them
+  //to the $set in the modifier. This is no doubt prone to errors, but there
+  //probably isn't any better way right now.
+  var docToValidate = doc;
+  if (Meteor.isServer && isUpsert && _.isObject(self._selector)) {
+    var set = docToValidate.$set || {};
+    docToValidate.$set = self._selector;
+    _.extend(docToValidate.$set, set);
+  }
+
   //validate doc
-  self._validationContexts[context].validate(doc, {modifier: (type === "update")});
+  self._validationContexts[context].validate(docToValidate, {
+    modifier: (type === "update" || type === "upsert"),
+    upsert: isUpsert
+  });
   self._selector = null; //reset
 
   if (self._validationContexts[context].isValid()) {
     if (type === "insert") {
       args[0] = doc; //update to reflect cleaned doc
       return collection.insert.apply(collection, args);
-    } else {
+    } else if (type === "update") {
       args[1] = doc; //update to reflect cleaned doc
       return collection.update.apply(collection, args);
+    } else if (type === "upsert") {
+      args[1] = doc; //update to reflect cleaned doc
+      return collection.upsert.apply(collection, args);
     }
   } else {
     error = new Error("failed validation");
@@ -255,6 +294,14 @@ Meteor.Collection2.prototype.insert = function(/* arguments */) {
 Meteor.Collection2.prototype.update = function(/* arguments */) {
   var args = _.toArray(arguments);
   return this._insertOrUpdate("update", args);
+};
+
+Meteor.Collection2.prototype.upsert = function(/* arguments */) {
+  if (!this._collection.upsert)
+    throw new Error("Meteor 0.6.6 or higher is required to do an upsert");
+
+  var args = _.toArray(arguments);
+  return this._insertOrUpdate("upsert", args);
 };
 
 Meteor.Collection2.prototype.simpleSchema = function() {
