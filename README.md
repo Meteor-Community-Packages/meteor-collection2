@@ -269,7 +269,9 @@ Persons = new Meteor.Collection2("persons", {
 });
 ```
 
-This adds the virtual field to documents retrieved with `find()`, etc., which means you could now do `{{fullName}}` in your HTML as if fullName were actually stored in the MongoDB collection.
+This adds the virtual field to documents retrieved with `find()`, etc., which means you could
+now do `{{fullName}}` in your HTML as if fullName were actually stored in the MongoDB collection.
+However, you cannot query on a virtual field.
 
 ## Contributing
 
