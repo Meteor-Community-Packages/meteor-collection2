@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.2.12
+
+* Don't throw notUnique error for null or undefined optional fields
+
 ### 0.2.11
 
 * Add `check` dependency
