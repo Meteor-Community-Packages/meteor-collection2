@@ -148,6 +148,9 @@ Meteor.Collection2 = function(name, options) {
   //set up check for uniqueness
   self._simpleSchema.validator(function(key, val, def, op) {
     var test, totalUsing, usingAndBeingUpdated, sel;
+    if ((val === void 0 || val === null) && def.optional) {
+      return true;
+    }
     if (def.unique) {
       test = {};
       test[key] = val;
