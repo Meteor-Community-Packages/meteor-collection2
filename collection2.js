@@ -1,3 +1,8 @@
+// Extend the schema options allowed by SimpleSchema
+SimpleSchema.extendOptions({
+  unique: Match.Optional(Boolean)
+});
+
 Meteor.Collection2 = function(name, options) {
   var self = this, userTransform, existingCollection;
 
@@ -15,18 +20,9 @@ Meteor.Collection2 = function(name, options) {
   if (options.schema instanceof SimpleSchema) {
     self._simpleSchema = options.schema;
   } else {
-    self._simpleSchema = new SimpleSchema(options.schema, {
-      additionalKeyPatterns: {
-        unique: Match.Optional(Boolean)
-      }
-    });
+    self._simpleSchema = new SimpleSchema(options.schema);
   }
   delete options.schema;
-
-  //store a generic validation context
-  self._validationContexts = {
-    "default": self._simpleSchema.newContext()
-  };
 
   //get the virtual fields
   self._virtualFields = options.virtualFields;
@@ -108,8 +104,7 @@ Meteor.Collection2 = function(name, options) {
 
       //get a throwaway context here to avoid mixing up contexts
       var context = self._simpleSchema.newContext();
-      context.validate(docCopy);
-      return !context.isValid();
+      return !context.validate(docCopy);
     },
     update: function(userId, doc, fields, modifier) {
       //NOTE: This will never be an upsert because client-side upserts
@@ -117,14 +112,14 @@ Meteor.Collection2 = function(name, options) {
 
       //get a throwaway context here to avoid mixing up contexts
       var context = self._simpleSchema.newContext();
-      context.validate(modifier, {modifier: true});
+      var isValid = context.validate(modifier, {modifier: true});
       // Ignore any notUnique errors until we can figure out how to make them accurate
       // i.e., don't count any docs that will be updated by this update selector
       // if that is even possible.
       // Note that unique validation is still done on the client, so that would catch
       // most non-malicious errors. Implementing a unique index in mongo will protect against the rest.
       var keys = context.invalidKeys();
-      return !context.isValid() && _.where(keys, {type: "notUnique"}).length !== keys.length;
+      return !isValid && _.where(keys, {type: "notUnique"}).length !== keys.length;
     },
     fetch: [],
     transform: null
@@ -190,7 +185,7 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
   var self = this,
           collection = self._collection,
           schema = self._simpleSchema,
-          context, doc, callback, error, options, isUpsert;
+          doc, callback, error, options, isUpsert;
 
   if (!args.length) {
     throw new Error(type + " requires an argument");
@@ -220,14 +215,6 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
   //if update was called with upsert:true or upsert was called, flag as an upsert
   isUpsert = (type === "upsert" || (type === "update" && options.upsert === true));
 
-  //determine which validation context to use
-  if (typeof options.validationContext !== "string") {
-    context = "default";
-  } else {
-    context = options.validationContext;
-    ensureContext(self, context);
-  }
-
   //remove the options from insert now that we're done with them;
   //the real insert does not have an options argument
   if (type === "insert" && args[1] !== void 0 && !(typeof args[1] === "function")) {
@@ -247,7 +234,6 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
     };
   }
 
-  //clean up doc
   doc = schema.clean(doc);
 
   //On the server, upserts are possible; SimpleSchema handles upserts pretty
@@ -264,13 +250,16 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
   }
 
   //validate doc
-  self._validationContexts[context].validate(docToValidate, {
+  var isValid = schema.namedContext(options.validationContext).validate(docToValidate, {
     modifier: (type === "update" || type === "upsert"),
-    upsert: isUpsert
+    upsert: isUpsert,
+    // Skip filter and autoconvert because we already called clean()
+    filter: false,
+    autoConvert: false
   });
   self._selector = null; //reset
 
-  if (self._validationContexts[context].isValid()) {
+  if (isValid) {
     if (type === "insert") {
       args[0] = doc; //update to reflect cleaned doc
       return collection.insert.apply(collection, args);
@@ -313,40 +302,23 @@ Meteor.Collection2.prototype.simpleSchema = function() {
   return this._simpleSchema;
 };
 
+//DEPRECATED; Use myC2.simpleSchema().namedContext() instead
 Meteor.Collection2.prototype.namedContext = function(name) {
-  var self = this;
-  ensureContext(self, name);
-  return self._validationContexts[name];
+  return this._simpleSchema.namedContext(name);
 };
 
+//DEPRECATED; Use myC2.simpleSchema().namedContext().validate() instead
 Meteor.Collection2.prototype.validate = function(doc, options) {
-  var self = this, schema = self._simpleSchema;
-
-  //figure out the validation context name and make sure it exists
-  var context = _.isObject(options) && typeof options.validationContext === "string" ? options.validationContext : "default";
-  ensureContext(self, context);
-
-  //clean doc
-  doc = schema.clean(doc);
-  //validate doc
-  self._validationContexts[context].validate(doc, options);
-
-  return self._validationContexts[context].isValid();
+  options = options || {};
+  // Validate doc and return validity
+  return this._simpleSchema.namedContext(options.validationContext).validate(doc, options);
 };
 
+//DEPRECATED; Use myC2.simpleSchema().namedContext().validateOne() instead
 Meteor.Collection2.prototype.validateOne = function(doc, keyName, options) {
-  var self = this, schema = self._simpleSchema;
-
-  //figure out the validation context name and make sure it exists
-  var context = _.isObject(options) && typeof options.validationContext === "string" ? options.validationContext : "default";
-  ensureContext(self, context);
-
-  //clean doc
-  doc = schema.clean(doc);
-  //validate doc
-  self._validationContexts[context].validateOne(doc, keyName, options);
-
-  return !self._validationContexts[context].keyIsInvalid(keyName);
+  options = options || {};
+  // Validate doc and return validity
+  return this._simpleSchema.namedContext(options.validationContext).validateOne(doc, keyName, options);
 };
 
 //Pass-through Methods
@@ -374,10 +346,4 @@ Meteor.Collection2.prototype.find = function(/* arguments */) {
 Meteor.Collection2.prototype.findOne = function(/* arguments */) {
   var self = this, collection = self._collection;
   return collection.findOne.apply(collection, arguments);
-};
-
-//Private Methods
-
-var ensureContext = function(c2, name) {
-  c2._validationContexts[name] = c2._validationContexts[name] || c2._simpleSchema.newContext();
 };

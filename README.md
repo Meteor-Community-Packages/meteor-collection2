@@ -58,7 +58,7 @@ Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) 
   //The insert will fail, error will be set,
   //and result will be undefined because "copies" is required.
   //
-  //The list of errors is available by calling Books.namedContext("default").invalidKeys()
+  //The list of errors is available by calling Books.simpleSchema().namedContext().invalidKeys()
 });
 ```
 
@@ -69,7 +69,7 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
   //The update will fail, error will be set,
   //and result will be undefined because "copies" is required.
   //
-  //The list of errors is available by calling Books.namedContext("default").invalidKeys()
+  //The list of errors is available by calling Books.simpleSchema().namedContext().invalidKeys()
 });
 ```
 
@@ -90,10 +90,10 @@ check(doc, MyCollection2.simpleSchema());
 
 ## Validation Contexts
 
-In the examples above, note that we retrieved the "default" validation context
+In the examples above, note that we called `namedContext()` with no arguments
 to access the SimpleSchema reactive validation methods. Contexts let you keep
 multiple separate lists of invalid keys for a single collection2.
-In practice you might be able to get away with always using the "default" context.
+In practice you might be able to get away with always using the default context.
 It depends on what you're doing. If you're using the context's reactive methods
 to update UI elements, you might find the need to use multiple contexts. For example,
 you might want one context for inserts and one for updates, or you might want
@@ -104,11 +104,11 @@ when calling `insert` or `update`:
 
 ```js
 Books.insert({title: "Ulysses", author: "James Joyce"}, { validationContext: "insertForm" }, function(error, result) {
-  //The list of errors is available by calling Books.namedContext("insertForm").invalidKeys()
+  //The list of errors is available by calling Books.simpleSchema().namedContext("insertForm").invalidKeys()
 });
 
 Books.update(book._id, {$unset: {copies: 1}}, { validationContext: "updateForm" }, function(error, result) {
-  //The list of errors is available by calling Books.namedContext("updateForm").invalidKeys()
+  //The list of errors is available by calling Books.simpleSchema().namedContext("updateForm").invalidKeys()
 });
 ```
 
@@ -117,7 +117,7 @@ Books.update(book._id, {$unset: {copies: 1}}, { validationContext: "updateForm" 
 It's also possible to validate a document without performing the actual insert or update:
 
 ```js
-Books.validate({title: "Ulysses", author: "James Joyce"}, {modifier: false});
+Books.simpleSchema().namedContext().validate({title: "Ulysses", author: "James Joyce"}, {modifier: false});
 ```
 
 Set the modifier option to true if the document is a mongo modifier object.
@@ -125,14 +125,14 @@ Set the modifier option to true if the document is a mongo modifier object.
 You can also validate just one key in the document:
 
 ```js
-Books.validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false});
+Books.simpleSchema().namedContext().validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false});
 ```
 
-And this is how you specify a certain validation context:
+Or you can specify a certain validation context when calling either method:
 
 ```js
-Books.validate({title: "Ulysses", author: "James Joyce"}, {modifier: false, validationContext: "insertForm"});
-Books.validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false, validationContext: "insertForm"});
+Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", author: "James Joyce"}, {modifier: false});
+Books.simpleSchema().namedContext("insertForm").validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false});
 ```
 
 ## Unique
@@ -154,8 +154,7 @@ The error message for this is very generic. It's best to define your own using
 ## Why Use It?
 
 In addition to getting all of the benefits provided by the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
-Collection2 sets up automatic property filtering, type conversion, and,
-most importantly, validation, on both the client and the server, whenever you do
+Collection2 sets up automatic validation, on both the client and the server, whenever you do
 a normal `insert()` or `update()`. Once you've defined the schema, you no longer
 have to worry about invalid data. Collection2 makes sure that nothing can get
 into your database if it doesn't match the schema.
@@ -250,24 +249,10 @@ For the curious, this is exactly what Collection2 does before every insert or up
 3. Validates your document or mongo modifier object.
 4. Performs the insert or update like normal, only if it was valid.
 
-In reality, Collection2 is simply calling SimpleSchema methods to do these things. The following
-is the gist of the entire package:
+Collection2 is simply calling SimpleSchema methods to do these things.
 
-```js
-//clean up doc
-doc = schema.clean(doc);
-//validate doc
-context.validate(doc);
-
-if (context.isValid()) {
-    //perform insert or update
-} else {
-    //pass error to callback or throw it
-}
-```
-
-This same check happens on both the client and the server for client-initiated actions.
-Validation even happens if you insert or update the wrapped Meteor.Collection
+This check happens on both the client and the server for client-initiated actions.
+Validation even happens if a malicious user inserts or updates the wrapped Meteor.Collection
 directly from the client, bypassing the Meteor.Collection2, so your data is secure.
 
 If you need to do something wonky, there is one way to insert or update without
@@ -306,7 +291,7 @@ However, you cannot query on a virtual field.
 
 ## Contributing
 
-Anyone is welcome to contribute. Fork, make and test your changes (`meteor test-packages ./`),
+Anyone is welcome to contribute. Fork, make and test your changes (`mrt test-packages ./`),
 and then submit a pull request.
 
 ### Major Contributors
