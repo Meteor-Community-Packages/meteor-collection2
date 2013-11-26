@@ -35,7 +35,9 @@ Meteor.Collection2 = function(name, options) {
   }
 
   //create or update the collection
-  if (name instanceof Meteor.Collection || ("SmartCollection" in Meteor && name instanceof Meteor.SmartCollection)) {
+  if (name instanceof Meteor.Collection
+          || ("SmartCollection" in Meteor && name instanceof Meteor.SmartCollection)
+          || (typeof Offline === "object" && "Collection" in Offline && name instanceof Offline.Collection)) {
     existingCollection = name;
     //set up virtual fields
     if (self._virtualFields) {

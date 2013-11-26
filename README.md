@@ -160,7 +160,38 @@ a normal `insert()` or `update()`. Once you've defined the schema, you no longer
 have to worry about invalid data. Collection2 makes sure that nothing can get
 into your database if it doesn't match the schema.
 
-### SmartCollections
+## Offline Collections
+
+If you want to use an Offline Collection, provided by the
+[offline-data](https://github.com/awwx/meteor-offline-data) package,
+you can. Create the `Offline.Collection` instance and then pass it as the
+first argument of the Collection2 constructor function on the client.
+
+*client.js:*
+
+```js
+BooksOffline = new Offline.Collection("books");
+Books = new Meteor.Collection2(BooksOffline, {
+    schema: {
+        //keys
+    }
+});
+```
+
+*server.js:*
+
+```js
+Books = new Meteor.Collection2("books", {
+    schema: {
+        //keys
+    }
+});
+```
+
+Then use `Books` instead of `BooksOffline` throughout your code, and you will gain the
+benefits of both Offline.Collection and Collection2.
+
+## SmartCollections
 
 If you want to use a SmartCollection, provided by the
 [smart-collections](https://github.com/arunoda/meteor-smart-collections) package,
@@ -195,7 +226,7 @@ Books = new Meteor.Collection2("books", {
 If you have not added the `smart-collections` package to your app, the `smart: true`
 option will not do anything.
 
-### AutoForms
+## AutoForms
 
 Another great reason to use Collection2 is so that you can use the [autoform](https://github.com/aldeed/meteor-autoform) package.
 AutoForm makes use of Collection2 to help you quickly develop forms that do complex inserts
