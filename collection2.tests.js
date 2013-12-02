@@ -30,6 +30,16 @@ books = new Meteor.Collection2("books", {
       label: "ISBN",
       optional: true,
       unique: true
+    },
+    createdAt: {
+      type: Date,
+      optional: true,
+      denyUpdate: true
+    },
+    updatedAt: {
+      type: Date,
+      optional: true,
+      denyInsert: true
     }
   }
 });
@@ -94,8 +104,8 @@ Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
     //and result will be undefined because "copies" is required.
     //
     test.isUndefined(result, 'result should be undefined because "copies" is required');
-    //The list of errors is available by calling books.namedContext("default").invalidKeys()
-    var invalidKeys = books.namedContext("default").invalidKeys();
+    //The list of errors is available by calling books.simpleSchema().namedContext().invalidKeys()
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
 
     var key = invalidKeys[0] || {};
@@ -132,7 +142,7 @@ Tinytest.addAsync('Collection2 - Insert Deny', function(test, next) {
       test.isFalse(!!error, 'We expected the insert not to trigger an error since field "copies" are set to 1');
       test.isTrue(!!result, 'result should be defined');
 
-      var invalidKeys = books.namedContext("default").invalidKeys();
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 0, 'We should get one invalidKey back');
       next();
     }
@@ -146,7 +156,7 @@ Tinytest.addAsync('Collection2 - Insert Success', function(test, next) {
     test.isFalse(!!error, 'We expected the insert not to trigger an error since field "copies" are set to 1');
     test.isTrue(!!result, 'result should be defined');
 
-    var invalidKeys = books.namedContext("default").invalidKeys();
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
     if (Meteor.isClient) {
       Meteor.call('allowAll', function() {
@@ -166,11 +176,14 @@ Tinytest.addAsync('Collection2 - Insert Unique', function(test, next) {
   } else {
     isbn = "1840226358";
   }
+
+  var context = books.simpleSchema().namedContext();
+
   books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
     test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
     test.isTrue(!!result, 'result should be defined');
 
-    var invalidKeys = books.namedContext("default").invalidKeys();
+    var invalidKeys = context.invalidKeys();
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
     books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
@@ -178,7 +191,7 @@ Tinytest.addAsync('Collection2 - Insert Unique', function(test, next) {
       test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
       test.isFalse(!!result, 'result should not be defined');
 
-      var invalidKeys = books.namedContext("default").invalidKeys();
+      var invalidKeys = context.invalidKeys();
       test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
       var key = invalidKeys[0] || {};
 
@@ -201,16 +214,19 @@ Tinytest.addAsync('Collection2 - Update Unique', function(test, next) {
     selector = books.findOne(selector)._id;
   }
 
+  var context = books.simpleSchema().namedContext();
+
   //test validation without actual updating
 
   //we don't know whether this would result in a non-unique value or not because
   //we don't know which documents we'd be changing; therefore, no notUnique error
-  books.validate({$set: {isbn: isbn1}}, {modifier: true});
-  var invalidKeys = books.namedContext("default").invalidKeys();
+  context.validate({$set: {isbn: isbn1}}, {modifier: true});
+  var invalidKeys = context.invalidKeys();
   test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+  console.log(invalidKeys);
 
-  books.validateOne({$set: {isbn: isbn1}}, "isbn", {modifier: true});
-  invalidKeys = books.namedContext("default").invalidKeys();
+  context.validateOne({$set: {isbn: isbn1}}, "isbn", {modifier: true});
+  invalidKeys = context.invalidKeys();
   test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
   //test update calls
@@ -218,13 +234,13 @@ Tinytest.addAsync('Collection2 - Update Unique', function(test, next) {
 
     test.isFalse(!!error, 'We expected the update not to trigger an error since isbn is used only by the doc being updated');
 
-    var invalidKeys = books.namedContext("default").invalidKeys();
+    var invalidKeys = context.invalidKeys();
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
     books.update(selector, {$set: {isbn: isbn2}}, function(error) {
       test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
 
-      var invalidKeys = books.namedContext("default").invalidKeys();
+      var invalidKeys = context.invalidKeys();
       test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
       var key = invalidKeys[0] || {};
 
@@ -235,6 +251,105 @@ Tinytest.addAsync('Collection2 - Update Unique', function(test, next) {
   });
 });
 
+Tinytest.addAsync("Collection2 - denyInsert", function(test, next) {
+  books.insert({title: "Ulysses", author: "James Joyce", copies: 1, updatedAt: new Date}, function(error, result) {
+    test.isTrue(!!error, 'We expected the insert to trigger an error since updatedAt has denyInsert set to true');
+
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+    var key = invalidKeys[0] || {};
+
+    test.equal(key.name, 'updatedAt', 'We expected the key "updatedAt"');
+    test.equal(key.type, 'insertNotAllowed', 'We expected the type to be "insertNotAllowed"');
+
+    next();
+  });
+});
+
+Tinytest.addAsync("Collection2 - denyUpdate", function(test, next) {
+  // Test denyInsert valid case here so that we can use the inserted doc for the
+  // update tests.
+  books.insert({title: "Ulysses", author: "James Joyce", copies: 1, createdAt: new Date}, function(error, newId) {
+    test.isFalse(!!error, 'We expected the insert not to trigger an error since createdAt denies updates but not inserts');
+
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+    books.update({_id: newId}, {$set: {createdAt: new Date}}, function(error, result) {
+      test.isTrue(!!error, 'We expected the insert to trigger an error since createdAt has denyUpdate set to true');
+
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+      var key = invalidKeys[0] || {};
+
+      test.equal(key.name, 'createdAt', 'We expected the key "createdAt"');
+      test.equal(key.type, 'updateNotAllowed', 'We expected the type to be "updateNotAllowed"');
+
+      //now test valid case
+      books.update({_id: newId}, {$set: {updatedAt: new Date}}, function(error, result) {
+        test.isFalse(!!error, 'We expected the update not to trigger an error since updatedAt denies inserts but not updates');
+
+        var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+        test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+        next();
+      });
+    });
+  });
+});
+
+Tinytest.addAsync("Collection2 - denyInsert on wrapped collection", function(test, next) {
+  books._collection.insert({title: "Ulysses", author: "James Joyce", copies: 1, updatedAt: new Date}, function(error, result) {
+    if (Meteor.isClient) {
+      test.isTrue(!!error, 'We expected the insert to trigger an error since updatedAt has denyInsert set to true');
+    } else {
+      test.isFalse(!!error, 'We expected the insert not to trigger an error since we are on the server');
+    }
+    next();
+  });
+});
+
+Tinytest.addAsync("Collection2 - denyUpdate on wrapped collection", function(test, next) {
+  // Test denyInsert valid case here so that we can use the inserted doc for the
+  // update tests.
+  books._collection.insert({title: "Ulysses", author: "James Joyce", copies: 1, createdAt: new Date}, function(error, newId) {
+    test.isFalse(!!error, 'We expected the insert not to trigger an error since createdAt denies updates but not inserts');
+
+    books._collection.update({_id: newId}, {$set: {createdAt: new Date}}, function(error, result) {
+      if (Meteor.isClient) {
+        test.isTrue(!!error, 'We expected the insert to trigger an error since createdAt has denyUpdate set to true');
+      } else {
+        test.isFalse(!!error, 'We expected the insert not to trigger an error since we are on the server');
+      }
+      //now test valid case
+      books._collection.update({_id: newId}, {$set: {updatedAt: new Date}}, function(error, result) {
+        test.isFalse(!!error, 'We expected the update not to trigger an error since updatedAt denies inserts but not updates');
+        next();
+      });
+    });
+  });
+});
+
+//Tinytest.addAsync("Collection2 - forceValue", function(test, next) {
+//  Posts.insert({title: 'Hello', content: 'World'}, function(err, postId) {
+//    var post = Posts.findOne({_id: postId});
+//
+//    test.isUndefined(post.updatedAt, 'expect the updatedAt to be undefined after insert');
+//    test.equal(post.firstWord, 'World', 'expect the firstWord to be correctly set after insert');
+//
+//    Posts.update({_id: postId}, {$set: {content: 'Edited world'}}, function(err, res) {
+//      var post = Posts.findOne({_id: postId});
+//      test.equal(post.updatedAt.toTimeString(), (new Date).toTimeString(), 'expect the updatedAt field to be updated with the current date');
+//      test.equal(post.firstWord, 'Edited', 'expect the firstWord to be edited after insert');
+//      test.equal(post.nbUpdates, 1);
+//      next();
+//    });
+//  });
+//});
+//
+//Tinytest.addAsync("Collection2 - defaultValue", function(test, next) {
+//  //TODO
+//  next();
+//});
+
 //upserts are server only when this package is used
 if (Meteor.isServer) {
 
@@ -242,21 +357,21 @@ if (Meteor.isServer) {
     //test validation without actual updating
 
     //invalid
-    books.validate({$set: {title: "Ulysses", author: "James Joyce"}}, {modifier: true, upsert: true});
-    var invalidKeys = books.namedContext("default").invalidKeys();
+    books.simpleSchema().namedContext().validate({$set: {title: "Ulysses", author: "James Joyce"}}, {modifier: true, upsert: true});
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 1, 'We should get one invalidKeys back because copies is missing');
 
-    books.validateOne({$set: {title: "Ulysses", author: "James Joyce"}}, "copies", {modifier: true, upsert: true});
-    invalidKeys = books.namedContext("default").invalidKeys();
+    books.simpleSchema().namedContext().validateOne({$set: {title: "Ulysses", author: "James Joyce"}}, "copies", {modifier: true, upsert: true});
+    invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 1, 'We should get one invalidKeys back because copies is missing');
 
     //valid
-    books.validate({$set: {title: "Ulysses", author: "James Joyce", copies: 1}}, {modifier: true, upsert: true});
-    var invalidKeys = books.namedContext("default").invalidKeys();
+    books.simpleSchema().namedContext().validate({$set: {title: "Ulysses", author: "James Joyce", copies: 1}}, {modifier: true, upsert: true});
+    invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
-    books.validateOne({$set: {title: "Ulysses", author: "James Joyce"}}, "author", {modifier: true, upsert: true});
-    invalidKeys = books.namedContext("default").invalidKeys();
+    books.simpleSchema().namedContext().validateOne({$set: {title: "Ulysses", author: "James Joyce"}}, "author", {modifier: true, upsert: true});
+    invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
     //test update calls
@@ -264,14 +379,14 @@ if (Meteor.isServer) {
 
       test.isFalse(!!error, 'We expected the upsert not to trigger an error since the selector values should be used');
 
-      var invalidKeys = books.namedContext("default").invalidKeys();
+      invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
       books.upsert({title: "Ulysses", author: "James Joyce"}, {$set: {copies: 1}}, {upsert: true}, function(error) {
 
         test.isFalse(!!error, 'We expected the update/upsert not to trigger an error since the selector values should be used');
 
-        var invalidKeys = books.namedContext("default").invalidKeys();
+        invalidKeys = books.simpleSchema().namedContext().invalidKeys();
         test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
         next();
@@ -284,7 +399,7 @@ if (Meteor.isServer) {
 //Test API:
 //test.isFalse(v, msg)
 //test.isTrue(v, msg)
-//test.equalactual, expected, message, not
+//test.equal(actual, expected, message, not)
 //test.length(obj, len)
 //test.include(s, v)
 //test.isNaN(v, msg)

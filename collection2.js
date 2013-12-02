@@ -1,6 +1,10 @@
 // Extend the schema options allowed by SimpleSchema
 SimpleSchema.extendOptions({
-  unique: Match.Optional(Boolean)
+  unique: Match.Optional(Boolean),
+  defaultValue: Match.Optional(Function),
+  forceValue: Match.Optional(Function),
+  denyInsert: Match.Optional(Boolean),
+  denyUpdate: Match.Optional(Boolean)
 });
 
 Meteor.Collection2 = function(name, options) {
@@ -29,6 +33,20 @@ Meteor.Collection2 = function(name, options) {
   if ("virtualFields" in options) {
     delete options.virtualFields;
   }
+
+  //populate _forceValues and _defaultValues
+  self._forceValues = {};
+  self._defaultValues = {};
+  _.each(self._simpleSchema.schema(), function(definition, fieldName) {
+    if ('forceValue' in definition) {
+      self._forceValues[fieldName] = definition.forceValue;
+      delete definition.forceValue;
+    }
+    if ('defaultValue' in definition) {
+      self._defaultValues[fieldName] = definition.defaultValue;
+      delete definition.defaultValue;
+    }
+  });
 
   //create or update the collection
   if (name instanceof Meteor.Collection
@@ -102,6 +120,22 @@ Meteor.Collection2 = function(name, options) {
         });
       }
 
+      //call and populate `forceValue` fields in the doc
+      //TODO use MongoObject.forEachNode()?
+      //doc = schema.expandObj(doc);
+      _.each(self._forceValues, function(func, fieldName) {
+        var forceValue = func(doc, "insert");
+
+        if (forceValue === undefined)
+          return;
+
+        if (type === 'update' && !(looksLikeModifier(forceValue)))
+          doc[fieldName] = {$set: forceValue};
+        else
+          doc[fieldName] = forceValue;
+      });
+      //doc = schema.collapseObj(doc);
+
       //get a throwaway context here to avoid mixing up contexts
       var context = self._simpleSchema.newContext();
       return !context.validate(docCopy);
@@ -142,9 +176,21 @@ Meteor.Collection2 = function(name, options) {
       transform: null
     });
   }
-  //set up check for uniqueness
+  //set up additional checks
   self._simpleSchema.validator(function(key, val, def, op) {
     var test, totalUsing, usingAndBeingUpdated, sel;
+    if (def.denyInsert && val !== void 0 && op === null) {
+      // This is an insert of a defined value into a field where denyInsert=true
+      return "insertNotAllowed";
+    }
+    if (def.denyUpdate && op !== null) {
+      // This is an insert of a defined value into a field where denyUpdate=true
+      if (op === "$set" && val !== void 0) {
+        return "updateNotAllowed";
+      } else if (op !== "$set") {
+        return "updateNotAllowed";
+      }
+    }
     if ((val === void 0 || val === null) && def.optional) {
       return true;
     }
@@ -178,6 +224,7 @@ Meteor.Collection2 = function(name, options) {
       }
       return self._collection.findOne(test) ? "notUnique" : true;
     }
+    return true;
   });
 };
 
