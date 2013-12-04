@@ -135,13 +135,17 @@ Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", auth
 Books.simpleSchema().namedContext("insertForm").validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false});
 ```
 
-## Unique
+## Additional SimpleSchema Options
 
 In addition to all the other schema validation options documented in the 
 [simple-schema](https://github.com/aldeed/meteor-simple-schema) package, the
-collection2 package adds one more: `unique`. Set this to true in your schema
-to ensure that non-unique values will never be set for the key. You may want
-to ensure a unique mongo index on the server as well.
+collection2 package adds `unique`, `denyInsert`, `denyUpdate`, and `autoValue`.
+
+### unique
+
+Set `unique: true` in your schema to ensure that non-unique values will never
+be set for the key. You may want to ensure a unique mongo index on the server
+as well.
 
 Note: This check is currently not 100% foolproof for updates. It is possible
 for a malicious user to bypass the check. This is not a fixable issue given
@@ -151,7 +155,158 @@ ensuring a unique mongo index on the server.
 The error message for this is very generic. It's best to define your own using
 `MyCollection2.simpleSchema().messages()`. The error type string is "notUnique".
 
-## Why Use It?
+### denyInsert and denyUpdate
+
+If you set `denyUpdate: true`, any collection update that modifies the field
+will fail. For instance:
+
+```js
+Posts = new Meteor.Collection2('posts', {
+  title: {
+    type: String
+  },
+  content: {
+    type: String
+  },
+  createdAt: {
+    type: Date,
+    denyUpdate: true
+  }
+});
+
+var postId = Posts.insert({title: 'Hello', content: 'World', createdAt: new Date});
+```
+
+The `denyInsert` option works the same way, but for inserts. If you set
+`denyInsert` to true, you will need to set `optional: true` as well. 
+
+### autoValue
+
+The `autoValue` option allows you to specify a function that is called on every
+insert or update to determine what the value for the field should be. This is
+a powerful feature that allows you to set up either forced values or default
+values.
+
+An `autoValue` function is passed the document or modifier as its only argument,
+but you will generally not need it. Instead, the function context provides a
+variety of properties and methods to help you determine what you should return.
+
+If an `autoValue` function returns `undefined`, the field's value will be
+whatever the document or modifier says it should be. Any other return value will
+be used as the field's value. You may also return special pseudo-modifier objects
+for update operations. Examples are `{$inc: 1}` and `{$push: new Date}`.
+
+The following properties and methods are available in `this` for an `autoValue`
+function:
+
+* isInsert: True if it's an insert operation
+* isUpdate: True if it's an update operation
+* isSet: True if the field is already set in the document or modifier.
+* value: If isSet = true, this contains the field's current (requested) value
+in the document or modifier.
+* operator: If isSet = true and isUpdate = true, this contains the name of the 
+update operator in the modifier in which this field is being changed. For example,
+if the modifier were `{$set: {name: "Alice"}}`, in the autoValue function for
+the `name` field, `this.isSet` would be true, `this.value` would be "Alice",
+and `this.operator` would be "$set".
+* field(): Use this method to get information about other fields. Pass a field
+name (schema key) as the only argument. The return object will have isSet, value,
+and operator properties for that field.
+
+Note that autoValue functions are run on the client only for validation purposes,
+but the actual value saved will always be generated on the server, regardless of
+whether the insert/update is initiated from the client or from the server.
+
+There are many possible use cases for `autoValue`. It's probably easiest to
+explain by way of several examples:
+
+```js
+{
+  // Force value to be current date (on server) upon insert
+  // and prevent updates thereafter.
+  createdAt: {
+    type: Date,
+      autoValue: function() {
+        if (this.isInsert) {
+          return new Date();
+        }
+      },
+      denyUpdate: true
+  },
+  // Force value to be current date (on server) upon update
+  // and don't allow it to be set upon insert.
+  updatedAt: {
+    type: Date,
+    autoValue: function() {
+      if (this.isUpdate) {
+        return new Date();
+      }
+    }
+    denyInsert: true,
+    optional: true
+  },
+  // Whenever the "content" field is updated, automatically set
+  // the first word of the content into firstWord field.
+  firstWord: {
+    type: String,
+    optional: true,
+    autoValue: function() {
+      var content = this.field("content");
+      if (content.isSet) {
+        return content.value.split(' ')[0];
+      } else {
+        return null; // Prevent user from supplying her own value
+      }
+    }
+  },
+  // Whenever the "content" field is updated, automatically
+  // update a history array.
+  updatesHistory: {
+    type: [Object],
+    optional: true,
+    autoValue: function() {
+      var content = this.field("content");
+      if (content.isSet) {
+        if (this.isInsert) {
+          return [{
+              date: new Date,
+              content: content.value
+            }];
+        } else {
+          return {
+            $push: {
+              date: new Date,
+              content: content.value
+            }
+          };
+        }
+      }
+    }
+  },
+  'updatesHistory.$.date': {
+    type: Date,
+    optional: true
+  },
+  'updatesHistory.$.content': {
+    type: String,
+    optional: true
+  },
+  // Automatically set HTML content based on markdown content
+  // whenever the markdown content is set.
+  htmlContent: {
+    type: String,
+    optional: true,
+    autoValue: function(doc) {
+      var markdownContent = this.field("markdownContent");
+      if (Meteor.isServer && markdownContent.isSet) {
+        return MarkdownToHTML(markdownContent.value);
+      }
+    }
+  }
+}
+```
+
+## Why Use Collection2?
 
 In addition to getting all of the benefits provided by the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
 Collection2 sets up automatic validation, on both the client and the server, whenever you do

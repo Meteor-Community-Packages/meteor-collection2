@@ -1,4 +1,4 @@
-books = new Meteor.Collection2("books", {
+var books = new Meteor.Collection2("books", {
   schema: {
     title: {
       type: String,
@@ -44,46 +44,145 @@ books = new Meteor.Collection2("books", {
   }
 });
 
+var autoValues = new Meteor.Collection2("autoValues", {
+  schema: {
+    name: {
+      type: String
+    },
+    dateDefault: {
+      type: Date,
+      optional: true,
+      autoValue: function() {
+        if (!this.isSet) {
+          return new Date("2013-01-01");
+        }
+      }
+    },
+    dateForce: {
+      type: Date,
+      optional: true,
+      autoValue: function() {
+        return new Date("2013-01-01");
+      }
+    },
+    updateCount: {
+      type: Number,
+      autoValue: function() {
+        if (this.isInsert) {
+          return 0;
+        } else {
+          return {$inc: 1};
+        }
+      }
+    },
+    content: {
+      type: String,
+      optional: true
+    },
+    firstWord: {
+      type: String,
+      optional: true,
+      autoValue: function() {
+        var content = this.field("content");
+        if (content.isSet)
+          return content.value.split(' ')[0];
+      }
+    },
+    updatesHistory: {
+      type: [Object],
+      optional: true,
+      autoValue: function() {
+        var content = this.field("content");
+        if (content.isSet) {
+          if (this.isInsert) {
+            return [{
+                date: new Date,
+                content: content.value
+              }];
+          } else {
+            return {
+              $push: {
+                date: new Date,
+                content: content.value
+              }
+            };
+          }
+        }
+      }
+    },
+    'updatesHistory.$.date': {
+      type: Date,
+      optional: true
+    },
+    'updatesHistory.$.content': {
+      type: String,
+      optional: true
+    }
+  }
+});
+
 if (Meteor.isServer) {
-  // Empty the test db
-  books.remove({});
   Meteor.publish("books", function() {
     return books.find();
   });
 
-  // Rig test helper methods for setting denyAll / allowAll
-  Meteor.methods({
-    allowAll: function() {
-      console.log('allowAll');
-      books.allow({
-        insert: function() {
-          return true;
-        },
-        update: function() {
-          return true;
-        },
-        remove: function() {
-          return true;
-        }
-      });
+  Meteor.publish("autovalues", function() {
+    return autoValues.find();
+  });
+
+  books.allow({
+    insert: function() {
+      return true;
     },
-    denyAll: function() {
-      console.log('denyAll');
-      books.allow({
-        insert: function() {
-          return false;
-        },
-        update: function() {
-          return false;
-        },
-        remove: function() {
-          return false;
-        }
-      });
+    update: function() {
+      return true;
+    },
+    remove: function() {
+      return true;
     }
+  });
+
+  var shouldDeny = false;
+  books.deny({
+    insert: function() {
+      return shouldDeny;
+    },
+    update: function() {
+      return shouldDeny;
+    },
+    remove: function() {
+      return shouldDeny;
+    }
+  });
+
+  autoValues.allow({
+    insert: function() {
+      return true;
+    },
+    update: function() {
+      return true;
+    },
+    remove: function() {
+      return true;
+    }
+  });
+
+  // Rig test helper method for setting denyAll
+  Meteor.methods({
+    denyAll: function() {
+      shouldDeny = true;
+    },
+    allowAll: function() {
+      shouldDeny = false;
+    }
+  });
+
+  Meteor.startup(function() {
+    books.remove({});
   });
 } else {
   Meteor.subscribe("books");
+  Meteor.subscribe("autovalues");
 }
 
 function equals(a, b) {
@@ -98,74 +197,30 @@ Tinytest.add('Collection2 - Test Environment', function(test) {
 
 // Test required field "copies"
 Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
-  books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
-    //The insert will fail, error will be set,
-    test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
-    //and result will be undefined because "copies" is required.
-    //
-    test.isUndefined(result, 'result should be undefined because "copies" is required');
-    //The list of errors is available by calling books.simpleSchema().namedContext().invalidKeys()
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-
-    var key = invalidKeys[0] || {};
-
-    test.equal(key.name, 'copies', 'We expected the key "copies"');
-    test.equal(key.type, 'required', 'We expected the type to be required');
-    if (Meteor.isClient) {
-      Meteor.call('denyAll', function() {
-        next();
-      });
-    } else {
-      next();
-    }
-  });
-});
-
-// The client should not be allowed to insert data
-Tinytest.addAsync('Collection2 - Insert Deny', function(test, next) {
-  books.insert({title: "Ulysses", author: "James Joyce", copies: 1}, function(error, result) {
-    if (Meteor.isClient) {
-      // Client
-      test.isTrue(!!error, 'We expected this to fail since access has to be set explicitly');
-
-      test.isFalse(!!result, 'result should be undefined');
-
-      test.equal(error.error, 403, 'We should get Access denied');
-
-      // Open for next call allow all
-      Meteor.call('allowAll', function() {
-        next();
-      });
-    } else {
-      // Server
-      test.isFalse(!!error, 'We expected the insert not to trigger an error since field "copies" are set to 1');
-      test.isTrue(!!result, 'result should be defined');
-
+  function cb() {
+    books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
+      //The insert will fail, error will be set,
+      test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
+      //and result will be undefined because "copies" is required.
+      //
+      test.isUndefined(result, 'result should be undefined because "copies" is required');
+      //The list of errors is available by calling books.simpleSchema().namedContext().invalidKeys()
       var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get one invalidKey back');
+      test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+
+      var key = invalidKeys[0] || {};
+
+      test.equal(key.name, 'copies', 'We expected the key "copies"');
+      test.equal(key.type, 'required', 'We expected the type to be required');
       next();
-    }
-  });
-});
-
-// When allow is opened then client should be allowd to insert data
-Tinytest.addAsync('Collection2 - Insert Success', function(test, next) {
-  books.insert({title: "Ulysses", author: "James Joyce", copies: 1}, function(error, result) {
-
-    test.isFalse(!!error, 'We expected the insert not to trigger an error since field "copies" are set to 1');
-    test.isTrue(!!result, 'result should be defined');
-
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-    if (Meteor.isClient) {
-      Meteor.call('allowAll', function() {
-        next();
-      });
-    } else {
-      next();
-    }
-  });
+    });
+  }
+  if (Meteor.isServer) {
+    // Empty the test db
+    books.remove({}, cb);
+  } else {
+    cb();
+  }
 });
 
 // When unique: true, inserts should fail if another document already has the same value
@@ -179,36 +234,58 @@ Tinytest.addAsync('Collection2 - Insert Unique', function(test, next) {
 
   var context = books.simpleSchema().namedContext();
 
-  books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
-    test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
-    test.isTrue(!!result, 'result should be defined');
-
-    var invalidKeys = context.invalidKeys();
-    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-
+  function cb() {
     books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
-
-      test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
-      test.isFalse(!!result, 'result should not be defined');
+      test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
+      test.isTrue(!!result, 'result should be defined');
 
       var invalidKeys = context.invalidKeys();
-      test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-      var key = invalidKeys[0] || {};
+      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
-      test.equal(key.name, 'isbn', 'We expected the key "isbn"');
-      test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
-      next();
+      books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
+
+        test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
+        test.isFalse(!!result, 'result should not be defined');
+
+        var invalidKeys = context.invalidKeys();
+        test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+        var key = invalidKeys[0] || {};
+
+        test.equal(key.name, 'isbn', 'We expected the key "isbn"');
+        test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
+
+        //one last insertion to set up the next test
+        books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn + "A"}, function(error, result) {
+          next();
+        });
+      });
     });
-  });
+  }
+
+  cb();
+
+//  if (Meteor.isServer) {
+//    // Empty the test db
+//    books.remove({}, cb);
+//  } else {
+//    books.find().forEach(function(book) {
+//      books.remove(book._id);
+//    });
+//    cb();
+//  }
 });
 
 // When unique: true, updates should fail if another document already has the same value but
 // not when the document being updated has the same value
 Tinytest.addAsync('Collection2 - Update Unique', function(test, next) {
-  var isbn1 = "978-1840226355";
-  var isbn2 = "1840226358";
+  var isbn; //use different on client and server otherwise insertion in one place will cause it to be not unique in the other
+  if (Meteor.isClient) {
+    isbn = "978-1840226355";
+  } else {
+    isbn = "1840226358";
+  }
 
-  var selector = {isbn: isbn1};
+  var selector = {isbn: isbn};
   if (Meteor.isClient) {
     //untrusted code may only update by ID
     selector = books.findOne(selector)._id;
@@ -220,24 +297,23 @@ Tinytest.addAsync('Collection2 - Update Unique', function(test, next) {
 
   //we don't know whether this would result in a non-unique value or not because
   //we don't know which documents we'd be changing; therefore, no notUnique error
-  context.validate({$set: {isbn: isbn1}}, {modifier: true});
+  context.validate({$set: {isbn: isbn}}, {modifier: true});
   var invalidKeys = context.invalidKeys();
   test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-  console.log(invalidKeys);
 
-  context.validateOne({$set: {isbn: isbn1}}, "isbn", {modifier: true});
+  context.validateOne({$set: {isbn: isbn}}, "isbn", {modifier: true});
   invalidKeys = context.invalidKeys();
   test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
   //test update calls
-  books.update(selector, {$set: {isbn: isbn1}}, function(error) {
+  books.update(selector, {$set: {isbn: isbn}}, function(error) {
 
     test.isFalse(!!error, 'We expected the update not to trigger an error since isbn is used only by the doc being updated');
 
     var invalidKeys = context.invalidKeys();
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
-    books.update(selector, {$set: {isbn: isbn2}}, function(error) {
+    books.update(selector, {$set: {isbn: isbn + "A"}}, function(error) {
       test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
 
       var invalidKeys = context.invalidKeys();
@@ -328,27 +404,60 @@ Tinytest.addAsync("Collection2 - denyUpdate on wrapped collection", function(tes
   });
 });
 
-//Tinytest.addAsync("Collection2 - forceValue", function(test, next) {
-//  Posts.insert({title: 'Hello', content: 'World'}, function(err, postId) {
-//    var post = Posts.findOne({_id: postId});
-//
-//    test.isUndefined(post.updatedAt, 'expect the updatedAt to be undefined after insert');
-//    test.equal(post.firstWord, 'World', 'expect the firstWord to be correctly set after insert');
-//
-//    Posts.update({_id: postId}, {$set: {content: 'Edited world'}}, function(err, res) {
-//      var post = Posts.findOne({_id: postId});
-//      test.equal(post.updatedAt.toTimeString(), (new Date).toTimeString(), 'expect the updatedAt field to be updated with the current date');
-//      test.equal(post.firstWord, 'Edited', 'expect the firstWord to be edited after insert');
-//      test.equal(post.nbUpdates, 1);
-//      next();
-//    });
-//  });
-//});
-//
-//Tinytest.addAsync("Collection2 - defaultValue", function(test, next) {
-//  //TODO
-//  next();
-//});
+Tinytest.addAsync("Collection2 - AutoValue Insert", function(test, next) {
+  autoValues.insert({name: "Test"}, function(err, res) {
+    test.isFalse(!!err, 'We expected the insert not to trigger an error since all required fields are present');
+    var p = autoValues.findOne({_id: res});
+    var d = new Date("2013-01-01");
+
+    test.equal(p.dateDefault.getTime(), d.getTime(), 'expected the dateDefault to be correctly set after insert');
+    test.equal(p.dateForce.getTime(), d.getTime(), 'expected the dateForce to be correctly set after insert');
+    test.isUndefined(p.firstWord, 'expected firstWord to be undefined');
+    test.isUndefined(p.updatesHistory, 'expected updatesHistory to be undefined');
+
+    // Now test with dateDefault set and verify it is not overwritten
+    var myDate = new Date("2013-02-01");
+    autoValues.insert({name: "Test", dateDefault: myDate}, function(err, res) {
+      var p = autoValues.findOne({_id: res});
+      var d = new Date("2013-01-01");
+
+      test.instanceOf(p.dateDefault, Date);
+      if (p.dateDefault instanceof Date) {
+        test.equal(p.dateDefault.getTime(), myDate.getTime(), 'expected the dateDefault to be correctly set after insert');
+      }
+
+      test.instanceOf(p.dateForce, Date);
+      if (p.dateForce instanceof Date) {
+        test.equal(p.dateForce.getTime(), d.getTime(), 'expected the dateForce to be correctly set after insert');
+      }
+
+      test.isUndefined(p.firstWord, 'expected firstWord to be undefined');
+      test.isUndefined(p.updatesHistory, 'expected updatesHistory to be undefined');
+
+      autoValues.insert({name: "Test", content: 'Hello world!'}, function(err, res) {
+        var p = autoValues.findOne({_id: res});
+        test.equal(p.firstWord, 'Hello', 'expected firstWord to be "Hello"');
+        test.length(p.updatesHistory, 1);
+        test.equal(p.updatesHistory[0].content, 'Hello world!', 'expected updatesHistory.content to be "Hello world!"');
+        next();
+      });
+    });
+  });
+});
+
+Tinytest.addAsync("Collection2 - AutoValue Update", function(test, next) {
+  autoValues.insert({name: "Update Test"}, function(err, res) {
+    var testId = res;
+    autoValues.update({_id: testId}, {$set: {content: "Test Content"}}, function(err, res) {
+      var p = autoValues.findOne({_id: testId});
+      test.equal(p.firstWord, 'Test', 'expected firstWord to be "Test"');
+      test.length(p.updatesHistory, 1);
+      test.equal(p.updatesHistory[0].content, 'Test Content', 'expected updatesHistory.content to be "Test Content"');
+      test.equal(p.updateCount, 1, 'expected updateCount to be 1');
+      next();
+    });
+  });
+});
 
 //upserts are server only when this package is used
 if (Meteor.isServer) {
@@ -394,6 +503,27 @@ if (Meteor.isServer) {
     });
   });
 
+}
+
+// Test denyAll
+if (Meteor.isClient) {
+  Tinytest.addAsync('Collection2 - Insert Deny Failure', function(test, next) {
+    Meteor.call("denyAll", function() {
+      books.insert({title: "Ulysses", author: "James Joyce", copies: 1}, function(error, result) {
+        test.isTrue(!!error, 'We expected this to fail since access has to be set explicitly');
+
+        test.isFalse(!!result, 'result should be undefined');
+
+        test.equal((error || {}).error, 403, 'We should get Access denied');
+
+        // Clear denyAll settings so that tests work correctly if client
+        // page is reloaded
+        Meteor.call("allowAll", function() {
+          next();
+        });
+      });
+    });
+  });
 }
 
 //Test API:
