@@ -5,7 +5,7 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
-### upcoming
+### 0.2.15
 
 * Add support for `denyInsert` and `denyUpdate` options
 * Add support for `autoValue` option
