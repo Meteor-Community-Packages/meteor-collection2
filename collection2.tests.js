@@ -197,133 +197,101 @@ Tinytest.add('Collection2 - Test Environment', function(test) {
 
 // Test required field "copies"
 Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
-  function cb() {
-    books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
-      //The insert will fail, error will be set,
-      test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
-      //and result will be undefined because "copies" is required.
-      //
-      test.isUndefined(result, 'result should be undefined because "copies" is required');
-      //The list of errors is available by calling books.simpleSchema().namedContext().invalidKeys()
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+  books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
+    //The insert will fail, error will be set,
+    test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
+    //and result will be undefined because "copies" is required.
+    //
+    test.isUndefined(result, 'result should be undefined because "copies" is required');
+    //The list of errors is available by calling books.simpleSchema().namedContext().invalidKeys()
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
 
-      var key = invalidKeys[0] || {};
+    var key = invalidKeys[0] || {};
 
-      test.equal(key.name, 'copies', 'We expected the key "copies"');
-      test.equal(key.type, 'required', 'We expected the type to be required');
-      next();
-    });
-  }
-  if (Meteor.isServer) {
-    // Empty the test db
-    books.remove({}, cb);
-  } else {
-    cb();
-  }
+    test.equal(key.name, 'copies', 'We expected the key "copies"');
+    test.equal(key.type, 'required', 'We expected the type to be required');
+    next();
+  });
 });
 
 // When unique: true, inserts should fail if another document already has the same value
-Tinytest.addAsync('Collection2 - Insert Unique', function(test, next) {
-  var isbn; //use different on client and server otherwise insertion in one place will cause it to be not unique in the other
-  if (Meteor.isClient) {
-    isbn = "978-1840226355";
-  } else {
-    isbn = "1840226358";
-  }
-
-  var context = books.simpleSchema().namedContext();
-
-  function cb() {
-    books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
-      test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
-      test.isTrue(!!result, 'result should be defined');
-
-      var invalidKeys = context.invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-
-      books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
-
-        test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
-        test.isFalse(!!result, 'result should not be defined');
-
-        var invalidKeys = context.invalidKeys();
-        test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-        var key = invalidKeys[0] || {};
-
-        test.equal(key.name, 'isbn', 'We expected the key "isbn"');
-        test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
-
-        //one last insertion to set up the next test
-        books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn + "A"}, function(error, result) {
-          next();
-        });
-      });
-    });
-  }
-
-  cb();
-
-//  if (Meteor.isServer) {
-//    // Empty the test db
-//    books.remove({}, cb);
-//  } else {
-//    books.find().forEach(function(book) {
-//      books.remove(book._id);
-//    });
-//    cb();
-//  }
-});
-
-// When unique: true, updates should fail if another document already has the same value but
-// not when the document being updated has the same value
-Tinytest.addAsync('Collection2 - Update Unique', function(test, next) {
-  var isbn; //use different on client and server otherwise insertion in one place will cause it to be not unique in the other
-  if (Meteor.isClient) {
-    isbn = "978-1840226355";
-  } else {
-    isbn = "1840226358";
-  }
-
+Tinytest.addAsync('Collection2 - Unique', function(test, next) {
+  var isbn = Meteor.uuid();
   var selector = {isbn: isbn};
-  if (Meteor.isClient) {
-    //untrusted code may only update by ID
-    selector = books.findOne(selector)._id;
-  }
 
-  var context = books.simpleSchema().namedContext();
+  books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
+    test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
+    test.isTrue(!!result, 'result should be defined');
 
-  //test validation without actual updating
-
-  //we don't know whether this would result in a non-unique value or not because
-  //we don't know which documents we'd be changing; therefore, no notUnique error
-  context.validate({$set: {isbn: isbn}}, {modifier: true});
-  var invalidKeys = context.invalidKeys();
-  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-
-  context.validateOne({$set: {isbn: isbn}}, "isbn", {modifier: true});
-  invalidKeys = context.invalidKeys();
-  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-
-  //test update calls
-  books.update(selector, {$set: {isbn: isbn}}, function(error) {
-
-    test.isFalse(!!error, 'We expected the update not to trigger an error since isbn is used only by the doc being updated');
-
-    var invalidKeys = context.invalidKeys();
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+  });
 
-    books.update(selector, {$set: {isbn: isbn + "A"}}, function(error) {
-      test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
+  // Ensure that the next test doesn't begin until the previous document is
+  // fully inserted.
+  var called = false;
+  books.find({isbn: isbn}).observe({
+    added: function() {
+      if (!called) {
+        called = true;
+        books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
+          test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
+          test.isFalse(!!result, 'result should not be defined');
 
-      var invalidKeys = context.invalidKeys();
-      test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-      var key = invalidKeys[0] || {};
+          var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+          test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+          var key = invalidKeys[0] || {};
 
-      test.equal(key.name, 'isbn', 'We expected the key "isbn"');
-      test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
-      next();
-    });
+          test.equal(key.name, 'isbn', 'We expected the key "isbn"');
+          test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
+
+          //one last insertion to set up the update tests
+          books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn + "A"}, function(error, result) {
+            if (Meteor.isClient) {
+              //untrusted code may only update by ID
+              selector = books.findOne(selector)._id;
+            }
+
+            var context = books.simpleSchema().namedContext();
+
+            //test validation without actual updating
+
+            //we don't know whether this would result in a non-unique value or not because
+            //we don't know which documents we'd be changing; therefore, no notUnique error
+            context.validate({$set: {isbn: isbn}}, {modifier: true});
+            var invalidKeys = context.invalidKeys();
+            test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+
+            context.validateOne({$set: {isbn: isbn}}, "isbn", {modifier: true});
+            invalidKeys = context.invalidKeys();
+            test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+
+            // When unique: true, updates should fail if another document already has the same value but
+            // not when the document being updated has the same value
+            books.update(selector, {$set: {isbn: isbn}}, function(error) {
+
+              test.isFalse(!!error, 'We expected the update not to trigger an error since isbn is used only by the doc being updated');
+
+              var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+              test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+
+              books.update(selector, {$set: {isbn: isbn + "A"}}, function(error) {
+                test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
+
+                var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+                test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+                var key = invalidKeys[0] || {};
+
+                test.equal(key.name, 'isbn', 'We expected the key "isbn"');
+                test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
+                next();
+              });
+            });
+          });
+        });
+      }
+    }
   });
 });
 
