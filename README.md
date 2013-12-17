@@ -182,8 +182,8 @@ The `denyInsert` option works the same way, but for inserts. If you set
 
 ### autoValue
 
-NOTE: Until the next Meteor update, the autoValue feature does not work when you
-also have virtual fields or a transform.
+NOTE: If you are using a Meteor release prior to 0.7.0, the autoValue feature
+does not work when you also have virtual fields or a transform.
 
 The `autoValue` option allows you to specify a function that is called on every
 insert or update to determine what the value for the field should be. This is
