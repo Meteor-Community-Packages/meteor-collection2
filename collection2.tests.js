@@ -218,9 +218,8 @@ Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
 // When unique: true, inserts should fail if another document already has the same value
 Tinytest.addAsync('Collection2 - Unique', function(test, next) {
   var isbn = Meteor.uuid();
-  var selector = {isbn: isbn};
 
-  books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
+  var bookId = books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
     test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
     test.isTrue(!!result, 'result should be defined');
 
@@ -248,11 +247,6 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
 
           //one last insertion to set up the update tests
           books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn + "A"}, function(error, result) {
-            if (Meteor.isClient) {
-              //untrusted code may only update by ID
-              selector = books.findOne(selector)._id;
-            }
-
             var context = books.simpleSchema().namedContext();
 
             //test validation without actual updating
@@ -266,17 +260,16 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
             context.validateOne({$set: {isbn: isbn}}, "isbn", {modifier: true});
             invalidKeys = context.invalidKeys();
             test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-
+            
             // When unique: true, updates should fail if another document already has the same value but
             // not when the document being updated has the same value
-            books.update(selector, {$set: {isbn: isbn}}, function(error) {
-
+            books.update(bookId, {$set: {isbn: isbn}}, function(error) {
               test.isFalse(!!error, 'We expected the update not to trigger an error since isbn is used only by the doc being updated');
 
               var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
               test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
-              books.update(selector, {$set: {isbn: isbn + "A"}}, function(error) {
+              books.update(bookId, {$set: {isbn: isbn + "A"}}, function(error) {
                 test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
 
                 var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
