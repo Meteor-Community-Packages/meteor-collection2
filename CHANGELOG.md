@@ -5,6 +5,14 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.2.16
+
+* Add `this.isUpsert` boolean for use within an autoValue function
+* Add `this.unset()` method for use within an autoValue function. Allows you
+to unset any provided values when you're returning `undefined`.
+* Fix autoValues for upserts. Previously, any autoValues were being added to the
+selector in addition to the modifier. This is now fixed.
+
 ### 0.2.15
 
 * Add support for `denyInsert` and `denyUpdate` options
