@@ -84,8 +84,11 @@ var autoValues = new Meteor.Collection2("autoValues", {
       optional: true,
       autoValue: function() {
         var content = this.field("content");
-        if (content.isSet)
+        if (content.isSet) {
           return content.value.split(' ')[0];
+        } else {
+          this.unset();
+        }
       }
     },
     updatesHistory: {
@@ -366,7 +369,7 @@ Tinytest.addAsync("Collection2 - denyUpdate on wrapped collection", function(tes
 });
 
 Tinytest.addAsync("Collection2 - AutoValue Insert", function(test, next) {
-  autoValues.insert({name: "Test"}, function(err, res) {
+  autoValues.insert({name: "Test", firstWord: "Illegal to manually set value"}, function(err, res) {
     test.isFalse(!!err, 'We expected the insert not to trigger an error since all required fields are present');
     var p = autoValues.findOne({_id: res});
     var d = new Date("2013-01-01");

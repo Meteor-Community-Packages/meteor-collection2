@@ -204,7 +204,10 @@ function:
 
 * isInsert: True if it's an insert operation
 * isUpdate: True if it's an update operation
-* isSet: True if the field is already set in the document or modifier.
+* isUpsert: True if it's an upsert operation (either `upsert()` or `upsert: true`)
+* isSet: True if the field is already set in the document or modifier
+* unset(): Call this method to prevent the original value from being used when
+you return undefined.
 * value: If isSet = true, this contains the field's current (requested) value
 in the document or modifier.
 * operator: If isSet = true and isUpdate = true, this contains the name of the 
@@ -231,7 +234,11 @@ explain by way of several examples:
     type: Date,
       autoValue: function() {
         if (this.isInsert) {
-          return new Date();
+          return new Date;
+        } else if (this.isUpsert) {
+          return {$setOnInsert: new Date};
+        } else {
+          this.unset();
         }
       },
       denyUpdate: true
@@ -258,7 +265,7 @@ explain by way of several examples:
       if (content.isSet) {
         return content.value.split(' ')[0];
       } else {
-        return null; // Prevent user from supplying her own value
+        this.unset(); // Prevent user from supplying her own value
       }
     }
   },
@@ -283,6 +290,8 @@ explain by way of several examples:
             }
           };
         }
+      } else {
+        this.unset();
       }
     }
   },
