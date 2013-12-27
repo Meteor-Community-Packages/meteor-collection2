@@ -280,10 +280,10 @@ Meteor.Collection2.prototype._insertOrUpdate = function(type, args) {
   //will allow these fields to be considered for validation by adding them
   //to the $set in the modifier. This is no doubt prone to errors, but there
   //probably isn't any better way right now.
-  var docToValidate = doc;
+  var docToValidate = _.clone(doc);
   if (Meteor.isServer && isUpsert && _.isObject(self._selector)) {
     var set = docToValidate.$set || {};
-    docToValidate.$set = self._selector;
+    docToValidate.$set = _.clone(self._selector);
     _.extend(docToValidate.$set, set);
   }
   
