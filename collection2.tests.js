@@ -260,7 +260,7 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
             context.validateOne({$set: {isbn: isbn}}, "isbn", {modifier: true});
             invalidKeys = context.invalidKeys();
             test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-            
+
             // When unique: true, updates should fail if another document already has the same value but
             // not when the document being updated has the same value
             books.update(bookId, {$set: {isbn: isbn}}, function(error) {
@@ -407,8 +407,7 @@ Tinytest.addAsync("Collection2 - AutoValue Insert", function(test, next) {
 });
 
 Tinytest.addAsync("Collection2 - AutoValue Update", function(test, next) {
-  autoValues.insert({name: "Update Test"}, function(err, res) {
-    var testId = res;
+  autoValues.insert({name: "Update Test"}, function(err, testId) {
     autoValues.update({_id: testId}, {$set: {content: "Test Content"}}, function(err, res) {
       var p = autoValues.findOne({_id: testId});
       test.equal(p.firstWord, 'Test', 'expected firstWord to be "Test"');
@@ -420,51 +419,58 @@ Tinytest.addAsync("Collection2 - AutoValue Update", function(test, next) {
   });
 });
 
-//upserts are server only when this package is used
-if (Meteor.isServer) {
+Tinytest.addAsync('Collection2 - Upsert', function(test, next) {
+  //test validation without actual updating
 
-  Tinytest.addAsync('Collection2 - Upsert', function(test, next) {
-    //test validation without actual updating
+  //invalid
+  books.simpleSchema().namedContext().validate({$set: {title: "Ulysses", author: "James Joyce"}}, {modifier: true, upsert: true});
+  var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+  test.equal(invalidKeys.length, 1, 'We should get one invalidKeys back because copies is missing');
 
-    //invalid
-    books.simpleSchema().namedContext().validate({$set: {title: "Ulysses", author: "James Joyce"}}, {modifier: true, upsert: true});
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKeys back because copies is missing');
+  books.simpleSchema().namedContext().validateOne({$set: {title: "Ulysses", author: "James Joyce"}}, "copies", {modifier: true, upsert: true});
+  invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+  test.equal(invalidKeys.length, 1, 'We should get one invalidKeys back because copies is missing');
 
-    books.simpleSchema().namedContext().validateOne({$set: {title: "Ulysses", author: "James Joyce"}}, "copies", {modifier: true, upsert: true});
-    invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKeys back because copies is missing');
+  //valid
+  books.simpleSchema().namedContext().validate({$set: {title: "Ulysses", author: "James Joyce", copies: 1}}, {modifier: true, upsert: true});
+  invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
-    //valid
-    books.simpleSchema().namedContext().validate({$set: {title: "Ulysses", author: "James Joyce", copies: 1}}, {modifier: true, upsert: true});
-    invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+  books.simpleSchema().namedContext().validateOne({$set: {title: "Ulysses", author: "James Joyce"}}, "author", {modifier: true, upsert: true});
+  invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
-    books.simpleSchema().namedContext().validateOne({$set: {title: "Ulysses", author: "James Joyce"}}, "author", {modifier: true, upsert: true});
-    invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+  //test update calls
+  books.upsert({title: "Ulysses", author: "James Joyce"}, {$set: {copies: 1}}, function(error, result) {
 
-    //test update calls
-    books.upsert({title: "Ulysses", author: "James Joyce"}, {$set: {copies: 1}}, function(error) {
-
+    //upserts are server only when this package is used
+    if (Meteor.isServer) {
       test.isFalse(!!error, 'We expected the upsert not to trigger an error since the selector values should be used');
+      test.equal(result.numberAffected, 1, 'Upsert should update one record');
 
       invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+    } else {
+      test.isTrue(!!error, 'We expected the upsert to trigger an error because upserts are not allowed from the client');
+    }
 
-      books.upsert({title: "Ulysses", author: "James Joyce"}, {$set: {copies: 1}}, {upsert: true}, function(error) {
+    books.update({title: "Ulysses", author: "James Joyce"}, {$set: {copies: 1}}, {upsert: true}, function(error, result) {
 
+      //upserts are server only when this package is used
+      if (Meteor.isServer) {
         test.isFalse(!!error, 'We expected the update/upsert not to trigger an error since the selector values should be used');
+        test.equal(result, 1, 'Update/upsert should update one record');
 
         invalidKeys = books.simpleSchema().namedContext().invalidKeys();
         test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+      } else {
+        test.isTrue(!!error, 'We expected the upsert to trigger an error because upserts are not allowed from the client');
+      }
 
-        next();
-      });
+      next();
     });
   });
-
-}
+});
 
 // Test denyAll
 if (Meteor.isClient) {
