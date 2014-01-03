@@ -5,6 +5,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.2.17
+
+* `this.value` and `this.field().value` now return the correct value when the
+value is an array. (Previously they returned just the first item of the array.)
+
 ### 0.2.16
 
 * Add `this.isUpsert` boolean for use within an autoValue function
