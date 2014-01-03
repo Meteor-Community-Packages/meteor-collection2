@@ -180,28 +180,31 @@ Meteor.Collection2 = function(name, options) {
       transform: null
     });
   }
-  //set up additional checks
+  
+  // Set up additional checks
   self._simpleSchema.validator(function(key, val, def, op) {
     var test, totalUsing, usingAndBeingUpdated, sel;
-    if (def.denyInsert && val !== void 0 && op === null) {
+    
+    if (def.denyInsert && val !== void 0 && !op) {
       // This is an insert of a defined value into a field where denyInsert=true
       return "insertNotAllowed";
     }
-    if (def.denyUpdate && op !== null) {
+    
+    if (def.denyUpdate && op) {
       // This is an insert of a defined value into a field where denyUpdate=true
-      if (op === "$set" && val !== void 0) {
-        return "updateNotAllowed";
-      } else if (op !== "$set") {
+      if (op !== "$set" || (op === "$set" && val !== void 0)) {
         return "updateNotAllowed";
       }
     }
+    
     if ((val === void 0 || val === null) && def.optional) {
       return true;
     }
+    
     if (def.unique) {
       test = {};
       test[key] = val;
-      if (op !== null) { //updating
+      if (op) { //updating
         if (!self._selector) {
           return true; //we can't determine whether we have a notUnique error
         }
@@ -225,9 +228,11 @@ Meteor.Collection2 = function(name, options) {
 
         //if first count > second count, not unique
         return totalUsing > usingAndBeingUpdated ? "notUnique" : true;
+      } else {
+        return self._collection.findOne(test) ? "notUnique" : true;
       }
-      return self._collection.findOne(test) ? "notUnique" : true;
     }
+    
     return true;
   });
 };
@@ -417,7 +422,7 @@ var getAutoValues = function(doc, type) {
   var self = this;
   var mDoc = new MongoObject(doc);
   _.each(self._autoValues, function(func, fieldName) {
-    var keyInfo = mDoc.getInfoForKey(fieldName) || {};
+    var keyInfo = mDoc.getArrayInfoForKey(fieldName) || mDoc.getInfoForKey(fieldName) || {};
     var doUnset = false;
     var autoValue = func.call({
       isInsert: (type === "insert"),
@@ -430,9 +435,9 @@ var getAutoValues = function(doc, type) {
       value: keyInfo.value,
       operator: keyInfo.operator,
       field: function(fName) {
-        var keyInfo = mDoc.getInfoForKey(fName) || {};
+        var keyInfo = mDoc.getArrayInfoForKey(fName) || mDoc.getInfoForKey(fName) || {};
         return {
-          isSet: mDoc.affectsGenericKey(fName),
+          isSet: (keyInfo.value !== void 0),
           value: keyInfo.value,
           operator: keyInfo.operator
         };
