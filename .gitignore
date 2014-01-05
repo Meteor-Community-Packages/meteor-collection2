@@ -1,3 +1,6 @@
+.DS_Store
 .build*
-.meteor
+.npm*
+.meteor*
 smart.lock
+nbproject*
