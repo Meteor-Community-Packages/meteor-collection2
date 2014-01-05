@@ -3,4 +3,5 @@
 .npm*
 .meteor*
 smart.lock
-nbproject*
+/nbproject/
+/packages/
