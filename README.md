@@ -1,7 +1,14 @@
 Collection2 [![Build Status](https://travis-ci.org/aldeed/meteor-collection2.png?branch=master)](https://travis-ci.org/aldeed/meteor-collection2)
 =========================
 
-A smart package for Meteor that extends Meteor.Collection to provide support for specifying a schema and then validating against that schema when inserting and updating. Also adds support for virtual fields.
+A smart package for Meteor that extends Meteor.Collection to provide support
+for specifying a schema and then validating against that schema
+when inserting and updating. Also adds support for virtual fields.
+
+This package requires and automatically installs the 
+[simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
+which provides the `SimpleSchema` object type for defining and validating
+against schemas.
 
 ## Installation
 
@@ -11,17 +18,23 @@ Install using Meteorite. When in a Meteorite-managed app directory, enter:
 $ mrt add collection2
 ```
 
-## Basic Usage
+## Why Use Collection2?
 
-When defining your models, use `new Meteor.Collection2()` instead of `new Meteor.Collection()`. It works the same, but you can specify `schema` and `virtualFields` properties in the options.
+In addition to getting all of the benefits provided by the
+[simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
+Collection2 sets up automatic validation, on both the client and the server, whenever you do
+a normal `insert()` or `update()`. Once you've defined the schema, you no longer
+have to worry about invalid data. Collection2 makes sure that nothing can get
+into your database if it doesn't match the schema.
 
 ## Example
 
-Define the schema for your collection when creating it:
+Define the schema for your collection by setting the `schema` option to
+a `SimpleSchema` instance.
 
 ```js
-Books = new Meteor.Collection2("books", {
-    schema: {
+Books = new Meteor.Collection("books", {
+    schema: new SimpleSchema({
         title: {
             type: String,
             label: "Title",
@@ -47,7 +60,7 @@ Books = new Meteor.Collection2("books", {
             optional: true,
             max: 1000
         }
-    }
+    })
 });
 ```
 
@@ -56,7 +69,7 @@ Do an insert:
 ```js
 Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
   //The insert will fail, error will be set,
-  //and result will be undefined because "copies" is required.
+  //and result will be undefined or false because "copies" is required.
   //
   //The list of errors is available by calling Books.simpleSchema().namedContext().invalidKeys()
 });
@@ -67,7 +80,7 @@ Or do an update:
 ```js
 Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
   //The update will fail, error will be set,
-  //and result will be undefined because "copies" is required.
+  //and result will be undefined or false because "copies" is required.
   //
   //The list of errors is available by calling Books.simpleSchema().namedContext().invalidKeys()
 });
@@ -75,14 +88,13 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
 
 ## Schema Format
 
-The schema object format is actually dictated by the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
-which is installed when you install `collection2`. See that documentation. If
-you need to get the actual SimpleSchema for any reason, such as to access any
-of the methods on it, you can do so by calling `MyCollection2.simpleSchema()`.
-You can alternatively specify an already-created SimpleSchema object for `schema`
-in the constructor options.
+Refer to the
+[simple-schema](https://github.com/aldeed/meteor-simple-schema) package
+documentation for a list of all the available schema rules and validation
+methods.
 
-For example:
+Use the `MyCollection2.simpleSchema()` method to access the bound `SimpleSchema`
+instance for a Meteor.Collection instance. For example:
 
 ```js
 check(doc, MyCollection2.simpleSchema());
@@ -153,7 +165,7 @@ the current core Meteor APIs, but you can guard against misuse by
 ensuring a unique mongo index on the server.
 
 The error message for this is very generic. It's best to define your own using
-`MyCollection2.simpleSchema().messages()`. The error type string is "notUnique".
+`MyCollection.simpleSchema().messages()`. The error type string is "notUnique".
 
 ### denyInsert and denyUpdate
 
@@ -161,17 +173,19 @@ If you set `denyUpdate: true`, any collection update that modifies the field
 will fail. For instance:
 
 ```js
-Posts = new Meteor.Collection2('posts', {
-  title: {
-    type: String
-  },
-  content: {
-    type: String
-  },
-  createdAt: {
-    type: Date,
-    denyUpdate: true
-  }
+Posts = new Meteor.Collection('posts', {
+  schema: new SimpleSchema({
+    title: {
+      type: String
+    },
+    content: {
+      type: String
+    },
+    createdAt: {
+      type: Date,
+      denyUpdate: true
+    }
+  })
 });
 
 var postId = Posts.insert({title: 'Hello', content: 'World', createdAt: new Date});
@@ -318,93 +332,28 @@ explain by way of several examples:
 }
 ```
 
-## Why Use Collection2?
-
-In addition to getting all of the benefits provided by the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
-Collection2 sets up automatic validation, on both the client and the server, whenever you do
-a normal `insert()` or `update()`. Once you've defined the schema, you no longer
-have to worry about invalid data. Collection2 makes sure that nothing can get
-into your database if it doesn't match the schema.
-
 ## Offline Collections
 
 If you want to use an Offline Collection, provided by the
 [offline-data](https://github.com/awwx/meteor-offline-data) package,
-you can. Create the `Offline.Collection` instance and then pass it as the
-first argument of the Collection2 constructor function on the client.
-
-*client.js:*
-
-```js
-BooksOffline = new Offline.Collection("books");
-Books = new Meteor.Collection2(BooksOffline, {
-    schema: {
-        //keys
-    }
-});
-```
-
-*server.js:*
-
-```js
-Books = new Meteor.Collection2("books", {
-    schema: {
-        //keys
-    }
-});
-```
-
-Then use `Books` instead of `BooksOffline` throughout your code, and you will gain the
-benefits of both Offline.Collection and Collection2.
-
-## SmartCollections
-
-If you want to use a SmartCollection, provided by the
-[smart-collections](https://github.com/arunoda/meteor-smart-collections) package,
-you can.
-
-One way is to create the SmartCollection object, and then pass it as the first argument
-of the Collection2 constructor function.
-
-```js
-BooksSC = new Meteor.SmartCollection("books");
-Books = new Meteor.Collection2(BooksSC, {
-    schema: {
-        //keys
-    }
-});
-```
-
-Then use `Books` instead of `BooksSC` throughout your code, and you will gain the
-benefits of both SmartCollection and Collection2.
-
-Another way is to use the `smart: true` option:
-
-```js
-Books = new Meteor.Collection2("books", {
-    smart: true,
-    schema: {
-        //keys
-    }
-});
-```
-
-If you have not added the `smart-collections` package to your app, the `smart: true`
-option will not do anything.
+you can. Simply specify a `schema` option when creating the Offline.Collection.
 
 ## AutoForms
 
-Another great reason to use Collection2 is so that you can use the [autoform](https://github.com/aldeed/meteor-autoform) package.
-AutoForm makes use of Collection2 to help you quickly develop forms that do complex inserts
-and updates with automatic client and server validation. Refer to the [autoform](https://github.com/aldeed/meteor-autoform)
+Another great reason to use Collection2 is so that you can use the
+[autoform](https://github.com/aldeed/meteor-autoform) package.
+AutoForm makes use of Collection schemas to help you quickly develop forms
+that do complex inserts and updates with automatic client and server validation.
+Refer to the [autoform](https://github.com/aldeed/meteor-autoform)
 documentation for more information.
 
 ## What Happens When The Document Is Invalid?
 
 The callback you specify as the last argument of your `insert()` or `update()` call
 will have the first argument (`error`) set to a generic error. But generally speaking,
-you would probably use the reactive methods provided by the SimpleSchema validation context to display
-the specific error messages to the user somewhere. The [autoform](https://github.com/aldeed/meteor-autoform) package provides
+you would probably use the reactive methods provided by the SimpleSchema
+validation context to display the specific error messages to the user somewhere.
+The [autoform](https://github.com/aldeed/meteor-autoform) package provides
 some handlebars helpers for this purpose.
 
 ## More Details
@@ -418,21 +367,17 @@ For the curious, this is exactly what Collection2 does before every insert or up
 
 Collection2 is simply calling SimpleSchema methods to do these things.
 
-This check happens on both the client and the server for client-initiated actions.
-Validation even happens if a malicious user inserts or updates the wrapped Meteor.Collection
-directly from the client, bypassing the Meteor.Collection2, so your data is secure.
-
-If you need to do something wonky, there is one way to insert or update without
-validation. You can call insert or update on the underlying Meteor.Collection
-from trusted server code (`MyCollection2._collection.insert(obj)`).
+This check happens on both the client and the server for client-initiated
+actions, giving you the speed of client-side validation along with the security
+of server-side validation.
 
 ## Virtual Fields
 
 You can also implement easy virtual fields. Here's an example of that:
 
 ```js
-Persons = new Meteor.Collection2("persons", {
-    schema: {
+Persons = new Meteor.Collection("persons", {
+    schema: new SimpleSchema({
         firstName: {
             type: String,
             label: "First name",
@@ -443,7 +388,7 @@ Persons = new Meteor.Collection2("persons", {
             label: "Last name",
             max: 30
         }
-    },
+    }),
     virtualFields: {
         fullName: function(person) {
             return person.firstName + " " + person.lastName;
