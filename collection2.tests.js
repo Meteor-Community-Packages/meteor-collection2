@@ -3,7 +3,8 @@ var books = new Meteor.Collection("books", {
     title: {
       type: String,
       label: "Title",
-      max: 200
+      max: 200,
+      index: 1
     },
     author: {
       type: String,
@@ -29,6 +30,7 @@ var books = new Meteor.Collection("books", {
       type: String,
       label: "ISBN",
       optional: true,
+      index: 1,
       unique: true
     },
     createdAt: {
@@ -197,6 +199,14 @@ Tinytest.add('Collection2 - Test Environment', function(test) {
   test.isTrue(typeof SchemaRegEx !== 'undefined', 'test environment not initialized SchemaRegEx');
   test.isTrue(typeof SimpleSchema !== 'undefined', 'test environment not initialized SimpleSchema');
 });
+
+if (Meteor.isServer) {
+  Tinytest.add('Collection2 - Ensure Index', function(test) {
+    // We need to have an access to the getIndexes method of the embedded
+    // collection in order to test this feature.
+    // var indexes = books._collection._getIndexes();
+  });
+}
 
 // Test required field "copies"
 Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {

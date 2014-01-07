@@ -332,6 +332,39 @@ explain by way of several examples:
 }
 ```
 
+## MongoDB indexes
+
+If you want to ensure an index for a specific field you can use the `index`
+option:
+
+```js
+{
+  title : {
+    type: String,
+    index: 1
+  }
+}
+```
+
+A `1` value specifies ascending and a `-1` specifies descending index. It is
+possible to use other types of MongoDB indexes such as `2d`. Indexes works on
+embedded sub-documents as well.
+
+If you have created an index by mistake and you want to remove it, set its value
+to false:
+
+```js
+{
+  title : {
+    type: String,
+    index: false
+  }
+}
+```
+
+Indexes are build in the background so it does *not* block other database
+queries.
+
 ## Offline Collections
 
 If you want to use an Offline Collection, provided by the

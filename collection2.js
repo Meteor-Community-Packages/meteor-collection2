@@ -1,5 +1,6 @@
 // Extend the schema options allowed by SimpleSchema
 SimpleSchema.extendOptions({
+  index: Match.Optional(Match.OneOf(Number, String, Boolean)),
   unique: Match.Optional(Boolean),
   autoValue: Match.Optional(Function),
   denyInsert: Match.Optional(Boolean),
@@ -46,11 +47,32 @@ Meteor.Collection = function(name, options) {
     self._c2 = {};
     self._c2._simpleSchema = ss;
 
-    // Populate a list of autoValue functions
+    // Loop over fields definitions and:
+    // * Populate a list of autoValue functions
+    // * Ensure collection indexes (server side only)
     self._c2._autoValues = {};
     _.each(ss.schema(), function(definition, fieldName) {
       if ('autoValue' in definition) {
         self._c2._autoValues[fieldName] = definition.autoValue;
+      }
+
+      if (Meteor.isServer && 'index' in definition) {
+        Meteor.startup(function () {
+          index = {};
+          var indexValue = definition['index'];
+          var indexName = 'c2_' + fieldName;
+          if (indexValue === true) indexValue = 1;
+          index[fieldName] = indexValue;
+          if (indexValue !== false) {
+            self._collection._ensureIndex(index, {
+              background: true,
+              name: indexName,
+              unique: !!(definition['unique']) && (indexValue === 1 || indexValue === -1)
+            });
+          } else {
+            self._collection._dropIndex(indexName);
+          }
+        });
       }
     });
 
