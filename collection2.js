@@ -96,7 +96,13 @@ Meteor.Collection = function(name, options) {
         return true;
       }
 
-      if (def.unique) {
+      // If a developer wants to ensure that a field is `unique` we are doing a
+      // custom query to verify that another field with the same value does not
+      // exist.
+      // On the server if the field also have an index we rely on MongoDB to do
+      // this verification -- which is a more efficient strategy.
+      if (def.unique && (Meteor.isClient ||
+         (Meteor.isServer && [1, -1, true].indexOf(def.index) === -1))) {
         test = {};
         test[key] = val;
         if (op && op !== "$inc") { //updating

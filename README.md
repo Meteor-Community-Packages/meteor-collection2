@@ -332,10 +332,10 @@ explain by way of several examples:
 }
 ```
 
-## MongoDB indexes
+### index
 
-If you want to ensure an index for a specific field you can use the `index`
-option:
+If you want to ensure a MongoDB index for a specific field you can use the
+`index` option:
 
 ```js
 {
@@ -363,7 +363,9 @@ to false:
 ```
 
 If a field has the `unique` option set to `true`, the MongoDB index will have
-this property as well:
+this property as well. Then on the server side, Collection2 will rely on MongoDB
+to check uniqueness of your field which is a more efficient strategy than our
+custom one.
 
 ```js
 {
