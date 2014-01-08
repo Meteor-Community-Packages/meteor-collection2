@@ -339,28 +339,41 @@ option:
 
 ```js
 {
-  title : {
+  title: {
     type: String,
     index: 1
   }
 }
 ```
 
-A `1` value specifies ascending and a `-1` specifies descending index. It is
-possible to use other types of MongoDB indexes such as `2d`. Indexes works on
-embedded sub-documents as well.
+`1` and `true` values specifie ascending and `-1` specifies descending index.
+It is possible to use other types of specific MongoDB indexes such as `"2d"`.
+Indexes works on embedded sub-documents as well.
 
 If you have created an index by mistake and you want to remove it, set its value
 to false:
 
 ```js
 {
-  title : {
+  "adress.street": {
     type: String,
     index: false
   }
 }
 ```
+
+If a field has the `unique` option set to `true`, the MongoDB index will have
+this property as well:
+
+```js
+{
+  "pseudo": {
+    type: String,
+    index: true,
+    unique: true
+  }
+}
+``` 
 
 Indexes are build in the background so it does *not* block other database
 queries.
