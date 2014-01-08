@@ -67,10 +67,15 @@ Meteor.Collection = function(name, options) {
             self._collection._ensureIndex(index, {
               background: true,
               name: indexName,
-              unique: !!(definition['unique']) && (indexValue === 1 || indexValue === -1)
+              unique: !! definition.unique && (indexValue === 1 || indexValue === -1),
+              sparse: !! definition.optional
             });
           } else {
-            self._collection._dropIndex(indexName);
+            try {
+              self._collection._dropIndex(indexName);
+            } catch (err) {
+              console.warn(indexName + " index does not exist.");
+            }
           }
         });
       }

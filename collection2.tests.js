@@ -30,6 +30,14 @@ var books = new Meteor.Collection("books", {
       type: String,
       label: "ISBN",
       optional: true,
+      unique: true,
+      index: false
+    },
+    // XXX This field is not tested
+    indexedIsbn: {
+      type: String,
+      label: "ISBN",
+      optional: true,
       index: 1,
       unique: true
     },
