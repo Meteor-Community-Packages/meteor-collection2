@@ -1,5 +1,6 @@
 // Extend the schema options allowed by SimpleSchema
 SimpleSchema.extendOptions({
+  index: Match.Optional(Match.OneOf(Number, String, Boolean)),
   unique: Match.Optional(Boolean),
   autoValue: Match.Optional(Function),
   denyInsert: Match.Optional(Boolean),
@@ -46,11 +47,39 @@ Meteor.Collection = function(name, options) {
     self._c2 = {};
     self._c2._simpleSchema = ss;
 
-    // Populate a list of autoValue functions
+    // Loop over fields definitions and:
+    // * Populate a list of autoValue functions
+    // * Ensure collection indexes (server side only)
     self._c2._autoValues = {};
     _.each(ss.schema(), function(definition, fieldName) {
       if ('autoValue' in definition) {
         self._c2._autoValues[fieldName] = definition.autoValue;
+      }
+
+      if (Meteor.isServer && 'index' in definition) {
+        Meteor.startup(function () {
+          index = {};
+          var indexValue = definition['index'];
+          var indexName = 'c2_' + fieldName;
+          if (indexValue === true) indexValue = 1;
+          index[fieldName] = indexValue;
+          var unique = !! definition.unique && (indexValue === 1 || indexValue === -1);
+          var sparse = !! definition.optional && unique;
+          if (indexValue !== false) {
+            self._collection._ensureIndex(index, {
+              background: true,
+              name: indexName,
+              unique: unique,
+              sparse: sparse
+            });
+          } else {
+            try {
+              self._collection._dropIndex(indexName);
+            } catch (err) {
+              console.warn(indexName + " index does not exist.");
+            }
+          }
+        });
       }
     });
 
@@ -74,7 +103,13 @@ Meteor.Collection = function(name, options) {
         return true;
       }
 
-      if (def.unique) {
+      // If a developer wants to ensure that a field is `unique` we are doing a
+      // custom query to verify that another field with the same value does not
+      // exist.
+      // On the server if the field also have an index we rely on MongoDB to do
+      // this verification -- which is a more efficient strategy.
+      if (def.unique && (Meteor.isClient ||
+         (Meteor.isServer && [1, -1, true].indexOf(def.index) === -1))) {
         test = {};
         test[key] = val;
         if (op && op !== "$inc") { //updating

@@ -3,7 +3,8 @@ var books = new Meteor.Collection("books", {
     title: {
       type: String,
       label: "Title",
-      max: 200
+      max: 200,
+      index: 1
     },
     author: {
       type: String,
@@ -29,6 +30,13 @@ var books = new Meteor.Collection("books", {
       type: String,
       label: "ISBN",
       optional: true,
+      unique: true,
+    },
+    indexedIsbn: {
+      type: String,
+      label: "ISBN",
+      optional: true,
+      index: 1,
       unique: true
     },
     createdAt: {
@@ -198,6 +206,14 @@ Tinytest.add('Collection2 - Test Environment', function(test) {
   test.isTrue(typeof SimpleSchema !== 'undefined', 'test environment not initialized SimpleSchema');
 });
 
+if (Meteor.isServer) {
+  Tinytest.add('Collection2 - Ensure Index', function(test) {
+    // We need to have an access to the getIndexes method of the embedded
+    // collection in order to test this feature.
+    // var indexes = books._collection._getIndexes();
+  });
+}
+
 // Test required field "copies"
 Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
   books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
@@ -221,7 +237,7 @@ Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
 Tinytest.addAsync('Collection2 - Unique', function(test, next) {
   var isbn = Meteor.uuid();
 
-  var bookId = books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
+  var bookId = books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn, indexedIsbn: isbn}, function(error, result) {
     test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
     test.isTrue(!!result, 'result should be defined');
 
@@ -280,7 +296,18 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
 
                 test.equal(key.name, 'isbn', 'We expected the key "isbn"');
                 test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
-                next();
+
+                // Test unique: true, index: true
+                // In this case we rely on MongoDB rejection on the server
+                if (Meteor.isServer) {
+                  books.update({isbn: isbn + 'A'}, {$set: {indexedIsbn: isbn}}, function (err, res) {
+                    test.equal(err.name, 'MongoError', 'We expect the violation of unique index to be rejected by MongoDB');
+                    test.equal(err.code, 11001, 'We expect the violation of unique index to be rejected by MongoDB');
+                    next();
+                  });
+                } else {
+                  next();
+                }
               });
             });
           });
