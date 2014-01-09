@@ -63,12 +63,14 @@ Meteor.Collection = function(name, options) {
           var indexName = 'c2_' + fieldName;
           if (indexValue === true) indexValue = 1;
           index[fieldName] = indexValue;
+          var unique = !! definition.unique && (indexValue === 1 || indexValue === -1);
+          var sparse = !! definition.optional && unique;
           if (indexValue !== false) {
             self._collection._ensureIndex(index, {
               background: true,
               name: indexName,
-              unique: !! definition.unique && (indexValue === 1 || indexValue === -1),
-              sparse: !! definition.optional
+              unique: unique,
+              sparse: sparse
             });
           } else {
             try {
