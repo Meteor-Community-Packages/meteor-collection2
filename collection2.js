@@ -70,11 +70,7 @@ Meteor.Collection = function(name, options) {
         }
       }
 
-      if ((val === void 0 || val === null) && def.optional) {
-        return true;
-      }
-
-      if (def.unique) {
+      if (def.unique && val !== void 0 && val !== null) {
         test = {};
         test[key] = val;
         if (op && op !== "$inc") { //updating
