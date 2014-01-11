@@ -332,6 +332,54 @@ explain by way of several examples:
 }
 ```
 
+### index
+
+If you want to ensure a MongoDB index for a specific field you can use the
+`index` option:
+
+```js
+{
+  title: {
+    type: String,
+    index: 1
+  }
+}
+```
+
+`1` and `true` values specifie ascending and `-1` specifies descending index.
+It is possible to use other types of specific MongoDB indexes such as `"2d"`.
+Indexes works on embedded sub-documents as well.
+
+If you have created an index by mistake and you want to remove it, set its value
+to false:
+
+```js
+{
+  "adress.street": {
+    type: String,
+    index: false
+  }
+}
+```
+
+If a field has the `unique` option set to `true`, the MongoDB index will have
+this property as well. Then on the server side, Collection2 will rely on MongoDB
+to check uniqueness of your field which is a more efficient strategy than our
+custom one.
+
+```js
+{
+  "pseudo": {
+    type: String,
+    index: true,
+    unique: true
+  }
+}
+``` 
+
+Indexes are build in the background so it does *not* block other database
+queries.
+
 ## Offline Collections
 
 If you want to use an Offline Collection, provided by the

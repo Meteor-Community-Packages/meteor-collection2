@@ -5,6 +5,14 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### Next
+
+*(Backwards-compatibility break!)*
+
+* Collection2 is now enhancing the core collection object `Meteor.Collection` instead of creating a new `Meteor.Collection2` constructor.
+* The `schema` option must be of type `SimpleSchema`
+* There is a new `index` option for the field definition, in order to ensure an index in the real MongoDB database
+
 ### 0.2.17
 
 * `this.value` and `this.field().value` now return the correct value when the
