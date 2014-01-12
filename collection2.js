@@ -99,14 +99,17 @@ Meteor.Collection = function(name, options) {
         }
       }
 
-      // If a developer wants to ensure that a field is `unique` we are doing a
-      // custom query to verify that another field with the same value does not
-      // exist.
-      // On the server if the field also have an index we rely on MongoDB to do
-      // this verification -- which is a more efficient strategy.
-      if (def.unique && val !== void 0 && val !== null &&
-              (Meteor.isClient ||
-         (Meteor.isServer && [1, -1, true].indexOf(def.index) === -1))) {
+      // If a developer wants to ensure that a field is `unique` we do a custom
+      // query to verify that another field with the same value does not exist.
+      if (def.unique) {
+        // If the value is not set we skip this test for performance reasons. The
+        // authorization is exclusively determined by the `optional` parameter.
+        if (val === void 0 || val === null) return true;
+
+        // On the server if the field also have an index we rely on MongoDB to do
+        // this verification -- which is a more efficient strategy.
+        if (Meteor.isServer && [1, -1, true].indexOf(def.index) !== -1) return true;
+
         test = {};
         test[key] = val;
         if (op && op !== "$inc") { //updating
