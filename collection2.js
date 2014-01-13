@@ -162,7 +162,8 @@ for (var prop in constructor) {
 }
 
 Meteor.Collection.prototype.simpleSchema = function() {
-  return this._c2._simpleSchema;
+  var self = this;
+  return self._c2 ? self._c2._simpleSchema : null;
 };
 
 if (Meteor.isClient) {
@@ -170,28 +171,31 @@ if (Meteor.isClient) {
   var origInsert = Meteor.Collection.prototype.insert;
   Meteor.Collection.prototype.insert = function() {
     var self = this, args = _.toArray(arguments);
-    args = doValidate.call(self, "insert", args);
-    if (args) {
-      return origInsert.apply(self, args);
+    if (self._c2) {
+      args = doValidate.call(self, "insert", args);
+      if (! args) return; 
     }
+    return origInsert.apply(self, args);
   };
 
   var origUpdate = Meteor.Collection.prototype.update;
   Meteor.Collection.prototype.update = function() {
     var self = this, args = _.toArray(arguments);
-    args = doValidate.call(self, "update", args);
-    if (args) {
-      return origUpdate.apply(self, args);
+    if (self._c2) {
+      args = doValidate.call(self, "update", args);
+      if (! args) return; 
     }
+    return origUpdate.apply(self, args);
   };
 
   var origUpsert = Meteor.Collection.prototype.upsert;
   Meteor.Collection.prototype.upsert = function() {
     var self = this, args = _.toArray(arguments);
-    args = doValidate.call(self, "upsert", args);
-    if (args) {
-      return origUpsert.apply(self, args);
+    if (self._c2) {
+      args = doValidate.call(self, "upsert", args);
+      if (! args) return; 
     }
+    return origUpsert.apply(self, args);
   };
 
 }

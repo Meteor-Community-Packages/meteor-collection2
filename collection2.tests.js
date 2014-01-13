@@ -132,6 +132,8 @@ var autoValues = new Meteor.Collection2("autoValues", {
   }
 });
 
+var noSchemaCollection = new Meteor.Collection('noSchema');
+
 if (Meteor.isServer) {
   Meteor.publish("books", function() {
     return books.find();
@@ -139,6 +141,10 @@ if (Meteor.isServer) {
 
   Meteor.publish("autovalues", function() {
     return autoValues.find();
+  });
+
+  Meteor.publish("noschema", function() {
+    return noSchemaCollection.find();
   });
 
   books.allow({
@@ -188,13 +194,24 @@ if (Meteor.isServer) {
     }
   });
 
+  noSchemaCollection.allow({
+    insert: function() {
+      return true;
+    },
+    update: function() {
+      return true;
+    }
+  });
+
   Meteor.startup(function() {
     books.remove({});
     autoValues.remove({});
+    noSchemaCollection.remove({});
   });
 } else {
   Meteor.subscribe("books");
   Meteor.subscribe("autovalues");
+  Meteor.subscribe("noschema");
 }
 
 function equals(a, b) {
@@ -278,7 +295,7 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
             context.validateOne({$set: {isbn: isbn}}, "isbn", {modifier: true});
             invalidKeys = context.invalidKeys();
             test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-            
+
             // When unique: true, updates should fail if another document already has the same value but
             // not when the document being updated has the same value
             books.update(bookId, {$set: {isbn: isbn}}, function(error) {
@@ -300,7 +317,7 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
                 // Test unique: true, index: true
                 // In this case we rely on MongoDB rejection on the server
                 if (Meteor.isServer) {
-                  books.update({isbn: isbn + 'A'}, {$set: {indexedIsbn: isbn}}, function (err, res) {
+                  books.update({isbn: isbn + 'A'}, {$set: {indexedIsbn: isbn}}, function(err, res) {
                     test.equal(err.name, 'MongoError', 'We expect the violation of unique index to be rejected by MongoDB');
                     test.equal(err.code, 11001, 'We expect the violation of unique index to be rejected by MongoDB');
                     next();
@@ -367,7 +384,7 @@ Tinytest.addAsync("Collection2 - AutoValue Insert", function(test, next) {
     test.isFalse(!!err, 'We expected the insert not to trigger an error since all required fields are present');
     var p = autoValues.findOne({_id: res});
     var d = new Date("2013-01-01");
-    
+
     test.equal(p.dateDefault.getTime(), d.getTime(), 'expected the dateDefault to be correctly set after insert');
     test.equal(p.dateForce.getTime(), d.getTime(), 'expected the dateForce to be correctly set after insert');
     test.isUndefined(p.firstWord, 'expected firstWord to be undefined');
@@ -466,6 +483,15 @@ Tinytest.addAsync('Collection2 - Upsert', function(test, next) {
 
       next();
     });
+  });
+});
+
+// Ensure that there are no errors when using a schemaless collection
+Tinytest.addAsync("Collection2 - No Schema", function(test, next) {
+  noSchemaCollection.insert({a: 1, b: 2}, function(error, result) {
+    test.isFalse(!!error, 'There should be no error since there is no schema');
+    test.isTrue(!!result, 'result should be the inserted ID');
+    next();
   });
 });
 
