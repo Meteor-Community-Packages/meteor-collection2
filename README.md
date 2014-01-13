@@ -374,12 +374,6 @@ custom checking.
 Indexes are built in the background so indexing does *not* block other database
 queries.
 
-## Offline Collections
-
-If you want to use an Offline Collection, provided by the
-[offline-data](https://github.com/awwx/meteor-offline-data) package,
-you can. Simply specify a `schema` option when creating the Offline.Collection.
-
 ## AutoForms
 
 Another great reason to use Collection2 is so that you can use the
