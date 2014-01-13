@@ -326,10 +326,7 @@ var doValidate = function(type, args) {
   // Validate doc
   var isValid = schema.namedContext(options.validationContext).validate(docToValidate, {
     modifier: (type === "update" || type === "upsert"),
-    upsert: isUpsert,
-    // Skip filter and autoconvert because we already called clean()
-    filter: false,
-    autoConvert: false
+    upsert: isUpsert
   });
   
   // Clear the cached selector since it is only used during validation
