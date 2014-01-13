@@ -5,13 +5,13 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
-### Next
+### 0.3.0
 
-*(Backwards-compatibility break!)*
-
-* Collection2 is now enhancing the core collection object `Meteor.Collection` instead of creating a new `Meteor.Collection2` constructor.
-* The `schema` option must be of type `SimpleSchema`
-* There is a new `index` option for the field definition, in order to ensure an index in the real MongoDB database
+* Collection2 is now enhancing the core collection object `Meteor.Collection`
+instead of creating a new `Meteor.Collection2` constructor. `Meteor.Collection2`
+is still available for now but is deprecated.
+* There is a new `index` option for the field definition, in order to ensure an
+index in the real MongoDB database. Refer to the readme.
 
 ### 0.2.17
 

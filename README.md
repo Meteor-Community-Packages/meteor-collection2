@@ -157,12 +157,7 @@ collection2 package adds `unique`, `denyInsert`, `denyUpdate`, and `autoValue`.
 
 Set `unique: true` in your schema to ensure that non-unique values will never
 be set for the key. You may want to ensure a unique mongo index on the server
-as well.
-
-Note: This check is currently not 100% foolproof for updates. It is possible
-for a malicious user to bypass the check. This is not a fixable issue given
-the current core Meteor APIs, but you can guard against misuse by 
-ensuring a unique mongo index on the server.
+as well. Refer to the documentation for the `index` option.
 
 The error message for this is very generic. It's best to define your own using
 `MyCollection.simpleSchema().messages()`. The error type string is "notUnique".
@@ -334,8 +329,7 @@ explain by way of several examples:
 
 ### index
 
-If you want to ensure a MongoDB index for a specific field you can use the
-`index` option:
+Use the `index` option to ensure a MongoDB index for a specific field:
 
 ```js
 {
@@ -346,26 +340,26 @@ If you want to ensure a MongoDB index for a specific field you can use the
 }
 ```
 
-`1` and `true` values specifie ascending and `-1` specifies descending index.
-It is possible to use other types of specific MongoDB indexes such as `"2d"`.
+Set to `1` or `true` for an ascending index. Set to `-1` for a descending index.
+Or you may set this to another type of specific MongoDB index, such as `"2d"`.
 Indexes works on embedded sub-documents as well.
 
-If you have created an index by mistake and you want to remove it, set its value
-to false:
+If you have created an index for a field by mistake and you want to remove it,
+set `index` to `false`:
 
 ```js
 {
-  "adress.street": {
+  "address.street": {
     type: String,
     index: false
   }
 }
 ```
 
-If a field has the `unique` option set to `true`, the MongoDB index will have
-this property as well. Then on the server side, Collection2 will rely on MongoDB
-to check uniqueness of your field which is a more efficient strategy than our
-custom one.
+If a field has the `unique` option set to `true`, the MongoDB index will be a
+unique index as well. Then on the server, Collection2 will rely on MongoDB
+to check uniqueness of your field, which is more efficient than our
+custom checking.
 
 ```js
 {
@@ -377,7 +371,7 @@ custom one.
 }
 ``` 
 
-Indexes are build in the background so it does *not* block other database
+Indexes are built in the background so indexing does *not* block other database
 queries.
 
 ## Offline Collections
