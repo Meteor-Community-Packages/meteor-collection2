@@ -418,3 +418,6 @@ var getAutoValues = function(doc, type) {
   });
   return mDoc.getObject();
 };
+
+// Backwards compatibility; Meteor.Collection2 is deprecated
+Meteor.Collection2 = Meteor.Collection;

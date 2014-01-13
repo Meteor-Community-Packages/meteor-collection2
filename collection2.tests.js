@@ -52,7 +52,7 @@ var books = new Meteor.Collection("books", {
   })
 });
 
-var autoValues = new Meteor.Collection("autoValues", {
+var autoValues = new Meteor.Collection2("autoValues", {
   schema: {
     name: {
       type: String
