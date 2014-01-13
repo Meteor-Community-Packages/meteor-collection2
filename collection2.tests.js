@@ -53,7 +53,7 @@ var books = new Meteor.Collection("books", {
 });
 
 var autoValues = new Meteor.Collection("autoValues", {
-  schema: new SimpleSchema({
+  schema: {
     name: {
       type: String
     },
@@ -129,7 +129,7 @@ var autoValues = new Meteor.Collection("autoValues", {
       type: String,
       optional: true
     }
-  })
+  }
 });
 
 if (Meteor.isServer) {
