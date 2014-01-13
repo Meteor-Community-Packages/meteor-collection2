@@ -41,7 +41,7 @@ Meteor.Collection = function(name, options) {
 
   if (ss) {
     if (!(ss instanceof SimpleSchema)) {
-      throw new Error("The schema option for Meteor.Collection must be an instance of SimpleSchema");
+      ss = new SimpleSchema(ss);
     }
 
     self._c2 = {};
