@@ -5,6 +5,20 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.0
+
+* Collection2 is now enhancing the core collection object `Meteor.Collection`
+instead of creating a new `Meteor.Collection2` constructor. `Meteor.Collection2`
+is still available for now but is deprecated.
+* There is a new `index` option for the field definition, in order to ensure an
+index in the real MongoDB database. Refer to the README.
+* `SmartCollection` is no longer directly supported as that package is
+deprecating.
+* `Offline.Collection` no longer supports schemas. This may be a temporary
+change. Since it is more difficult to implement this now, we have to decide
+whether this is worth doing. It might be better to re-implement from the
+`offline-data` package side.
+
 ### 0.2.17
 
 * `this.value` and `this.field().value` now return the correct value when the

@@ -1,9 +1,10 @@
-var books = new Meteor.Collection2("books", {
-  schema: {
+var books = new Meteor.Collection("books", {
+  schema: new SimpleSchema({
     title: {
       type: String,
       label: "Title",
-      max: 200
+      max: 200,
+      index: 1
     },
     author: {
       type: String,
@@ -29,6 +30,13 @@ var books = new Meteor.Collection2("books", {
       type: String,
       label: "ISBN",
       optional: true,
+      unique: true,
+    },
+    indexedIsbn: {
+      type: String,
+      label: "ISBN",
+      optional: true,
+      index: 1,
       unique: true
     },
     createdAt: {
@@ -41,7 +49,7 @@ var books = new Meteor.Collection2("books", {
       optional: true,
       denyInsert: true
     }
-  }
+  })
 });
 
 var autoValues = new Meteor.Collection2("autoValues", {
@@ -124,6 +132,8 @@ var autoValues = new Meteor.Collection2("autoValues", {
   }
 });
 
+var noSchemaCollection = new Meteor.Collection('noSchema');
+
 if (Meteor.isServer) {
   Meteor.publish("books", function() {
     return books.find();
@@ -131,6 +141,10 @@ if (Meteor.isServer) {
 
   Meteor.publish("autovalues", function() {
     return autoValues.find();
+  });
+
+  Meteor.publish("noschema", function() {
+    return noSchemaCollection.find();
   });
 
   books.allow({
@@ -180,12 +194,24 @@ if (Meteor.isServer) {
     }
   });
 
+  noSchemaCollection.allow({
+    insert: function() {
+      return true;
+    },
+    update: function() {
+      return true;
+    }
+  });
+
   Meteor.startup(function() {
     books.remove({});
+    autoValues.remove({});
+    noSchemaCollection.remove({});
   });
 } else {
   Meteor.subscribe("books");
   Meteor.subscribe("autovalues");
+  Meteor.subscribe("noschema");
 }
 
 function equals(a, b) {
@@ -193,19 +219,25 @@ function equals(a, b) {
 }
 
 Tinytest.add('Collection2 - Test Environment', function(test) {
-  test.isTrue(typeof Meteor.Collection2 !== 'undefined', 'test environment not initialized Meteor.Collection2');
   test.isTrue(typeof SchemaRegEx !== 'undefined', 'test environment not initialized SchemaRegEx');
   test.isTrue(typeof SimpleSchema !== 'undefined', 'test environment not initialized SimpleSchema');
 });
+
+if (Meteor.isServer) {
+  Tinytest.add('Collection2 - Ensure Index', function(test) {
+    // We need to have an access to the getIndexes method of the embedded
+    // collection in order to test this feature.
+    // var indexes = books._collection._getIndexes();
+  });
+}
 
 // Test required field "copies"
 Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
   books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
     //The insert will fail, error will be set,
     test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
-    //and result will be undefined because "copies" is required.
-    //
-    test.isUndefined(result, 'result should be undefined because "copies" is required');
+    //and result will be falsy because "copies" is required.
+    test.isFalse(!!result, 'result should be falsy because "copies" is required');
     //The list of errors is available by calling books.simpleSchema().namedContext().invalidKeys()
     var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
@@ -222,7 +254,7 @@ Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
 Tinytest.addAsync('Collection2 - Unique', function(test, next) {
   var isbn = Meteor.uuid();
 
-  var bookId = books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
+  var bookId = books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn, indexedIsbn: isbn}, function(error, result) {
     test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
     test.isTrue(!!result, 'result should be defined');
 
@@ -270,7 +302,7 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
               test.isFalse(!!error, 'We expected the update not to trigger an error since isbn is used only by the doc being updated');
 
               var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-              test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+              test.equal(invalidKeys, [], 'We should get no invalidKeys back');
 
               books.update(bookId, {$set: {isbn: isbn + "A"}}, function(error) {
                 test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
@@ -281,7 +313,18 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
 
                 test.equal(key.name, 'isbn', 'We expected the key "isbn"');
                 test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
-                next();
+
+                // Test unique: true, index: true
+                // In this case we rely on MongoDB rejection on the server
+                if (Meteor.isServer) {
+                  books.update({isbn: isbn + 'A'}, {$set: {indexedIsbn: isbn}}, function(err, res) {
+                    test.equal(err.name, 'MongoError', 'We expect the violation of unique index to be rejected by MongoDB');
+                    test.equal(err.code, 11001, 'We expect the violation of unique index to be rejected by MongoDB');
+                    next();
+                  });
+                } else {
+                  next();
+                }
               });
             });
           });
@@ -330,38 +373,6 @@ Tinytest.addAsync("Collection2 - denyUpdate", function(test, next) {
 
         var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
         test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-        next();
-      });
-    });
-  });
-});
-
-Tinytest.addAsync("Collection2 - denyInsert on wrapped collection", function(test, next) {
-  books._collection.insert({title: "Ulysses", author: "James Joyce", copies: 1, updatedAt: new Date}, function(error, result) {
-    if (Meteor.isClient) {
-      test.isTrue(!!error, 'We expected the insert to trigger an error since updatedAt has denyInsert set to true');
-    } else {
-      test.isFalse(!!error, 'We expected the insert not to trigger an error since we are on the server');
-    }
-    next();
-  });
-});
-
-Tinytest.addAsync("Collection2 - denyUpdate on wrapped collection", function(test, next) {
-  // Test denyInsert valid case here so that we can use the inserted doc for the
-  // update tests.
-  books._collection.insert({title: "Ulysses", author: "James Joyce", copies: 1, createdAt: new Date}, function(error, newId) {
-    test.isFalse(!!error, 'We expected the insert not to trigger an error since createdAt denies updates but not inserts');
-
-    books._collection.update({_id: newId}, {$set: {createdAt: new Date}}, function(error, result) {
-      if (Meteor.isClient) {
-        test.isTrue(!!error, 'We expected the insert to trigger an error since createdAt has denyUpdate set to true');
-      } else {
-        test.isFalse(!!error, 'We expected the insert not to trigger an error since we are on the server');
-      }
-      //now test valid case
-      books._collection.update({_id: newId}, {$set: {updatedAt: new Date}}, function(error, result) {
-        test.isFalse(!!error, 'We expected the update not to trigger an error since updatedAt denies inserts but not updates');
         next();
       });
     });
@@ -472,6 +483,15 @@ Tinytest.addAsync('Collection2 - Upsert', function(test, next) {
 
       next();
     });
+  });
+});
+
+// Ensure that there are no errors when using a schemaless collection
+Tinytest.addAsync("Collection2 - No Schema", function(test, next) {
+  noSchemaCollection.insert({a: 1, b: 2}, function(error, result) {
+    test.isFalse(!!error, 'There should be no error since there is no schema');
+    test.isTrue(!!result, 'result should be the inserted ID');
+    next();
   });
 });
 
