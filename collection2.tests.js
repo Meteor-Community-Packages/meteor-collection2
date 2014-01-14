@@ -132,7 +132,17 @@ var autoValues = new Meteor.Collection2("autoValues", {
   }
 });
 
-var noSchemaCollection = new Meteor.Collection('noSchema');
+var noSchemaCollection = new Meteor.Collection('noSchema', {
+  virtualFields: {
+    foo: function () {
+      return "bar";
+    }
+  },
+  transform: function (doc) {
+    doc.userFoo = "userBar";
+    return doc;
+  }
+});
 
 if (Meteor.isServer) {
   Meteor.publish("books", function() {
@@ -491,6 +501,12 @@ Tinytest.addAsync("Collection2 - No Schema", function(test, next) {
   noSchemaCollection.insert({a: 1, b: 2}, function(error, result) {
     test.isFalse(!!error, 'There should be no error since there is no schema');
     test.isTrue(!!result, 'result should be the inserted ID');
+    
+    var doc = noSchemaCollection.findOne({_id: result});
+    test.instanceOf(doc, Object);
+    test.equal(doc.foo, "bar", "Virtual Fields don't seem to be working");
+    test.equal(doc.userFoo, "userBar", "User-supplied transforms are lost");
+    
     next();
   });
 });

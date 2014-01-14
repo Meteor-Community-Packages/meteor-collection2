@@ -24,15 +24,16 @@ Meteor.Collection = function(name, options) {
   // Set up virtual fields by adding or augmenting the transform
   // before calling the constructor
   if (options.virtualFields) {
-    userTransform = options.transform;
-    options.transform = function(doc) {
-      //add all virtual fields to document whenever it's passed to a callback
-      _.each(options.virtualFields, function(func, fieldName) {
-        doc[fieldName] = func(doc);
-      });
-      //support user-supplied transformation function as well
-      return userTransform ? userTransform(doc) : doc;
-    };
+    options.transform = (function(userTransform, virtualFields) {
+      return function(doc) {
+        //add all virtual fields to document whenever it's passed to a callback
+        _.each(virtualFields, function(func, fieldName) {
+          doc[fieldName] = func(doc);
+        });
+        //support user-supplied transformation function as well
+        return userTransform ? userTransform(doc) : doc;
+      }
+    })(options.transform, options.virtualFields);
     delete options.virtualFields;
   }
 
@@ -57,14 +58,15 @@ Meteor.Collection = function(name, options) {
       }
 
       if (Meteor.isServer && 'index' in definition) {
-        Meteor.startup(function () {
+        Meteor.startup(function() {
           index = {};
           var indexValue = definition['index'];
           var indexName = 'c2_' + fieldName;
-          if (indexValue === true) indexValue = 1;
+          if (indexValue === true)
+            indexValue = 1;
           index[fieldName] = indexValue;
-          var unique = !! definition.unique && (indexValue === 1 || indexValue === -1);
-          var sparse = !! definition.optional && unique;
+          var unique = !!definition.unique && (indexValue === 1 || indexValue === -1);
+          var sparse = !!definition.optional && unique;
           if (indexValue !== false) {
             self._collection._ensureIndex(index, {
               background: true,
@@ -104,11 +106,13 @@ Meteor.Collection = function(name, options) {
       if (def.unique) {
         // If the value is not set we skip this test for performance reasons. The
         // authorization is exclusively determined by the `optional` parameter.
-        if (val === void 0 || val === null) return true;
+        if (val === void 0 || val === null)
+          return true;
 
         // On the server if the field also have an index we rely on MongoDB to do
         // this verification -- which is a more efficient strategy.
-        if (Meteor.isServer && [1, -1, true].indexOf(def.index) !== -1) return true;
+        if (Meteor.isServer && [1, -1, true].indexOf(def.index) !== -1)
+          return true;
 
         test = {};
         test[key] = val;
@@ -119,10 +123,10 @@ Meteor.Collection = function(name, options) {
           } else if (typeof sel === "string") {
             sel = {_id: sel};
           }
-          
+
           // Find count of docs where this key is already set to this value
           totalUsing = self.find(test).count();
-          
+
           // Find count of docs that will be updated, where key
           // is not already equal to val
           // TODO this will overwrite if key is in selector already;
@@ -130,7 +134,7 @@ Meteor.Collection = function(name, options) {
           sel[key] = {};
           sel[key]["$ne"] = val;
           totalWillUse = self.find(sel).count();
-          
+
           // If more than one would have the val after update, it's not unique
           return totalUsing + totalWillUse > 1 ? "notUnique" : true;
         } else {
@@ -173,7 +177,8 @@ if (Meteor.isClient) {
     var self = this, args = _.toArray(arguments);
     if (self._c2) {
       args = doValidate.call(self, "insert", args);
-      if (! args) return; 
+      if (!args)
+        return;
     }
     return origInsert.apply(self, args);
   };
@@ -183,7 +188,8 @@ if (Meteor.isClient) {
     var self = this, args = _.toArray(arguments);
     if (self._c2) {
       args = doValidate.call(self, "update", args);
-      if (! args) return; 
+      if (!args)
+        return;
     }
     return origUpdate.apply(self, args);
   };
@@ -193,7 +199,8 @@ if (Meteor.isClient) {
     var self = this, args = _.toArray(arguments);
     if (self._c2) {
       args = doValidate.call(self, "upsert", args);
-      if (! args) return; 
+      if (!args)
+        return;
     }
     return origUpsert.apply(self, args);
   };
@@ -256,7 +263,7 @@ var doValidate = function(type, args) {
   } else {
     throw new Error("invalid type argument");
   }
-  
+
   // Support missing options arg
   if (!callback && typeof options === "function") {
     callback = options;
@@ -285,7 +292,7 @@ var doValidate = function(type, args) {
         Meteor._debug(type + " failed: " + (err.reason || err.stack));
     };
   }
-  
+
   // If _id has already been added, remove it temporarily if it's
   // not explicitly defined in the schema.
   var id;
@@ -293,7 +300,7 @@ var doValidate = function(type, args) {
     id = doc._id;
     delete doc._id;
   }
-  
+
   // Clean the doc
   doc = schema.clean(doc);
 
@@ -328,7 +335,7 @@ var doValidate = function(type, args) {
     modifier: (type === "update" || type === "upsert"),
     upsert: isUpsert
   });
-  
+
   // Clear the cached selector since it is only used during validation
   self._c2._selector = null;
 
@@ -339,7 +346,7 @@ var doValidate = function(type, args) {
     }
     // Update the args to reflect the cleaned doc
     if (type === "insert") {
-      args[0] = doc; 
+      args[0] = doc;
     } else {
       args[1] = doc;
     }
