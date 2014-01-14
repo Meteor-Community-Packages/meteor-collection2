@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.1
+
+Fix virtualFields support, broken by 0.3.0
+
 ### 0.3.0
 
 * Collection2 is now enhancing the core collection object `Meteor.Collection`
