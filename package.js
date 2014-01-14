@@ -9,7 +9,6 @@ Package.on_use(function(api) {
   // Allow us to detect 'insecure'.
   api.use('insecure', {weak: true});
 
-  //api.use('smart-collections', ['client', 'server'], {weak: true}); //weak dependencies are broken; removing this until fixed (meteor/meteor#1358)
   api.use(['underscore', 'deps', 'check', 'mongo-livedata'], ['client', 'server']);
   api.add_files(['collection2.js'], ['client', 'server']);
 });
