@@ -323,12 +323,16 @@ var doValidate = function(type, args) {
     doc = args[0];
     options = args[1];
     callback = args[2];
-    
+
     // The real insert doesn't take options
-    if (_.isObject(options)) {
-      args = [doc, callback || options];
+    if (typeof options === "function") {
+      args = [doc, options];
+    } else if (typeof callback === "function") {
+      args = [doc, callback];
+    } else {
+      args = [doc];
     }
-    
+
   } else if (type === "update" || type === "upsert") {
     self._c2._selector = args[0];
     doc = args[1];
@@ -344,7 +348,7 @@ var doValidate = function(type, args) {
     options = {};
   }
   options = options || {};
-  
+
   if (options.validate === false) {
     return args;
   }

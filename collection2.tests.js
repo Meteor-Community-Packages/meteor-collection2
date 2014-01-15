@@ -519,7 +519,7 @@ Tinytest.addAsync("Collection2 - No Schema", function(test, next) {
 
     noSchemaCollection.update({_id: newId}, {$set: {a: 3, b: 4}}, function(error, result) {
       test.isFalse(!!error, 'There should be no error since there is no schema');
-      //result is undefined for some reason, but it happening for apps without
+      //result is undefined for some reason, but it's happening for apps without
       //C2 as well, so must be a Meteor bug
       //test.isTrue(typeof result === "number", 'result should be the number of records updated');
       next();
@@ -528,8 +528,14 @@ Tinytest.addAsync("Collection2 - No Schema", function(test, next) {
 });
 
 Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
+  var title;
+  if (Meteor.isClient) {
+    title = "Validate False Client";
+  } else {
+    title = "Validate False Server";
+  }
 
-  books.insert({title: "Ulysses", author: "James Joyce"}, {validate: false, validationContext: "validateFalse"}, function(error, result) {
+  books.insert({title: title, author: "James Joyce"}, {validate: false, validationContext: "validateFalse"}, function(error, result) {
     var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
 
     if (Meteor.isClient) {
@@ -537,14 +543,70 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
       test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
       test.isFalse(!!result, 'result should be falsy because "copies" is required');
       test.equal(invalidKeys.length, 0, 'There should be no invalidKeys since validation happened on the server');
+      
+      var insertedBook = books.findOne({title: title});
+      test.isFalse(!!insertedBook, 'Book should not have been inserted because validation failed on server');
     } else {
       // When validate: false on the server, validation should be skipped
       test.isFalse(!!error, 'We expected no error because we skipped validation');
       test.isTrue(!!result, 'result should be set because we skipped validation');
       test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
+      
+      var insertedBook = books.findOne({title: title});
+      test.isTrue(!!insertedBook, 'Book should have been inserted because we skipped validation on server');
     }
 
-    next();
+    // do a good one to set up update test
+    books.insert({title: title + " 2", author: "James Joyce", copies: 1}, {validate: false, validationContext: "validateFalse"}, function(error, newId) {
+      var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
+
+      test.isFalse(!!error, "We expected no error because it's valid");
+      test.isTrue(!!newId, "result should be set because it's valid");
+      test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
+      
+      var insertedBook = books.findOne({title: title + " 2"});
+      test.isTrue(!!insertedBook, 'Book should have been inserted because it was valid');
+    
+      books.update({_id: newId}, {copies: "Yes Please"}, {validate: false, validationContext: "validateFalse"}, function(error, result) {
+        var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
+
+        if (Meteor.isClient) {
+          // When validate: false on the client, we should still get a validation error from the server
+          test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
+          test.isFalse(!!result, 'result should be falsy because "copies" is required');
+          test.equal(invalidKeys.length, 0, 'There should be no invalidKeys since validation happened on the server');
+          
+          var updatedBook = books.findOne({_id: newId});
+          test.isTrue(!!updatedBook, 'Book should still be there');
+          test.equal(updatedBook.copies, 1, 'copies should still be 1 because our new value failed validation on the server');
+        } else {
+          // When validate: false on the server, validation should be skipped
+          test.isFalse(!!error, 'We expected no error because we skipped validation');
+          test.isTrue(!!result, 'result should be set because we skipped validation');
+          test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
+          
+          var updatedBook = books.findOne({_id: newId});
+          test.isTrue(!!updatedBook, 'Book should still be there');
+          test.equal(updatedBook.copies, "Yes Please", 'copies should be changed despite being invalid because we skipped validation on the server');
+        }
+
+        // now try a good one
+        books.update({_id: newId}, {$set: {copies: 3}}, {validate: false, validationContext: "validateFalse"}, function(error, result) {
+          var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
+          test.isFalse(!!error, "We expected no error because it's valid");
+          //result is undefined for some reason, but it's happening for apps without
+          //C2 as well, so must be a Meteor bug
+          //test.isTrue(!!result, "result should be set because it's valid");
+          test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
+          
+          var updatedBook = books.findOne({_id: newId});
+          test.isTrue(!!updatedBook, 'Book should still be there');
+          test.equal(updatedBook.copies, 3, 'copies should be changed because we used a valid value');
+        
+          next();
+        });
+      });
+    });
   });
 });
 
