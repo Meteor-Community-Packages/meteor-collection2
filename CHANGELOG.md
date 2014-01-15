@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.3
+
+Fix update argument mix ups, for real.
+
 ### 0.3.2
 
 * Restore ability to do unvalidated inserts and updates on the server. This
