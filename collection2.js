@@ -47,18 +47,20 @@ Meteor.Collection = function(name, options) {
 
     self._c2 = {};
     self._c2._simpleSchema = ss;
+    self._c2.versions = {};
 
     // Loop over fields definitions and:
     // * Populate a list of autoValue functions
     // * Ensure collection indexes (server side only)
+    // * Collect fields version (server side only)
     self._c2._autoValues = {};
     _.each(ss.schema(), function(definition, fieldName) {
       if ('autoValue' in definition) {
         self._c2._autoValues[fieldName] = definition.autoValue;
       }
 
-      if (Meteor.isServer && 'index' in definition) {
-        Meteor.startup(function() {
+      if (Meteor.isServer && _.has(definition, 'index')) {
+        Meteor.startup(function () {
           index = {};
           var indexValue = definition['index'];
           var indexName = 'c2_' + fieldName;
@@ -82,6 +84,10 @@ Meteor.Collection = function(name, options) {
             }
           }
         });
+      }
+
+      if (Meteor.isServer && _.has(definition, 'version')) {
+        self._c2.versions[fieldName] = definition.version;
       }
     });
 
@@ -236,77 +242,24 @@ Meteor.Collection.prototype.simpleSchema = function() {
   return self._c2 ? self._c2._simpleSchema : null;
 };
 
-var origInsert = Meteor.Collection.prototype.insert;
-Meteor.Collection.prototype.insert = function() {
-  var self = this, args = _.toArray(arguments);
-  if (self._c2) {
-    args = doValidate.call(self, "insert", args);
-    if (!args) {
-      //doValidate already called the callback or threw the error
-      return;
+_.each(['insert', 'update', 'upsert'], function(methodName) {
+  var _super = Meteor.Collection.prototype[methodName];
+  Meteor.Collection.prototype[methodName] = function() {
+    var self = this, args = _.toArray(arguments);
+    if (self._c2) {
+      args = doValidate.call(self, methodName, args);
+      if (!args) {
+        // doValidate already called the callback or threw the error
+        return;
+      }
     }
-  }
-  return origInsert.apply(self, args);
-};
-
-var origUpdate = Meteor.Collection.prototype.update;
-Meteor.Collection.prototype.update = function() {
-  var self = this, args = _.toArray(arguments);
-  if (self._c2) {
-    args = doValidate.call(self, "update", args);
-    if (!args) {
-      //doValidate already called the callback or threw the error
-      return;
-    }
-  }
-  return origUpdate.apply(self, args);
-};
-
-var origUpsert = Meteor.Collection.prototype.upsert;
-Meteor.Collection.prototype.upsert = function() {
-  var self = this, args = _.toArray(arguments);
-  if (self._c2) {
-    args = doValidate.call(self, "upsert", args);
-    if (!args) {
-      //doValidate already called the callback or threw the error
-      return;
-    }
-  }
-  return origUpsert.apply(self, args);
-};
+    return _super.apply(self, args);
+  };
+});
 
 /*
  * Private
  */
-
-//if (Meteor.isServer) {
-//  var methods = {
-//    insert: function(_super, args) {
-//      var self = this;
-//      args = doValidate.call(self, "insert", args);
-//      if (args) {
-//        return _super.apply(self._collection, args);
-//      }
-//    },
-//    update: function(_super, args) {
-//      var self = this;
-//      args = doValidate.call(self, "update", args);
-//      if (args) {
-//        return _super.apply(self._collection, args);
-//      }
-//    },
-//    upsert: function(_super, args) {
-//      if (!_super) {
-//        throw new Error("Meteor 0.6.6 or higher is required to do an upsert");
-//      }
-//      var self = this;
-//      args = doValidate.call(self, "upsert", args);
-//      if (args) {
-//        return _super.apply(self._collection, args);
-//      }
-//    }
-//  };
-//}
 
 var doValidate = function(type, args) {
   var self = this,

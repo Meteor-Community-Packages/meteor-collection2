@@ -10,7 +10,8 @@ Package.on_use(function(api) {
   api.use('insecure', {weak: true});
 
   api.use(['underscore', 'deps', 'check', 'mongo-livedata'], ['client', 'server']);
-  api.add_files(['collection2.js'], ['client', 'server']);
+  api.add_files('collection2.js', ['client', 'server']);
+  api.add_files('migrations.js', 'server');
 });
 
 Package.on_test(function(api) {
