@@ -134,11 +134,11 @@ var autoValues = new Meteor.Collection2("autoValues", {
 
 var noSchemaCollection = new Meteor.Collection('noSchema', {
   virtualFields: {
-    foo: function () {
+    foo: function() {
       return "bar";
     }
   },
-  transform: function (doc) {
+  transform: function(doc) {
     doc.userFoo = "userBar";
     return doc;
   }
@@ -389,6 +389,16 @@ Tinytest.addAsync("Collection2 - denyUpdate", function(test, next) {
   });
 });
 
+if (Meteor.isServer) {
+  //no validation when calling underlying _collection on the server
+  Tinytest.addAsync("Collection2 - _collection on the server", function(test, next) {
+    books._collection.insert({title: "Ulysses", author: "James Joyce", copies: 1, updatedAt: new Date}, function(error, result) {
+      test.isFalse(!!error, 'We expected the insert not to trigger an error since we are on the server');
+      next();
+    });
+  });
+}
+
 Tinytest.addAsync("Collection2 - AutoValue Insert", function(test, next) {
   autoValues.insert({name: "Test", firstWord: "Illegal to manually set value"}, function(err, res) {
     test.isFalse(!!err, 'We expected the insert not to trigger an error since all required fields are present');
@@ -498,15 +508,42 @@ Tinytest.addAsync('Collection2 - Upsert', function(test, next) {
 
 // Ensure that there are no errors when using a schemaless collection
 Tinytest.addAsync("Collection2 - No Schema", function(test, next) {
-  noSchemaCollection.insert({a: 1, b: 2}, function(error, result) {
+  noSchemaCollection.insert({a: 1, b: 2}, function(error, newId) {
     test.isFalse(!!error, 'There should be no error since there is no schema');
-    test.isTrue(!!result, 'result should be the inserted ID');
-    
-    var doc = noSchemaCollection.findOne({_id: result});
+    test.isTrue(!!newId, 'result should be the inserted ID');
+
+    var doc = noSchemaCollection.findOne({_id: newId});
     test.instanceOf(doc, Object);
     test.equal(doc.foo, "bar", "Virtual Fields don't seem to be working");
     test.equal(doc.userFoo, "userBar", "User-supplied transforms are lost");
-    
+
+    noSchemaCollection.update({_id: newId}, {$set: {a: 3, b: 4}}, function(error, result) {
+      test.isFalse(!!error, 'There should be no error since there is no schema');
+      //result is undefined for some reason, but it happening for apps without
+      //C2 as well, so must be a Meteor bug
+      //test.isTrue(typeof result === "number", 'result should be the number of records updated');
+      next();
+    });
+  });
+});
+
+Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
+
+  books.insert({title: "Ulysses", author: "James Joyce"}, {validate: false, validationContext: "validateFalse"}, function(error, result) {
+    var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
+
+    if (Meteor.isClient) {
+      // When validate: false on the client, we should still get a validation error from the server
+      test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
+      test.isFalse(!!result, 'result should be falsy because "copies" is required');
+      test.equal(invalidKeys.length, 0, 'There should be no invalidKeys since validation happened on the server');
+    } else {
+      // When validate: false on the server, validation should be skipped
+      test.isFalse(!!error, 'We expected no error because we skipped validation');
+      test.isTrue(!!result, 'result should be set because we skipped validation');
+      test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
+    }
+
     next();
   });
 });

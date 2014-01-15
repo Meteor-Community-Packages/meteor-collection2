@@ -5,6 +5,16 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.2
+
+* Restore ability to do unvalidated inserts and updates on the server. This
+can be done with the new `validate: false` option, or by calling
+myCollection._collection.insert (or update) as before. On the client, the
+`validate: false` option will skip client-side validation but not server-side
+validation.
+* Arguments are no longer sometimes adjusted improperly when doing an update
+or upsert.
+
 ### 0.3.1
 
 Fix virtualFields support, broken by 0.3.0

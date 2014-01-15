@@ -147,6 +147,12 @@ Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", auth
 Books.simpleSchema().namedContext("insertForm").validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false});
 ```
 
+## Inserting or Updating Without Validating
+
+To skip validation, use the `validate: false` option when calling `insert` or
+`update`. On the client (untrusted code), this will skip only client-side
+validation. On the server (trusted code), it will skip all validation.
+
 ## Additional SimpleSchema Options
 
 In addition to all the other schema validation options documented in the 

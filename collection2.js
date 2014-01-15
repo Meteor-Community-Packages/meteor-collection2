@@ -13,7 +13,7 @@ SimpleSchema.extendOptions({
 
 var constructor = Meteor.Collection;
 Meteor.Collection = function(name, options) {
-  var self = this, userTransform, ss;
+  var self = this, ss;
   options = options || {};
 
   if (options.schema) {
@@ -145,13 +145,79 @@ Meteor.Collection = function(name, options) {
       return true;
     });
 
-    // Extend server insert/update/upsert methods to validate before
-    // taking action
-    Meteor.isServer && _.each(methods, function(method, name) {
-      var _super = self._collection[name];
-      self._collection[name] = function() {
-        return method.call(self, _super, _.toArray(arguments));
-      };
+    // Add deny functions to validate again on the server for client-initiated
+    // inserts and updates.
+    self.deny({
+      insert: function(userId, doc) {
+        var ret = false;
+
+        var args = doValidate.call(self, "insert", [doc, {}, function(error) {
+            if (error) {
+              ret = true;
+            }
+          }]);
+
+        if (args) {
+          var newDoc = args[0];
+
+          // Update doc to reflect cleaning, autoValues, etc.
+          _.extend(doc, newDoc);
+
+          // In case the call to getAutoValues removed anything, remove
+          // it from doc, too (TODO: should be recursive?)
+          _.each(doc, function(val, key) {
+            if (!(key in newDoc)) {
+              delete doc[key];
+            }
+          });
+        }
+
+        return ret;
+      },
+      update: function(userId, doc, fields, modifier) {
+        // NOTE: This will never be an upsert because client-side upserts
+        // are not allowed once you define allow/deny functions
+        var ret = false;
+
+        var args = doValidate.call(self, "update", [null, modifier, {}, function(error) {
+            if (error) {
+              ret = true;
+            }
+          }]);
+
+        if (args) {
+          var newDoc = args[1];
+
+          // Update doc to reflect cleaning, autoValues, etc.
+          _.extend(modifier, newDoc);
+
+          // In case the call to getAutoValues removed anything, remove
+          // it from doc, too (TODO: should be recursive?)
+          _.each(modifier, function(val, key) {
+            if (!(key in newDoc)) {
+              delete doc[key];
+            }
+          });
+        }
+
+        return ret;
+      },
+      fetch: [],
+      transform: null
+    });
+
+    // We also need to add allow rules to avoid the scenario where the user
+    // has no rules. Because we've added one deny rule, this turns on _restricted
+    // mode, which then allows everything that is valid, which is not expected.
+    self.allow({
+      insert: function() {
+        return false;
+      },
+      update: function() {
+        return false;
+      },
+      fetch: [],
+      transform: null
     });
   }
 };
@@ -170,75 +236,77 @@ Meteor.Collection.prototype.simpleSchema = function() {
   return self._c2 ? self._c2._simpleSchema : null;
 };
 
-if (Meteor.isClient) {
-
-  var origInsert = Meteor.Collection.prototype.insert;
-  Meteor.Collection.prototype.insert = function() {
-    var self = this, args = _.toArray(arguments);
-    if (self._c2) {
-      args = doValidate.call(self, "insert", args);
-      if (!args)
-        return;
+var origInsert = Meteor.Collection.prototype.insert;
+Meteor.Collection.prototype.insert = function() {
+  var self = this, args = _.toArray(arguments);
+  if (self._c2) {
+    args = doValidate.call(self, "insert", args);
+    if (!args) {
+      //doValidate already called the callback or threw the error
+      return;
     }
-    return origInsert.apply(self, args);
-  };
+  }
+  return origInsert.apply(self, args);
+};
 
-  var origUpdate = Meteor.Collection.prototype.update;
-  Meteor.Collection.prototype.update = function() {
-    var self = this, args = _.toArray(arguments);
-    if (self._c2) {
-      args = doValidate.call(self, "update", args);
-      if (!args)
-        return;
+var origUpdate = Meteor.Collection.prototype.update;
+Meteor.Collection.prototype.update = function() {
+  var self = this, args = _.toArray(arguments);
+  if (self._c2) {
+    args = doValidate.call(self, "update", args);
+    if (!args) {
+      //doValidate already called the callback or threw the error
+      return;
     }
-    return origUpdate.apply(self, args);
-  };
+  }
+  return origUpdate.apply(self, args);
+};
 
-  var origUpsert = Meteor.Collection.prototype.upsert;
-  Meteor.Collection.prototype.upsert = function() {
-    var self = this, args = _.toArray(arguments);
-    if (self._c2) {
-      args = doValidate.call(self, "upsert", args);
-      if (!args)
-        return;
+var origUpsert = Meteor.Collection.prototype.upsert;
+Meteor.Collection.prototype.upsert = function() {
+  var self = this, args = _.toArray(arguments);
+  if (self._c2) {
+    args = doValidate.call(self, "upsert", args);
+    if (!args) {
+      //doValidate already called the callback or threw the error
+      return;
     }
-    return origUpsert.apply(self, args);
-  };
-
-}
+  }
+  return origUpsert.apply(self, args);
+};
 
 /*
  * Private
  */
 
-if (Meteor.isServer) {
-  var methods = {
-    insert: function(_super, args) {
-      var self = this;
-      args = doValidate.call(self, "insert", args);
-      if (args) {
-        return _super.apply(self._collection, args);
-      }
-    },
-    update: function(_super, args) {
-      var self = this;
-      args = doValidate.call(self, "update", args);
-      if (args) {
-        return _super.apply(self._collection, args);
-      }
-    },
-    upsert: function(_super, args) {
-      if (!_super) {
-        throw new Error("Meteor 0.6.6 or higher is required to do an upsert");
-      }
-      var self = this;
-      args = doValidate.call(self, "upsert", args);
-      if (args) {
-        return _super.apply(self._collection, args);
-      }
-    }
-  };
-}
+//if (Meteor.isServer) {
+//  var methods = {
+//    insert: function(_super, args) {
+//      var self = this;
+//      args = doValidate.call(self, "insert", args);
+//      if (args) {
+//        return _super.apply(self._collection, args);
+//      }
+//    },
+//    update: function(_super, args) {
+//      var self = this;
+//      args = doValidate.call(self, "update", args);
+//      if (args) {
+//        return _super.apply(self._collection, args);
+//      }
+//    },
+//    upsert: function(_super, args) {
+//      if (!_super) {
+//        throw new Error("Meteor 0.6.6 or higher is required to do an upsert");
+//      }
+//      var self = this;
+//      args = doValidate.call(self, "upsert", args);
+//      if (args) {
+//        return _super.apply(self._collection, args);
+//      }
+//    }
+//  };
+//}
 
 var doValidate = function(type, args) {
   var self = this,
@@ -255,6 +323,12 @@ var doValidate = function(type, args) {
     doc = args[0];
     options = args[1];
     callback = args[2];
+    
+    // The real insert doesn't take options
+    if (_.isObject(options)) {
+      args = [doc, callback || options];
+    }
+    
   } else if (type === "update" || type === "upsert") {
     self._c2._selector = args[0];
     doc = args[1];
@@ -270,6 +344,10 @@ var doValidate = function(type, args) {
     options = {};
   }
   options = options || {};
+  
+  if (options.validate === false) {
+    return args;
+  }
 
   // If update was called with upsert:true or upsert was called, flag as an upsert
   isUpsert = (type === "upsert" || (type === "update" && options.upsert === true));
