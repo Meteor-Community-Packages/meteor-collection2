@@ -7,6 +7,13 @@ SimpleSchema.extendOptions({
   denyUpdate: Match.Optional(Boolean)
 });
 
+// Define some extra validation error messages
+SimpleSchema.messages({
+  notUnique: "[label] must be unique",
+  insertNotAllowed: "[label] cannot be set during an insert",
+  updateNotAllowed: "[label] cannot be set during an update"
+});
+
 /*
  * Public API
  */
