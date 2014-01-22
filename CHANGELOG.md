@@ -5,6 +5,12 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### Next
+
+* Define default error messages for Collection2-specific error types.
+* Include the first validation error message with the generic "failed
+validation" error message.
+
 ### 0.3.3
 
 Fix update argument mix ups, for real.
