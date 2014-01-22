@@ -434,7 +434,12 @@ var doValidate = function(type, args) {
     }
     return args;
   } else {
-    error = new Error("failed validation");
+    var invalidKeys = schema.namedContext(options.validationContext).invalidKeys();
+    var message = "failed validation";
+    if (invalidKeys.length) {
+      message += ": " + invalidKeys[0].message;
+    }
+    error = new Error(message);
     if (callback) {
       callback(error);
     } else {
