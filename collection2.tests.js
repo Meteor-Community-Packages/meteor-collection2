@@ -144,6 +144,47 @@ var noSchemaCollection = new Meteor.Collection('noSchema', {
   }
 });
 
+Document = function(data) {
+  _.extend(this, data);
+};
+
+Document.prototype = {
+  constructor: Document,
+  toString: function() {
+    return this.toJSONValue.toString();
+  },
+  clone: function() {
+    return new Document(this);
+  },
+  equals: function(other) {
+    if (!(other instanceof Document))
+      return false;
+    return EJSON.stringify(this) === EJSON.stringify(other);
+  },
+  typeName: function() {
+    return "Document";
+  },
+  toJSONValue: function() {
+    return _.extend({}, this);
+  }
+};
+
+BlackBox = new Meteor.Collection('black', {
+  schema: {
+    name: {
+      type: String
+    },
+    data: {
+      type: Document,
+      blackbox: true
+    }
+  },
+  transform: function (doc) {
+    doc.data = new Document(doc.data);
+    return doc;
+  }
+});
+
 if (Meteor.isServer) {
   Meteor.publish("books", function() {
     return books.find();
@@ -155,6 +196,10 @@ if (Meteor.isServer) {
 
   Meteor.publish("noschema", function() {
     return noSchemaCollection.find();
+  });
+  
+  Meteor.publish("black", function() {
+    return BlackBox.find();
   });
 
   books.allow({
@@ -212,16 +257,27 @@ if (Meteor.isServer) {
       return true;
     }
   });
+  
+  BlackBox.allow({
+    insert: function() {
+      return true;
+    },
+    update: function() {
+      return true;
+    }
+  });
 
   Meteor.startup(function() {
     books.remove({});
     autoValues.remove({});
     noSchemaCollection.remove({});
+    BlackBox.remove({});
   });
 } else {
   Meteor.subscribe("books");
   Meteor.subscribe("autovalues");
   Meteor.subscribe("noschema");
+  Meteor.subscribe("black");
 }
 
 function equals(a, b) {
@@ -399,6 +455,65 @@ if (Meteor.isServer) {
   });
 }
 
+Tinytest.addAsync("Collection2 - Black Box", function(test, next) {
+  
+  var now = new Date;
+
+  var boxData = {
+    name: "Test",
+    data: new Document({
+      one: 1,
+      two: "some string",
+      three: {
+        four: now
+      }
+    })
+  };
+
+  BlackBox.insert(boxData, function(error, newId) {
+    test.isFalse(!!error, 'We expected the insert not to trigger an error since all required fields are present');
+    test.isTrue(!!newId, 'We expected to get an ID back');
+
+    var doc = BlackBox.findOne({_id: newId});
+    test.isTrue(!!doc, 'There should be a document inserted');
+    doc && test.isTrue(doc.data instanceof Document, "we lost the custom type");
+    doc && test.equal(doc.name, "Test");
+    doc && test.equal(doc.data.one, 1);
+    doc && test.equal(doc.data.two, "some string");
+    doc && test.equal(doc.data.three.four, now);
+    
+    // remove the EJSON prototype and try again; should still work
+    Document.prototype = {};
+    
+    boxData = {
+      name: "Test",
+      data: new Document({
+        one: 1,
+        two: "some string",
+        three: {
+          four: now
+        }
+      })
+    };
+
+    BlackBox.insert(boxData, function(error, newId2) {
+      test.isFalse(!!error, 'We expected the insert not to trigger an error since all required fields are present');
+      test.isTrue(!!newId, 'We expected to get an ID back');
+    
+      var doc = BlackBox.findOne({_id: newId2});
+      test.isTrue(!!doc, 'There should be a document inserted');
+      doc && test.isTrue(doc.data instanceof Document, "we lost the custom type");
+      doc && test.equal(doc.name, "Test");
+      doc && test.equal(doc.data.one, 1);
+      doc && test.equal(doc.data.two, "some string");
+      doc && test.equal(doc.data.three.four, now);
+
+      next();
+    });
+  });
+
+});
+
 Tinytest.addAsync("Collection2 - AutoValue Insert", function(test, next) {
   autoValues.insert({name: "Test", firstWord: "Illegal to manually set value"}, function(err, res) {
     test.isFalse(!!err, 'We expected the insert not to trigger an error since all required fields are present');
@@ -543,7 +658,7 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
       test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
       test.isFalse(!!result, 'result should be falsy because "copies" is required');
       test.equal(invalidKeys.length, 0, 'There should be no invalidKeys since validation happened on the server');
-      
+
       var insertedBook = books.findOne({title: title});
       test.isFalse(!!insertedBook, 'Book should not have been inserted because validation failed on server');
     } else {
@@ -551,7 +666,7 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
       test.isFalse(!!error, 'We expected no error because we skipped validation');
       test.isTrue(!!result, 'result should be set because we skipped validation');
       test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
-      
+
       var insertedBook = books.findOne({title: title});
       test.isTrue(!!insertedBook, 'Book should have been inserted because we skipped validation on server');
     }
@@ -563,10 +678,10 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
       test.isFalse(!!error, "We expected no error because it's valid");
       test.isTrue(!!newId, "result should be set because it's valid");
       test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
-      
+
       var insertedBook = books.findOne({title: title + " 2"});
       test.isTrue(!!insertedBook, 'Book should have been inserted because it was valid');
-    
+
       books.update({_id: newId}, {copies: "Yes Please"}, {validate: false, validationContext: "validateFalse"}, function(error, result) {
         var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
 
@@ -575,7 +690,7 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
           test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
           test.isFalse(!!result, 'result should be falsy because "copies" is required');
           test.equal(invalidKeys.length, 0, 'There should be no invalidKeys since validation happened on the server');
-          
+
           var updatedBook = books.findOne({_id: newId});
           test.isTrue(!!updatedBook, 'Book should still be there');
           test.equal(updatedBook.copies, 1, 'copies should still be 1 because our new value failed validation on the server');
@@ -584,7 +699,7 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
           test.isFalse(!!error, 'We expected no error because we skipped validation');
           test.isTrue(!!result, 'result should be set because we skipped validation');
           test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
-          
+
           var updatedBook = books.findOne({_id: newId});
           test.isTrue(!!updatedBook, 'Book should still be there');
           test.equal(updatedBook.copies, "Yes Please", 'copies should be changed despite being invalid because we skipped validation on the server');
@@ -598,11 +713,11 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
           //C2 as well, so must be a Meteor bug
           //test.isTrue(!!result, "result should be set because it's valid");
           test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
-          
+
           var updatedBook = books.findOne({_id: newId});
           test.isTrue(!!updatedBook, 'Book should still be there');
           test.equal(updatedBook.copies, 3, 'copies should be changed because we used a valid value');
-        
+
           next();
         });
       });

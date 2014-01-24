@@ -157,13 +157,13 @@ Meteor.Collection = function(name, options) {
     self.deny({
       insert: function(userId, doc) {
         var ret = false;
-
+        
         var args = doValidate.call(self, "insert", [doc, {}, function(error) {
             if (error) {
               ret = true;
             }
           }]);
-
+        
         if (args) {
           var newDoc = args[0];
 
@@ -209,8 +209,7 @@ Meteor.Collection = function(name, options) {
 
         return ret;
       },
-      fetch: [],
-      transform: null
+      fetch: []
     });
 
     // We also need to add allow rules to avoid the scenario where the user
@@ -286,35 +285,6 @@ Meteor.Collection.prototype.upsert = function() {
  * Private
  */
 
-//if (Meteor.isServer) {
-//  var methods = {
-//    insert: function(_super, args) {
-//      var self = this;
-//      args = doValidate.call(self, "insert", args);
-//      if (args) {
-//        return _super.apply(self._collection, args);
-//      }
-//    },
-//    update: function(_super, args) {
-//      var self = this;
-//      args = doValidate.call(self, "update", args);
-//      if (args) {
-//        return _super.apply(self._collection, args);
-//      }
-//    },
-//    upsert: function(_super, args) {
-//      if (!_super) {
-//        throw new Error("Meteor 0.6.6 or higher is required to do an upsert");
-//      }
-//      var self = this;
-//      args = doValidate.call(self, "upsert", args);
-//      if (args) {
-//        return _super.apply(self._collection, args);
-//      }
-//    }
-//  };
-//}
-
 var doValidate = function(type, args) {
   var self = this,
           schema = self._c2._simpleSchema,
@@ -323,7 +293,7 @@ var doValidate = function(type, args) {
   if (!args.length) {
     throw new Error(type + " requires an argument");
   }
-
+  
   // Gather arguments and cache the selector
   self._c2._selector = null; //reset
   if (type === "insert") {
@@ -348,7 +318,7 @@ var doValidate = function(type, args) {
   } else {
     throw new Error("invalid type argument");
   }
-
+  
   // Support missing options arg
   if (!callback && typeof options === "function") {
     callback = options;
@@ -368,7 +338,7 @@ var doValidate = function(type, args) {
   if (type === "insert" && args[1] !== void 0 && !(typeof args[1] === "function")) {
     args.splice(1, 1);
   }
-
+  
   // Add a default callback function if we're on the client and no callback was given
   if (Meteor.isClient && !callback) {
     // Client can't block, so it can't report errors by exception,
@@ -389,10 +359,10 @@ var doValidate = function(type, args) {
     id = doc._id;
     delete doc._id;
   }
-
+  
   // Clean the doc
   doc = schema.clean(doc);
-
+  
   // Set automatic values
   // On the server, we actually update the doc, but on the client,
   // we will add them to docToValidate for validation purposes only.
@@ -400,7 +370,7 @@ var doValidate = function(type, args) {
   if (Meteor.isServer) {
     doc = getAutoValues.call(self, doc, (isUpsert ? "upsert" : type));
   }
-
+  
   // On the server, upserts are possible; SimpleSchema handles upserts pretty
   // well by default, but it will not know about the fields in the selector,
   // which are also stored in the database if an insert is performed. So we
@@ -413,12 +383,12 @@ var doValidate = function(type, args) {
     docToValidate.$set = _.clone(self._c2._selector);
     _.extend(docToValidate.$set, set);
   }
-
+  
   // Set automatic values for validation on the client
   if (Meteor.isClient) {
     docToValidate = getAutoValues.call(self, docToValidate, (isUpsert ? "upsert" : type));
   }
-
+  
   // Validate doc
   var isValid = schema.namedContext(options.validationContext).validate(docToValidate, {
     modifier: (type === "update" || type === "upsert"),
@@ -458,7 +428,7 @@ var doValidate = function(type, args) {
 // Updates doc with automatic values from autoValue functions
 var getAutoValues = function(doc, type) {
   var self = this;
-  var mDoc = new MongoObject(doc);
+  var mDoc = new MongoObject(doc, self.simpleSchema()._blackboxKeys);
   _.each(self._c2._autoValues, function(func, fieldName) {
     var keyInfo = mDoc.getArrayInfoForKey(fieldName) || mDoc.getInfoForKey(fieldName) || {};
     var doUnset = false;
