@@ -152,32 +152,72 @@ Meteor.Collection = function(name, options) {
       return true;
     });
 
-    // Add deny functions to validate again on the server for client-initiated
-    // inserts and updates.
+    // First define deny functions to extend doc with the results of clean
+    // and autovalues. This must be done with "transform: null" or we would be
+    // extending a clone of doc and therefore have no effect.
+    self.deny({
+      insert: function(userId, doc) {
+        // If _id has already been added, remove it temporarily if it's
+        // not explicitly defined in the schema.
+        var id;
+        if (Meteor.isServer && doc._id && !ss.allowsKey("_id")) {
+          id = doc._id;
+          delete doc._id;
+        }
+        
+        var newDoc = ss.clean(doc);
+        newDoc = getAutoValues.call(self, newDoc, "insert");
+        // Update doc to reflect cleaning, autoValues, etc.
+        _.extend(doc, newDoc);
+        // In case the call to getAutoValues removed anything, remove
+        // it from doc, too (TODO: should be recursive? better yet, clean
+        // and getAutoValues should modify directly by reference)
+        _.each(doc, function(val, key) {
+          if (!(key in newDoc)) {
+            delete doc[key];
+          }
+        });
+        
+        // Add the ID back
+        if (id) {
+          doc._id = id;
+        }
+        
+        return false;
+      },
+      update: function(userId, doc, fields, modifier) {
+        var newDoc = ss.clean(modifier);
+        newDoc = getAutoValues.call(self, newDoc, "update");
+        // Update doc to reflect cleaning, autoValues, etc.
+        _.extend(modifier, newDoc);
+        // In case the call to getAutoValues removed anything, remove
+        // it from doc, too (TODO: should be recursive? better yet, clean
+        // and getAutoValues should modify directly by reference)
+        _.each(modifier, function(val, key) {
+          if (!(key in newDoc)) {
+            delete doc[key];
+          }
+        });
+        return false;
+      },
+      fetch: [],
+      transform: null
+    });
+
+    // Second define deny functions to validate again on the server
+    // for client-initiated inserts and updates. These should be
+    // called after the clean/autovalue functions since we're adding
+    // them after. These must *not* have "transform: null" because
+    // we need to pass the doc through any transforms to be sure
+    // that custom types are properly recognized for type validation.
     self.deny({
       insert: function(userId, doc) {
         var ret = false;
-        
-        var args = doValidate.call(self, "insert", [doc, {}, function(error) {
+        doValidate.call(self, "insert", [doc, {}, function(error) {
             if (error) {
               ret = true;
             }
-          }]);
-        
-        if (args) {
-          var newDoc = args[0];
-
-          // Update doc to reflect cleaning, autoValues, etc.
-          _.extend(doc, newDoc);
-
-          // In case the call to getAutoValues removed anything, remove
-          // it from doc, too (TODO: should be recursive?)
-          _.each(doc, function(val, key) {
-            if (!(key in newDoc)) {
-              delete doc[key];
-            }
-          });
-        }
+          }], true);
 
         return ret;
       },
@@ -186,26 +226,11 @@ Meteor.Collection = function(name, options) {
         // are not allowed once you define allow/deny functions
         var ret = false;
 
-        var args = doValidate.call(self, "update", [null, modifier, {}, function(error) {
+        doValidate.call(self, "update", [null, modifier, {}, function(error) {
             if (error) {
               ret = true;
             }
-          }]);
-
-        if (args) {
-          var newDoc = args[1];
-
-          // Update doc to reflect cleaning, autoValues, etc.
-          _.extend(modifier, newDoc);
-
-          // In case the call to getAutoValues removed anything, remove
-          // it from doc, too (TODO: should be recursive?)
-          _.each(modifier, function(val, key) {
-            if (!(key in newDoc)) {
-              delete doc[key];
-            }
-          });
-        }
+          }], true);
 
         return ret;
       },
@@ -285,7 +310,7 @@ Meteor.Collection.prototype.upsert = function() {
  * Private
  */
 
-var doValidate = function(type, args) {
+var doValidate = function(type, args, skipAutoValue) {
   var self = this,
           schema = self._c2._simpleSchema,
           doc, callback, error, options, isUpsert;
@@ -293,7 +318,7 @@ var doValidate = function(type, args) {
   if (!args.length) {
     throw new Error(type + " requires an argument");
   }
-  
+
   // Gather arguments and cache the selector
   self._c2._selector = null; //reset
   if (type === "insert") {
@@ -318,7 +343,7 @@ var doValidate = function(type, args) {
   } else {
     throw new Error("invalid type argument");
   }
-  
+
   // Support missing options arg
   if (!callback && typeof options === "function") {
     callback = options;
@@ -338,7 +363,7 @@ var doValidate = function(type, args) {
   if (type === "insert" && args[1] !== void 0 && !(typeof args[1] === "function")) {
     args.splice(1, 1);
   }
-  
+
   // Add a default callback function if we're on the client and no callback was given
   if (Meteor.isClient && !callback) {
     // Client can't block, so it can't report errors by exception,
@@ -359,18 +384,18 @@ var doValidate = function(type, args) {
     id = doc._id;
     delete doc._id;
   }
-  
-  // Clean the doc
+
+  // Clean the doc (removes any virtual fields added by the deny transform, too)
   doc = schema.clean(doc);
-  
+
   // Set automatic values
   // On the server, we actually update the doc, but on the client,
   // we will add them to docToValidate for validation purposes only.
   // This is because we want all actual values generated on the server.
-  if (Meteor.isServer) {
+  if (Meteor.isServer && !skipAutoValue) {
     doc = getAutoValues.call(self, doc, (isUpsert ? "upsert" : type));
   }
-  
+
   // On the server, upserts are possible; SimpleSchema handles upserts pretty
   // well by default, but it will not know about the fields in the selector,
   // which are also stored in the database if an insert is performed. So we
@@ -383,12 +408,12 @@ var doValidate = function(type, args) {
     docToValidate.$set = _.clone(self._c2._selector);
     _.extend(docToValidate.$set, set);
   }
-  
+
   // Set automatic values for validation on the client
   if (Meteor.isClient) {
     docToValidate = getAutoValues.call(self, docToValidate, (isUpsert ? "upsert" : type));
   }
-  
+
   // Validate doc
   var isValid = schema.namedContext(options.validationContext).validate(docToValidate, {
     modifier: (type === "update" || type === "upsert"),

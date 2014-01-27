@@ -129,6 +129,11 @@ var autoValues = new Meteor.Collection2("autoValues", {
       type: String,
       optional: true
     }
+  },
+  virtualFields: {
+    foo: function() {
+      return "bar";
+    }
   }
 });
 
