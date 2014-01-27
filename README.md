@@ -3,7 +3,7 @@ Collection2 [![Build Status](https://travis-ci.org/aldeed/meteor-collection2.png
 
 A smart package for Meteor that extends Meteor.Collection to provide support
 for specifying a schema and then validating against that schema
-when inserting and updating. Also adds support for virtual fields.
+when inserting and updating.
 
 This package requires and automatically installs the 
 [simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
@@ -20,12 +20,21 @@ $ mrt add collection2
 
 ## Why Use Collection2?
 
-In addition to getting all of the benefits provided by the
-[simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
-Collection2 sets up automatic validation, on both the client and the server, whenever you do
-a normal `insert()` or `update()`. Once you've defined the schema, you no longer
-have to worry about invalid data. Collection2 makes sure that nothing can get
-into your database if it doesn't match the schema.
+* While adding allow/deny rules ensures that only authorized users can edit a
+document from the client, adding a schema ensures that only acceptable properties
+and values can be set within that document from the client. Thus, client side
+inserts and updates can be allowed without compromising security or data integrity.
+* Schema validation for all inserts and updates is reactive, allowing you to
+easily display customizable validation error messages to the user without any
+event handling.
+* Schema validation for all inserts and updates is automatic on both the client
+and the server, providing both speed and security.
+* The [autoform](https://github.com/aldeed/meteor-autoform) package can
+take your collection's schema and automatically create HTML5 forms based on it.
+AutoForm provides automatic database operations, method calls, validation, and
+user interface reactivity. You have to write very little markup and no event
+handling. Refer to the [autoform](https://github.com/aldeed/meteor-autoform)
+documentation for more information.
 
 ## Example
 
@@ -157,7 +166,7 @@ validation. On the server (trusted code), it will skip all validation.
 
 In addition to all the other schema validation options documented in the 
 [simple-schema](https://github.com/aldeed/meteor-simple-schema) package, the
-collection2 package adds `unique`, `denyInsert`, `denyUpdate`, and `autoValue`.
+collection2 package adds additional options explained in this section.
 
 ### unique
 
@@ -381,15 +390,6 @@ custom checking.
 Indexes are built in the background so indexing does *not* block other database
 queries.
 
-## AutoForms
-
-Another great reason to use Collection2 is so that you can use the
-[autoform](https://github.com/aldeed/meteor-autoform) package.
-AutoForm makes use of Collection schemas to help you quickly develop forms
-that do complex inserts and updates with automatic client and server validation.
-Refer to the [autoform](https://github.com/aldeed/meteor-autoform)
-documentation for more information.
-
 ## What Happens When The Document Is Invalid?
 
 The callback you specify as the last argument of your `insert()` or `update()` call
@@ -403,10 +403,12 @@ some handlebars helpers for this purpose.
 
 For the curious, this is exactly what Collection2 does before every insert or update:
 
-1. Removes properties from your document or mongo modifier object if they are not explicitly listed in the schema.
+1. Removes properties from your document or mongo modifier object if they are
+not explicitly listed in the schema.
 2. Automatically converts some properties to match what the schema expects, if possible.
-3. Validates your document or mongo modifier object.
-4. Performs the insert or update like normal, only if it was valid.
+3. Adds automatic (forced or default) values based on your schema.
+4. Validates your document or mongo modifier object.
+5. Performs the insert or update like normal, only if it was valid.
 
 Collection2 is simply calling SimpleSchema methods to do these things.
 
@@ -415,6 +417,10 @@ actions, giving you the speed of client-side validation along with the security
 of server-side validation.
 
 ## Virtual Fields
+
+**NOTE: Virtual fields support may eventually be retired. I recommend using
+the [collection-helpers](https://github.com/dburles/meteor-collection-helpers)
+package instead since it achieves a similar result but does it more efficiently.**
 
 You can also implement easy virtual fields. Here's an example of that:
 
