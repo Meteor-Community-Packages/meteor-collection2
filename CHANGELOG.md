@@ -5,6 +5,12 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.5
+
+* Fix an issue where cleaning and autoValues were not done correctly when used
+with a transform or virtual fields.
+* `this.userId` is now available in your autoValue functions
+
 ### 0.3.4
 
 * Define default error messages for Collection2-specific error types.

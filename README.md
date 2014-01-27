@@ -220,6 +220,7 @@ function:
 * isInsert: True if it's an insert operation
 * isUpdate: True if it's an update operation
 * isUpsert: True if it's an upsert operation (either `upsert()` or `upsert: true`)
+* userId: The ID of the currently logged in user. (Always `null` for server-initiated actions.)
 * isSet: True if the field is already set in the document or modifier
 * unset(): Call this method to prevent the original value from being used when
 you return undefined.
