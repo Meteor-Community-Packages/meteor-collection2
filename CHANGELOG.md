@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.7
+
+Another tweak to ensure no allow/deny security confusion
+
 ### 0.3.6
 
 Ensure that we don't turn off the `insecure` package

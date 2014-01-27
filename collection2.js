@@ -237,19 +237,25 @@ Meteor.Collection = function(name, options) {
       fetch: []
     });
 
-    // We also need to add allow rules to avoid the scenario where the user
-    // has no rules. Because we've added one deny rule, this turns on _restricted
-    // mode, which then allows everything that is valid, which is not expected.
-    self.allow({
-      insert: function() {
-        return !!(Package && Package.insecure);
-      },
-      update: function() {
-        return !!(Package && Package.insecure);
-      },
-      fetch: [],
-      transform: null
-    });
+    // If insecure package is in use, we need to add allow rules that return
+    // true. Otherwise, it would seemingly turn off insecure mode.
+    if (Package && Package.insecure) {
+      self.allow({
+        insert: function() {
+          return true;
+        },
+        update: function() {
+          return true;
+        },
+        fetch: [],
+        transform: null
+      });
+    }
+    // If insecure package is NOT in use, then adding the two deny functions
+    // does not have any effect on the main app's security paradigm. The
+    // user will still be required to add at least one allow function of her
+    // own for each operation for this collection. And the user may still add
+    // additional deny functions, but does not have to.
   }
 };
 
