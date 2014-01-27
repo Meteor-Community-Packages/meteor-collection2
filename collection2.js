@@ -166,7 +166,7 @@ Meteor.Collection = function(name, options) {
         }
         
         var newDoc = ss.clean(doc);
-        newDoc = getAutoValues.call(self, newDoc, "insert");
+        newDoc = getAutoValues.call(self, newDoc, "insert", userId);
         // Update doc to reflect cleaning, autoValues, etc.
         _.extend(doc, newDoc);
         // In case the call to getAutoValues removed anything, remove
@@ -187,7 +187,7 @@ Meteor.Collection = function(name, options) {
       },
       update: function(userId, doc, fields, modifier) {
         var newDoc = ss.clean(modifier);
-        newDoc = getAutoValues.call(self, newDoc, "update");
+        newDoc = getAutoValues.call(self, newDoc, "update", userId);
         // Update doc to reflect cleaning, autoValues, etc.
         _.extend(modifier, newDoc);
         // In case the call to getAutoValues removed anything, remove
@@ -393,7 +393,7 @@ var doValidate = function(type, args, skipAutoValue) {
   // we will add them to docToValidate for validation purposes only.
   // This is because we want all actual values generated on the server.
   if (Meteor.isServer && !skipAutoValue) {
-    doc = getAutoValues.call(self, doc, (isUpsert ? "upsert" : type));
+    doc = getAutoValues.call(self, doc, (isUpsert ? "upsert" : type), null);
   }
 
   // On the server, upserts are possible; SimpleSchema handles upserts pretty
@@ -411,11 +411,12 @@ var doValidate = function(type, args, skipAutoValue) {
 
   // Set automatic values for validation on the client
   if (Meteor.isClient) {
-    docToValidate = getAutoValues.call(self, docToValidate, (isUpsert ? "upsert" : type));
+    docToValidate = getAutoValues.call(self, docToValidate, (isUpsert ? "upsert" : type), (Meteor.userId && Meteor.userId()) || null);
   }
 
   // Validate doc
-  var isValid = schema.namedContext(options.validationContext).validate(docToValidate, {
+  var ctx = schema.namedContext(options.validationContext);
+  var isValid = ctx.validate(docToValidate, {
     modifier: (type === "update" || type === "upsert"),
     upsert: isUpsert
   });
@@ -436,10 +437,11 @@ var doValidate = function(type, args, skipAutoValue) {
     }
     return args;
   } else {
-    var invalidKeys = schema.namedContext(options.validationContext).invalidKeys();
+    var invalidKeys = ctx.invalidKeys();
     var message = "failed validation";
     if (invalidKeys.length) {
-      message += ": " + invalidKeys[0].message;
+      var badKey = invalidKeys[0].name;
+      message += ": " + badKey + ": " + ctx.keyErrorMessage(badKey);
     }
     error = new Error(message);
     if (callback) {
@@ -451,7 +453,7 @@ var doValidate = function(type, args, skipAutoValue) {
 };
 
 // Updates doc with automatic values from autoValue functions
-var getAutoValues = function(doc, type) {
+var getAutoValues = function(doc, type, userId) {
   var self = this;
   var mDoc = new MongoObject(doc, self.simpleSchema()._blackboxKeys);
   _.each(self._c2._autoValues, function(func, fieldName) {
@@ -461,6 +463,7 @@ var getAutoValues = function(doc, type) {
       isInsert: (type === "insert"),
       isUpdate: (type === "update"),
       isUpsert: (type === "upsert"),
+      userId: userId,
       isSet: mDoc.affectsGenericKey(fieldName),
       unset: function() {
         doUnset = true;
