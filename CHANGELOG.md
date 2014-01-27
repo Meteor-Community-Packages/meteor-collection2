@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.6
+
+Ensure that we don't turn off the `insecure` package
+
 ### 0.3.5
 
 * Fix an issue where cleaning and autoValues were not done correctly when used

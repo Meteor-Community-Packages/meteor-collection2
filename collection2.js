@@ -242,10 +242,10 @@ Meteor.Collection = function(name, options) {
     // mode, which then allows everything that is valid, which is not expected.
     self.allow({
       insert: function() {
-        return false;
+        return !!(Package && Package.insecure);
       },
       update: function() {
-        return false;
+        return !!(Package && Package.insecure);
       },
       fetch: [],
       transform: null
