@@ -2,7 +2,6 @@
 SimpleSchema.extendOptions({
   index: Match.Optional(Match.OneOf(Number, String, Boolean)),
   unique: Match.Optional(Boolean),
-  autoValue: Match.Optional(Function),
   denyInsert: Match.Optional(Boolean),
   denyUpdate: Match.Optional(Boolean)
 });
@@ -39,7 +38,7 @@ Meteor.Collection = function(name, options) {
         });
         //support user-supplied transformation function as well
         return userTransform ? userTransform(doc) : doc;
-      }
+      };
     })(options.transform, options.virtualFields);
     delete options.virtualFields;
   }
@@ -55,18 +54,11 @@ Meteor.Collection = function(name, options) {
     self._c2 = {};
     self._c2._simpleSchema = ss;
 
-    // Loop over fields definitions and:
-    // * Populate a list of autoValue functions
-    // * Ensure collection indexes (server side only)
-    self._c2._autoValues = {};
+    // Loop over fields definitions and ensure collection indexes (server side only)
     _.each(ss.schema(), function(definition, fieldName) {
-      if ('autoValue' in definition) {
-        self._c2._autoValues[fieldName] = definition.autoValue;
-      }
-
       if (Meteor.isServer && 'index' in definition) {
         Meteor.startup(function() {
-          index = {};
+          var index = {};
           var indexValue = definition['index'];
           var indexName = 'c2_' + fieldName;
           if (indexValue === true)
@@ -93,8 +85,12 @@ Meteor.Collection = function(name, options) {
     });
 
     // Set up additional checks
-    ss.validator(function(key, val, def, op) {
+    ss.validator(function() {
       var test, totalUsing, totalWillUse, sel;
+      var def = this.definition;
+      var val = this.value;
+      var op = this.operator;
+      var key = this.key;
 
       if (def.denyInsert && val !== void 0 && !op) {
         // This is an insert of a defined value into a field where denyInsert=true
@@ -164,40 +160,38 @@ Meteor.Collection = function(name, options) {
           id = doc._id;
           delete doc._id;
         }
-        
-        var newDoc = ss.clean(doc);
-        newDoc = getAutoValues.call(self, newDoc, "insert", userId);
-        // Update doc to reflect cleaning, autoValues, etc.
-        _.extend(doc, newDoc);
-        // In case the call to getAutoValues removed anything, remove
-        // it from doc, too (TODO: should be recursive? better yet, clean
-        // and getAutoValues should modify directly by reference)
-        _.each(doc, function(val, key) {
-          if (!(key in newDoc)) {
-            delete doc[key];
+
+        // Referenced doc is cleaned in place
+        ss.clean(doc, {
+          isModifier: false,
+          extendAutoValueContext: {
+            isInsert: true,
+            isUpdate: false,
+            isUpsert: false,
+            userId: userId
           }
         });
-        
+
         // Add the ID back
         if (id) {
           doc._id = id;
         }
-        
+
         return false;
       },
       update: function(userId, doc, fields, modifier) {
-        var newDoc = ss.clean(modifier);
-        newDoc = getAutoValues.call(self, newDoc, "update", userId);
-        // Update doc to reflect cleaning, autoValues, etc.
-        _.extend(modifier, newDoc);
-        // In case the call to getAutoValues removed anything, remove
-        // it from doc, too (TODO: should be recursive? better yet, clean
-        // and getAutoValues should modify directly by reference)
-        _.each(modifier, function(val, key) {
-          if (!(key in newDoc)) {
-            delete doc[key];
+
+        // Referenced modifier is cleaned in place
+        ss.clean(modifier, {
+          isModifier: true,
+          extendAutoValueContext: {
+            isInsert: false,
+            isUpdate: true,
+            isUpsert: false,
+            userId: userId
           }
         });
+
         return false;
       },
       fetch: [],
@@ -225,7 +219,6 @@ Meteor.Collection = function(name, options) {
         // NOTE: This will never be an upsert because client-side upserts
         // are not allowed once you define allow/deny functions
         var ret = false;
-
         doValidate.call(self, "update", [null, modifier, {}, function(error) {
             if (error) {
               ret = true;
@@ -364,12 +357,6 @@ var doValidate = function(type, args, skipAutoValue) {
   // If update was called with upsert:true or upsert was called, flag as an upsert
   isUpsert = (type === "upsert" || (type === "update" && options.upsert === true));
 
-  // Remove the options from insert now that we're done with them;
-  // the real insert does not have an options argument
-  if (type === "insert" && args[1] !== void 0 && !(typeof args[1] === "function")) {
-    args.splice(1, 1);
-  }
-
   // Add a default callback function if we're on the client and no callback was given
   if (Meteor.isClient && !callback) {
     // Client can't block, so it can't report errors by exception,
@@ -391,16 +378,26 @@ var doValidate = function(type, args, skipAutoValue) {
     delete doc._id;
   }
 
-  // Clean the doc (removes any virtual fields added by the deny transform, too)
-  doc = schema.clean(doc);
-
-  // Set automatic values
-  // On the server, we actually update the doc, but on the client,
-  // we will add them to docToValidate for validation purposes only.
-  // This is because we want all actual values generated on the server.
-  if (Meteor.isServer && !skipAutoValue) {
-    doc = getAutoValues.call(self, doc, (isUpsert ? "upsert" : type), null);
+  function doClean(docToClean, getAutoValues, filter, autoConvert, userId) {
+    // Clean the doc/modifier in place (removes any virtual fields added
+    // by the deny transform, too)
+    schema.clean(docToClean, {
+      filter: filter,
+      autoConvert: autoConvert,
+      getAutoValues: getAutoValues,
+      isModifier: (type !== "insert"),
+      extendAutoValueContext: {
+        isInsert: (type === "insert"),
+        isUpdate: (type === "update" && options.upsert === false),
+        isUpsert: isUpsert,
+        userId: userId
+      }
+    });
   }
+  
+  // Preliminary cleaning on both client and server. On the server, automatic
+  // values will also be set at this point.
+  doClean(doc, (Meteor.isServer && !skipAutoValue), true, true, null);
 
   // On the server, upserts are possible; SimpleSchema handles upserts pretty
   // well by default, but it will not know about the fields in the selector,
@@ -415,9 +412,12 @@ var doValidate = function(type, args, skipAutoValue) {
     _.extend(docToValidate.$set, set);
   }
 
-  // Set automatic values for validation on the client
+  // Set automatic values for validation on the client.
+  // On the server, we already updated doc with auto values, but on the client,
+  // we will add them to docToValidate for validation purposes only.
+  // This is because we want all actual values generated on the server.
   if (Meteor.isClient) {
-    docToValidate = getAutoValues.call(self, docToValidate, (isUpsert ? "upsert" : type), (Meteor.userId && Meteor.userId()) || null);
+    doClean(docToValidate, true, false, false, (Meteor.userId && Meteor.userId()) || null);
   }
 
   // Validate doc
@@ -450,79 +450,13 @@ var doValidate = function(type, args, skipAutoValue) {
       message += ": " + badKey + ": " + ctx.keyErrorMessage(badKey);
     }
     error = new Error(message);
+    error.invalidKeys = invalidKeys;
     if (callback) {
       callback(error);
     } else {
       throw error;
     }
   }
-};
-
-// Updates doc with automatic values from autoValue functions
-var getAutoValues = function(doc, type, userId) {
-  var self = this;
-  var mDoc = new MongoObject(doc, self.simpleSchema()._blackboxKeys);
-  _.each(self._c2._autoValues, function(func, fieldName) {
-    var keyInfo = mDoc.getArrayInfoForKey(fieldName) || mDoc.getInfoForKey(fieldName) || {};
-    var doUnset = false;
-    var autoValue = func.call({
-      isInsert: (type === "insert"),
-      isUpdate: (type === "update"),
-      isUpsert: (type === "upsert"),
-      userId: userId,
-      isSet: mDoc.affectsGenericKey(fieldName),
-      unset: function() {
-        doUnset = true;
-      },
-      value: keyInfo.value,
-      operator: keyInfo.operator,
-      field: function(fName) {
-        var keyInfo = mDoc.getArrayInfoForKey(fName) || mDoc.getInfoForKey(fName) || {};
-        return {
-          isSet: (keyInfo.value !== void 0),
-          value: keyInfo.value,
-          operator: keyInfo.operator
-        };
-      }
-    }, doc);
-
-    if (autoValue === void 0) {
-      doUnset && mDoc.removeKey(fieldName);
-      return;
-    }
-
-    var fieldNameHasDollar = (fieldName.indexOf(".$") !== -1);
-    var newValue = autoValue;
-    var op = null;
-    if (_.isObject(autoValue)) {
-      for (var key in autoValue) {
-        if (autoValue.hasOwnProperty(key) && key.substring(0, 1) === "$") {
-          if (fieldNameHasDollar) {
-            throw new Error("The return value of an autoValue function may not be an object with update operators when the field name contains a dollar sign");
-          }
-          op = key;
-          newValue = autoValue[key];
-          break;
-        }
-      }
-    }
-
-    // Add $set for updates and upserts if necessary
-    if (op === null && type !== "insert") {
-      op = "$set";
-    }
-
-    if (fieldNameHasDollar) {
-      // There is no way to know which specific keys should be set to
-      // the autoValue, so we will set only keys that exist
-      // in the object and match this generic key.
-      mDoc.setValueForGenericKey(fieldName, newValue);
-    } else {
-      mDoc.removeKey(fieldName);
-      mDoc.addKey(fieldName, newValue, op);
-    }
-  });
-  return mDoc.getObject();
 };
 
 // Backwards compatibility; Meteor.Collection2 is deprecated
