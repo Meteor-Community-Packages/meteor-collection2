@@ -5,6 +5,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.8
+
+`autoValue` support moved to SimpleSchema. Collection2 continues to extend
+with additional options so the net effect should be no noticeable changes.
+
 ### 0.3.7
 
 Another tweak to ensure no allow/deny security confusion
