@@ -211,7 +211,7 @@ Meteor.Collection = function(name, options) {
             if (error) {
               ret = true;
             }
-          }], true);
+          }], true, userId);
 
         return ret;
       },
@@ -223,7 +223,7 @@ Meteor.Collection = function(name, options) {
             if (error) {
               ret = true;
             }
-          }], true);
+          }], true, userId);
 
         return ret;
       },
@@ -270,7 +270,8 @@ var origInsert = Meteor.Collection.prototype.insert;
 Meteor.Collection.prototype.insert = function() {
   var self = this, args = _.toArray(arguments);
   if (self._c2) {
-    args = doValidate.call(self, "insert", args);
+    args = doValidate.call(self, "insert", args,
+    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null);
     if (!args) {
       //doValidate already called the callback or threw the error
       return;
@@ -283,7 +284,8 @@ var origUpdate = Meteor.Collection.prototype.update;
 Meteor.Collection.prototype.update = function() {
   var self = this, args = _.toArray(arguments);
   if (self._c2) {
-    args = doValidate.call(self, "update", args);
+    args = doValidate.call(self, "update", args,
+    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null);
     if (!args) {
       //doValidate already called the callback or threw the error
       return;
@@ -296,7 +298,8 @@ var origUpsert = Meteor.Collection.prototype.upsert;
 Meteor.Collection.prototype.upsert = function() {
   var self = this, args = _.toArray(arguments);
   if (self._c2) {
-    args = doValidate.call(self, "upsert", args);
+    args = doValidate.call(self, "upsert", args,
+    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null);
     if (!args) {
       //doValidate already called the callback or threw the error
       return;
@@ -309,7 +312,7 @@ Meteor.Collection.prototype.upsert = function() {
  * Private
  */
 
-var doValidate = function(type, args, skipAutoValue) {
+var doValidate = function(type, args, skipAutoValue, userId) {
   var self = this,
           schema = self._c2._simpleSchema,
           doc, callback, error, options, isUpsert;
@@ -378,7 +381,7 @@ var doValidate = function(type, args, skipAutoValue) {
     delete doc._id;
   }
 
-  function doClean(docToClean, getAutoValues, filter, autoConvert, userId) {
+  function doClean(docToClean, getAutoValues, filter, autoConvert) {
     // Clean the doc/modifier in place (removes any virtual fields added
     // by the deny transform, too)
     schema.clean(docToClean, {
@@ -397,7 +400,7 @@ var doValidate = function(type, args, skipAutoValue) {
   
   // Preliminary cleaning on both client and server. On the server, automatic
   // values will also be set at this point.
-  doClean(doc, (Meteor.isServer && !skipAutoValue), true, true, null);
+  doClean(doc, (Meteor.isServer && !skipAutoValue), true, true);
 
   // On the server, upserts are possible; SimpleSchema handles upserts pretty
   // well by default, but it will not know about the fields in the selector,
@@ -417,14 +420,20 @@ var doValidate = function(type, args, skipAutoValue) {
   // we will add them to docToValidate for validation purposes only.
   // This is because we want all actual values generated on the server.
   if (Meteor.isClient) {
-    doClean(docToValidate, true, false, false, (Meteor.userId && Meteor.userId()) || null);
+    doClean(docToValidate, true, false, false);
   }
 
   // Validate doc
   var ctx = schema.namedContext(options.validationContext);
   var isValid = ctx.validate(docToValidate, {
     modifier: (type === "update" || type === "upsert"),
-    upsert: isUpsert
+    upsert: isUpsert,
+    extendedCustomContext: {
+      isInsert: (type === "insert"),
+      isUpdate: (type === "update" && options.upsert === false),
+      isUpsert: isUpsert,
+      userId: userId
+    }
   });
 
   // Clear the cached selector since it is only used during validation

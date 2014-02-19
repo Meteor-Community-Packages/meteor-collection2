@@ -290,7 +290,6 @@ function equals(a, b) {
 }
 
 Tinytest.add('Collection2 - Test Environment', function(test) {
-  test.isTrue(typeof SchemaRegEx !== 'undefined', 'test environment not initialized SchemaRegEx');
   test.isTrue(typeof SimpleSchema !== 'undefined', 'test environment not initialized SimpleSchema');
 });
 

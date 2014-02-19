@@ -206,43 +206,14 @@ The `denyInsert` option works the same way, but for inserts. If you set
 
 ### autoValue
 
-NOTE: If you are using a Meteor release prior to 0.7.0, the autoValue feature
-does not work when you also have virtual fields or a transform.
-
-The `autoValue` option allows you to specify a function that is called on every
-insert or update to determine what the value for the field should be. This is
-a powerful feature that allows you to set up either forced values or default
-values.
-
-An `autoValue` function is passed the document or modifier as its only argument,
-but you will generally not need it. Instead, the function context provides a
-variety of properties and methods to help you determine what you should return.
-
-If an `autoValue` function returns `undefined`, the field's value will be
-whatever the document or modifier says it should be. Any other return value will
-be used as the field's value. You may also return special pseudo-modifier objects
-for update operations. Examples are `{$inc: 1}` and `{$push: new Date}`.
-
-The following properties and methods are available in `this` for an `autoValue`
-function:
+The `autoValue` option is provided by the SimpleSchema package and is documented
+there. Collection2 adds the following properties to `this` for any `autoValue`
+function that is called as part of a C2 database operation:
 
 * isInsert: True if it's an insert operation
 * isUpdate: True if it's an update operation
 * isUpsert: True if it's an upsert operation (either `upsert()` or `upsert: true`)
 * userId: The ID of the currently logged in user. (Always `null` for server-initiated actions.)
-* isSet: True if the field is already set in the document or modifier
-* unset(): Call this method to prevent the original value from being used when
-you return undefined.
-* value: If isSet = true, this contains the field's current (requested) value
-in the document or modifier.
-* operator: If isSet = true and isUpdate = true, this contains the name of the 
-update operator in the modifier in which this field is being changed. For example,
-if the modifier were `{$set: {name: "Alice"}}`, in the autoValue function for
-the `name` field, `this.isSet` would be true, `this.value` would be "Alice",
-and `this.operator` would be "$set".
-* field(): Use this method to get information about other fields. Pass a field
-name (schema key) as the only argument. The return object will have isSet, value,
-and operator properties for that field.
 
 Note that autoValue functions are run on the client only for validation purposes,
 but the actual value saved will always be generated on the server, regardless of
@@ -389,6 +360,17 @@ custom checking.
 
 Indexes are built in the background so indexing does *not* block other database
 queries.
+
+### custom
+
+The `custom` option is provided by the SimpleSchema package and is documented
+there. Collection2 adds the following properties to `this` for any `custom`
+function that is called as part of a C2 database operation:
+
+* isInsert: True if it's an insert operation
+* isUpdate: True if it's an update operation
+* isUpsert: True if it's an upsert operation (either `upsert()` or `upsert: true`)
+* userId: The ID of the currently logged in user. (Always `null` for server-initiated actions.)
 
 ## What Happens When The Document Is Invalid?
 
