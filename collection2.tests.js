@@ -184,10 +184,19 @@ BlackBox = new Meteor.Collection('black', {
       blackbox: true
     }
   },
-  transform: function (doc) {
+  transform: function(doc) {
     doc.data = new Document(doc.data);
     return doc;
   }
+});
+
+defaultValues = new Meteor.Collection("dv", {
+  schema: new SimpleSchema({
+    bool1: {
+      type: Boolean,
+      defaultValue: false
+    }
+  })
 });
 
 if (Meteor.isServer) {
@@ -199,12 +208,28 @@ if (Meteor.isServer) {
     return autoValues.find();
   });
 
+  Meteor.publish("defvalues", function() {
+    return defaultValues.find();
+  });
+
   Meteor.publish("noschema", function() {
     return noSchemaCollection.find();
   });
-  
+
   Meteor.publish("black", function() {
     return BlackBox.find();
+  });
+
+  defaultValues.allow({
+    insert: function() {
+      return true;
+    },
+    update: function() {
+      return true;
+    },
+    remove: function() {
+      return true;
+    }
   });
 
   books.allow({
@@ -262,7 +287,7 @@ if (Meteor.isServer) {
       return true;
     }
   });
-  
+
   BlackBox.allow({
     insert: function() {
       return true;
@@ -275,12 +300,14 @@ if (Meteor.isServer) {
   Meteor.startup(function() {
     books.remove({});
     autoValues.remove({});
+    defaultValues.remove({});
     noSchemaCollection.remove({});
     BlackBox.remove({});
   });
 } else {
   Meteor.subscribe("books");
   Meteor.subscribe("autovalues");
+  Meteor.subscribe("defvalues");
   Meteor.subscribe("noschema");
   Meteor.subscribe("black");
 }
@@ -460,7 +487,7 @@ if (Meteor.isServer) {
 }
 
 Tinytest.addAsync("Collection2 - Black Box", function(test, next) {
-  
+
   var now = new Date;
 
   var boxData = {
@@ -485,10 +512,10 @@ Tinytest.addAsync("Collection2 - Black Box", function(test, next) {
     doc && test.equal(doc.data.one, 1);
     doc && test.equal(doc.data.two, "some string");
     doc && test.equal(doc.data.three.four, now);
-    
+
     // remove the EJSON prototype and try again; should still work
     Document.prototype = {};
-    
+
     boxData = {
       name: "Test",
       data: new Document({
@@ -503,7 +530,7 @@ Tinytest.addAsync("Collection2 - Black Box", function(test, next) {
     BlackBox.insert(boxData, function(error, newId2) {
       test.isFalse(!!error, 'We expected the insert not to trigger an error since all required fields are present');
       test.isTrue(!!newId, 'We expected to get an ID back');
-    
+
       var doc = BlackBox.findOne({_id: newId2});
       test.isTrue(!!doc, 'There should be a document inserted');
       doc && test.isTrue(doc.data instanceof Document, "we lost the custom type");
@@ -567,6 +594,19 @@ Tinytest.addAsync("Collection2 - AutoValue Update", function(test, next) {
       test.length(p.updatesHistory, 1);
       test.equal(p.updatesHistory[0].content, 'Test Content', 'expected updatesHistory.content to be "Test Content"');
       test.equal(p.updateCount, 1, 'expected updateCount to be 1');
+      next();
+    });
+  });
+});
+
+Tinytest.addAsync("Collection2 - DefaultValue Update", function(test, next) {
+  // Ensure that default values do not mess with inserts and updates of the field
+  defaultValues.insert({bool1: false}, function(err, testId) {
+    var p = defaultValues.findOne({_id: testId});
+    test.equal(p.bool1, false);
+    defaultValues.update({_id: testId}, {$set: {bool1: true}}, function(err, res) {
+      p = defaultValues.findOne({_id: testId});
+      test.equal(p.bool1, true);
       next();
     });
   });
