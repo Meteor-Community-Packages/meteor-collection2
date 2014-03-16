@@ -199,6 +199,43 @@ defaultValues = new Meteor.Collection("dv", {
   })
 });
 
+contextCheck = new Meteor.Collection("contextCheck", {
+  schema: new SimpleSchema({
+    foo: {
+      type: String,
+      optional: true
+    },
+    'context.userId': {
+      type: String,
+      optional: true,
+      autoValue: function () {
+        return this.userId;
+      }
+    },
+    'context.isFromTrustedCode': {
+      type: Boolean,
+      optional: true,
+      autoValue: function () {
+        return this.isFromTrustedCode;
+      }
+    },
+    'context.isInsert': {
+      type: Boolean,
+      optional: true,
+      autoValue: function () {
+        return this.isInsert;
+      }
+    },
+    'context.isUpdate': {
+      type: Boolean,
+      optional: true,
+      autoValue: function () {
+        return this.isUpdate;
+      }
+    }
+  })
+});
+
 if (Meteor.isServer) {
   Meteor.publish("books", function() {
     return books.find();
@@ -218,6 +255,10 @@ if (Meteor.isServer) {
 
   Meteor.publish("black", function() {
     return BlackBox.find();
+  });
+
+  Meteor.publish("contextCheck", function () {
+    return contextCheck.find();
   });
 
   defaultValues.allow({
@@ -297,12 +338,22 @@ if (Meteor.isServer) {
     }
   });
 
+  contextCheck.allow({
+    insert: function() {
+      return true;
+    },
+    update: function() {
+      return true;
+    }
+  });
+
   Meteor.startup(function() {
     books.remove({});
     autoValues.remove({});
     defaultValues.remove({});
     noSchemaCollection.remove({});
     BlackBox.remove({});
+    contextCheck.remove({});
   });
 } else {
   Meteor.subscribe("books");
@@ -310,6 +361,7 @@ if (Meteor.isServer) {
   Meteor.subscribe("defvalues");
   Meteor.subscribe("noschema");
   Meteor.subscribe("black");
+  Meteor.subscribe("contextCheck");
 }
 
 function equals(a, b) {
@@ -594,6 +646,35 @@ Tinytest.addAsync("Collection2 - AutoValue Update", function(test, next) {
       test.length(p.updatesHistory, 1);
       test.equal(p.updatesHistory[0].content, 'Test Content', 'expected updatesHistory.content to be "Test Content"');
       test.equal(p.updateCount, 1, 'expected updateCount to be 1');
+      next();
+    });
+  });
+});
+
+Tinytest.addAsync("Collection2 - AutoValue Context", function(test, next) {
+  contextCheck.insert({}, function (error, testId) {
+    test.isFalse(!!error, 'insert failed: ' + (error && error.message))
+    var ctx = contextCheck.findOne({_id: testId});
+    test.isTrue(ctx.context.isInsert, 'expected isInsert to be true');
+    test.isFalse(ctx.context.isUpdate, 'expected isUpdate to be false');
+    test.isNull(ctx.context.userId, 'expected userId to be null');
+    if (Meteor.isClient) {
+      test.isFalse(ctx.context.isFromTrustedCode, 'expected isFromTrustedCode to be false');
+    } else {
+      test.isTrue(ctx.context.isFromTrustedCode, 'expected isFromTrustedCode to be true');
+    }
+
+    contextCheck.update({_id: testId}, {$set: {foo: "bar"}}, function (error, result) {
+      ctx = contextCheck.findOne({_id: testId});
+      test.equal(ctx.foo, 'bar', "update failed");
+      test.isTrue(ctx.context.isUpdate, 'expected isUpdate to be true');
+      test.isFalse(ctx.context.isInsert, 'expected isInsert to be false');
+      test.isNull(ctx.context.userId, 'expected userId to be null');
+      if (Meteor.isClient) {
+        test.isFalse(ctx.context.isFromTrustedCode, 'expected isFromTrustedCode to be false');
+      } else {
+        test.isTrue(ctx.context.isFromTrustedCode, 'expected isFromTrustedCode to be true');
+      }
       next();
     });
   });

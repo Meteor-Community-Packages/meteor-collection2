@@ -168,7 +168,8 @@ Meteor.Collection = function(name, options) {
             isInsert: true,
             isUpdate: false,
             isUpsert: false,
-            userId: userId
+            userId: userId,
+            isFromTrustedCode: false
           }
         });
 
@@ -188,7 +189,8 @@ Meteor.Collection = function(name, options) {
             isInsert: false,
             isUpdate: true,
             isUpsert: false,
-            userId: userId
+            userId: userId,
+            isFromTrustedCode: false
           }
         });
 
@@ -211,7 +213,7 @@ Meteor.Collection = function(name, options) {
             if (error) {
               ret = true;
             }
-          }], true, userId);
+          }], true, userId, false);
 
         return ret;
       },
@@ -223,7 +225,7 @@ Meteor.Collection = function(name, options) {
             if (error) {
               ret = true;
             }
-          }], true, userId);
+          }], true, userId, false);
 
         return ret;
       },
@@ -270,8 +272,8 @@ var origInsert = Meteor.Collection.prototype.insert;
 Meteor.Collection.prototype.insert = function() {
   var self = this, args = _.toArray(arguments);
   if (self._c2) {
-    args = doValidate.call(self, "insert", args,
-    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null);
+    args = doValidate.call(self, "insert", args, false,
+    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null, Meteor.isServer);
     if (!args) {
       //doValidate already called the callback or threw the error
       return;
@@ -284,8 +286,8 @@ var origUpdate = Meteor.Collection.prototype.update;
 Meteor.Collection.prototype.update = function() {
   var self = this, args = _.toArray(arguments);
   if (self._c2) {
-    args = doValidate.call(self, "update", args,
-    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null);
+    args = doValidate.call(self, "update", args, false,
+    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null, Meteor.isServer);
     if (!args) {
       //doValidate already called the callback or threw the error
       return;
@@ -298,8 +300,8 @@ var origUpsert = Meteor.Collection.prototype.upsert;
 Meteor.Collection.prototype.upsert = function() {
   var self = this, args = _.toArray(arguments);
   if (self._c2) {
-    args = doValidate.call(self, "upsert", args,
-    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null);
+    args = doValidate.call(self, "upsert", args, false,
+    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null, Meteor.isServer);
     if (!args) {
       //doValidate already called the callback or threw the error
       return;
@@ -312,7 +314,7 @@ Meteor.Collection.prototype.upsert = function() {
  * Private
  */
 
-var doValidate = function(type, args, skipAutoValue, userId) {
+var doValidate = function(type, args, skipAutoValue, userId, isFromTrustedCode) {
   var self = this,
           schema = self._c2._simpleSchema,
           doc, callback, error, options, isUpsert;
@@ -391,9 +393,10 @@ var doValidate = function(type, args, skipAutoValue, userId) {
       isModifier: (type !== "insert"),
       extendAutoValueContext: {
         isInsert: (type === "insert"),
-        isUpdate: (type === "update" && options.upsert === false),
+        isUpdate: (type === "update" && options.upsert !== true),
         isUpsert: isUpsert,
-        userId: userId
+        userId: userId,
+        isFromTrustedCode: isFromTrustedCode
       }
     });
   }
@@ -430,9 +433,10 @@ var doValidate = function(type, args, skipAutoValue, userId) {
     upsert: isUpsert,
     extendedCustomContext: {
       isInsert: (type === "insert"),
-      isUpdate: (type === "update" && options.upsert === false),
+      isUpdate: (type === "update" && options.upsert !== true),
       isUpsert: isUpsert,
-      userId: userId
+      userId: userId,
+      isFromTrustedCode: isFromTrustedCode
     }
   });
 
