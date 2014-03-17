@@ -214,6 +214,7 @@ function that is called as part of a C2 database operation:
 * isUpdate: True if it's an update operation
 * isUpsert: True if it's an upsert operation (either `upsert()` or `upsert: true`)
 * userId: The ID of the currently logged in user. (Always `null` for server-initiated actions.)
+* isFromTrustedCode: True if the insert, update, or upsert was initiated from trusted (server) code
 
 Note that autoValue functions are run on the client only for validation purposes,
 but the actual value saved will always be generated on the server, regardless of
@@ -371,6 +372,7 @@ function that is called as part of a C2 database operation:
 * isUpdate: True if it's an update operation
 * isUpsert: True if it's an upsert operation (either `upsert()` or `upsert: true`)
 * userId: The ID of the currently logged in user. (Always `null` for server-initiated actions.)
+* isFromTrustedCode: True if the insert, update, or upsert was initiated from trusted (server) code
 
 ## What Happens When The Document Is Invalid?
 

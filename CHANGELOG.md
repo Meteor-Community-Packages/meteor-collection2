@@ -5,6 +5,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.9
+
+* Fixed some issues with `this` object in autoValue functions. `userId` and `isUpdate` were sometimes not set correctly.
+* Added `isFromTrustedCode` to `this` object in autoValue and custom validation functions.
+
 ### 0.3.8
 
 `autoValue` support moved to SimpleSchema. Collection2 continues to extend
