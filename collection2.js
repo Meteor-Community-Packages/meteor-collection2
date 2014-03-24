@@ -18,7 +18,7 @@ SimpleSchema.messages({
  */
 
 var constructor = Meteor.Collection;
-Meteor.Collection = function(name, options) {
+Meteor.Collection = function c2CollectionConstructor(name, options) {
   var self = this, ss;
   options = options || {};
 
@@ -46,213 +46,8 @@ Meteor.Collection = function(name, options) {
   // Call original Meteor.Collection constructor
   constructor.call(self, name, options);
 
-  if (ss) {
-    if (!(ss instanceof SimpleSchema)) {
-      ss = new SimpleSchema(ss);
-    }
-
-    self._c2 = {};
-    self._c2._simpleSchema = ss;
-
-    // Loop over fields definitions and ensure collection indexes (server side only)
-    _.each(ss.schema(), function(definition, fieldName) {
-      if (Meteor.isServer && 'index' in definition) {
-        Meteor.startup(function() {
-          var index = {};
-          var indexValue = definition['index'];
-          var indexName = 'c2_' + fieldName;
-          if (indexValue === true)
-            indexValue = 1;
-          index[fieldName] = indexValue;
-          var unique = !!definition.unique && (indexValue === 1 || indexValue === -1);
-          var sparse = !!definition.optional && unique;
-          if (indexValue !== false) {
-            self._collection._ensureIndex(index, {
-              background: true,
-              name: indexName,
-              unique: unique,
-              sparse: sparse
-            });
-          } else {
-            try {
-              self._collection._dropIndex(indexName);
-            } catch (err) {
-              console.warn(indexName + " index does not exist.");
-            }
-          }
-        });
-      }
-    });
-
-    // Set up additional checks
-    ss.validator(function() {
-      var test, totalUsing, totalWillUse, sel;
-      var def = this.definition;
-      var val = this.value;
-      var op = this.operator;
-      var key = this.key;
-
-      if (def.denyInsert && val !== void 0 && !op) {
-        // This is an insert of a defined value into a field where denyInsert=true
-        return "insertNotAllowed";
-      }
-
-      if (def.denyUpdate && op) {
-        // This is an insert of a defined value into a field where denyUpdate=true
-        if (op !== "$set" || (op === "$set" && val !== void 0)) {
-          return "updateNotAllowed";
-        }
-      }
-
-      // If a developer wants to ensure that a field is `unique` we do a custom
-      // query to verify that another field with the same value does not exist.
-      // (_skipClientUniqueCheck is for tests)
-      if (def.unique && !self._skipClientUniqueCheck) {
-        // If the value is not set we skip this test for performance reasons. The
-        // authorization is exclusively determined by the `optional` parameter.
-        if (val === void 0 || val === null)
-          return true;
-
-        // On the server if the field also have an index we rely on MongoDB to do
-        // this verification -- which is a more efficient strategy.
-        if (Meteor.isServer && [1, -1, true].indexOf(def.index) !== -1)
-          return true;
-
-        test = {};
-        test[key] = val;
-        if (op && op !== "$inc") { //updating
-          sel = _.clone(self._c2._selector);
-          if (!sel) {
-            return true; //we can't determine whether we have a notUnique error
-          } else if (typeof sel === "string") {
-            sel = {_id: sel};
-          }
-
-          // Find count of docs where this key is already set to this value
-          totalUsing = self.find(test).count();
-
-          // Find count of docs that will be updated, where key
-          // is not already equal to val
-          // TODO this will overwrite if key is in selector already;
-          // need more advanced checking
-          sel[key] = {};
-          sel[key]["$ne"] = val;
-          totalWillUse = self.find(sel).count();
-
-          // If more than one would have the val after update, it's not unique
-          return totalUsing + totalWillUse > 1 ? "notUnique" : true;
-        } else {
-          return self.findOne(test) ? "notUnique" : true;
-        }
-      }
-
-      return true;
-    });
-
-    // First define deny functions to extend doc with the results of clean
-    // and autovalues. This must be done with "transform: null" or we would be
-    // extending a clone of doc and therefore have no effect.
-    self.deny({
-      insert: function(userId, doc) {
-        // If _id has already been added, remove it temporarily if it's
-        // not explicitly defined in the schema.
-        var id;
-        if (Meteor.isServer && doc._id && !ss.allowsKey("_id")) {
-          id = doc._id;
-          delete doc._id;
-        }
-
-        // Referenced doc is cleaned in place
-        ss.clean(doc, {
-          isModifier: false,
-          extendAutoValueContext: {
-            isInsert: true,
-            isUpdate: false,
-            isUpsert: false,
-            userId: userId,
-            isFromTrustedCode: false
-          }
-        });
-
-        // Add the ID back
-        if (id) {
-          doc._id = id;
-        }
-
-        return false;
-      },
-      update: function(userId, doc, fields, modifier) {
-
-        // Referenced modifier is cleaned in place
-        ss.clean(modifier, {
-          isModifier: true,
-          extendAutoValueContext: {
-            isInsert: false,
-            isUpdate: true,
-            isUpsert: false,
-            userId: userId,
-            isFromTrustedCode: false
-          }
-        });
-
-        return false;
-      },
-      fetch: [],
-      transform: null
-    });
-
-    // Second define deny functions to validate again on the server
-    // for client-initiated inserts and updates. These should be
-    // called after the clean/autovalue functions since we're adding
-    // them after. These must *not* have "transform: null" because
-    // we need to pass the doc through any transforms to be sure
-    // that custom types are properly recognized for type validation.
-    self.deny({
-      insert: function(userId, doc) {
-        var ret = false;
-        doValidate.call(self, "insert", [doc, {}, function(error) {
-            if (error) {
-              ret = true;
-            }
-          }], true, userId, false);
-
-        return ret;
-      },
-      update: function(userId, doc, fields, modifier) {
-        // NOTE: This will never be an upsert because client-side upserts
-        // are not allowed once you define allow/deny functions
-        var ret = false;
-        doValidate.call(self, "update", [null, modifier, {}, function(error) {
-            if (error) {
-              ret = true;
-            }
-          }], true, userId, false);
-
-        return ret;
-      },
-      fetch: []
-    });
-
-    // If insecure package is in use, we need to add allow rules that return
-    // true. Otherwise, it would seemingly turn off insecure mode.
-    if (Package && Package.insecure) {
-      self.allow({
-        insert: function() {
-          return true;
-        },
-        update: function() {
-          return true;
-        },
-        fetch: [],
-        transform: null
-      });
-    }
-    // If insecure package is NOT in use, then adding the two deny functions
-    // does not have any effect on the main app's security paradigm. The
-    // user will still be required to add at least one allow function of her
-    // own for each operation for this collection. And the user may still add
-    // additional deny functions, but does not have to.
-  }
+  // Attach schema
+  ss && self.attachSchema(ss);
 };
 
 // Make sure prototype and normal properties are kept
@@ -264,13 +59,233 @@ for (var prop in constructor) {
   }
 }
 
-Meteor.Collection.prototype.simpleSchema = function() {
+/**
+ * Meteor.Collection.prototype.attachSchema
+ * @param  {SimpleSchema|Object} ss - SimpleSchema instance or a schema definition object from which to create a new SimpleSchema instance
+ * @return {undefined}
+ *
+ * Use this method to attach a schema to a collection created by another package,
+ * such as Meteor.users. It is most likely unsafe to call this method more than
+ * once for a single collection, or to call this for a collection that had a
+ * schema object passed to its constructor.
+ */
+Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
+  var self = this;
+
+  if (!(ss instanceof SimpleSchema)) {
+    ss = new SimpleSchema(ss);
+  }
+
+  self._c2 = {};
+  self._c2._simpleSchema = ss;
+
+  // Loop over fields definitions and ensure collection indexes (server side only)
+  _.each(ss.schema(), function(definition, fieldName) {
+    if (Meteor.isServer && 'index' in definition) {
+      Meteor.startup(function() {
+        var index = {};
+        var indexValue = definition['index'];
+        var indexName = 'c2_' + fieldName;
+        if (indexValue === true)
+          indexValue = 1;
+        index[fieldName] = indexValue;
+        var unique = !!definition.unique && (indexValue === 1 || indexValue === -1);
+        var sparse = !!definition.optional && unique;
+        if (indexValue !== false) {
+          self._collection._ensureIndex(index, {
+            background: true,
+            name: indexName,
+            unique: unique,
+            sparse: sparse
+          });
+        } else {
+          try {
+            self._collection._dropIndex(indexName);
+          } catch (err) {
+            console.warn(indexName + " index does not exist.");
+          }
+        }
+      });
+    }
+  });
+
+  // Set up additional checks
+  ss.validator(function() {
+    var test, totalUsing, totalWillUse, sel;
+    var def = this.definition;
+    var val = this.value;
+    var op = this.operator;
+    var key = this.key;
+
+    if (def.denyInsert && val !== void 0 && !op) {
+      // This is an insert of a defined value into a field where denyInsert=true
+      return "insertNotAllowed";
+    }
+
+    if (def.denyUpdate && op) {
+      // This is an insert of a defined value into a field where denyUpdate=true
+      if (op !== "$set" || (op === "$set" && val !== void 0)) {
+        return "updateNotAllowed";
+      }
+    }
+
+    // If a developer wants to ensure that a field is `unique` we do a custom
+    // query to verify that another field with the same value does not exist.
+    // (_skipClientUniqueCheck is for tests)
+    if (def.unique && !self._skipClientUniqueCheck) {
+      // If the value is not set we skip this test for performance reasons. The
+      // authorization is exclusively determined by the `optional` parameter.
+      if (val === void 0 || val === null)
+        return true;
+
+      // On the server if the field also have an index we rely on MongoDB to do
+      // this verification -- which is a more efficient strategy.
+      if (Meteor.isServer && [1, -1, true].indexOf(def.index) !== -1)
+        return true;
+
+      test = {};
+      test[key] = val;
+      if (op && op !== "$inc") { //updating
+        sel = _.clone(self._c2._selector);
+        if (!sel) {
+          return true; //we can't determine whether we have a notUnique error
+        } else if (typeof sel === "string") {
+          sel = {_id: sel};
+        }
+
+        // Find count of docs where this key is already set to this value
+        totalUsing = self.find(test).count();
+
+        // Find count of docs that will be updated, where key
+        // is not already equal to val
+        // TODO this will overwrite if key is in selector already;
+        // need more advanced checking
+        sel[key] = {};
+        sel[key]["$ne"] = val;
+        totalWillUse = self.find(sel).count();
+
+        // If more than one would have the val after update, it's not unique
+        return totalUsing + totalWillUse > 1 ? "notUnique" : true;
+      } else {
+        return self.findOne(test) ? "notUnique" : true;
+      }
+    }
+
+    return true;
+  });
+
+  // First define deny functions to extend doc with the results of clean
+  // and autovalues. This must be done with "transform: null" or we would be
+  // extending a clone of doc and therefore have no effect.
+  self.deny({
+    insert: function(userId, doc) {
+      // If _id has already been added, remove it temporarily if it's
+      // not explicitly defined in the schema.
+      var id;
+      if (Meteor.isServer && doc._id && !ss.allowsKey("_id")) {
+        id = doc._id;
+        delete doc._id;
+      }
+
+      // Referenced doc is cleaned in place
+      ss.clean(doc, {
+        isModifier: false,
+        extendAutoValueContext: {
+          isInsert: true,
+          isUpdate: false,
+          isUpsert: false,
+          userId: userId,
+          isFromTrustedCode: false
+        }
+      });
+
+      // Add the ID back
+      if (id) {
+        doc._id = id;
+      }
+
+      return false;
+    },
+    update: function(userId, doc, fields, modifier) {
+
+      // Referenced modifier is cleaned in place
+      ss.clean(modifier, {
+        isModifier: true,
+        extendAutoValueContext: {
+          isInsert: false,
+          isUpdate: true,
+          isUpsert: false,
+          userId: userId,
+          isFromTrustedCode: false
+        }
+      });
+
+      return false;
+    },
+    fetch: [],
+    transform: null
+  });
+
+  // Second define deny functions to validate again on the server
+  // for client-initiated inserts and updates. These should be
+  // called after the clean/autovalue functions since we're adding
+  // them after. These must *not* have "transform: null" because
+  // we need to pass the doc through any transforms to be sure
+  // that custom types are properly recognized for type validation.
+  self.deny({
+    insert: function(userId, doc) {
+      var ret = false;
+      doValidate.call(self, "insert", [doc, {}, function(error) {
+          if (error) {
+            ret = true;
+          }
+        }], true, userId, false);
+
+      return ret;
+    },
+    update: function(userId, doc, fields, modifier) {
+      // NOTE: This will never be an upsert because client-side upserts
+      // are not allowed once you define allow/deny functions
+      var ret = false;
+      doValidate.call(self, "update", [null, modifier, {}, function(error) {
+          if (error) {
+            ret = true;
+          }
+        }], true, userId, false);
+
+      return ret;
+    },
+    fetch: []
+  });
+
+  // If insecure package is in use, we need to add allow rules that return
+  // true. Otherwise, it would seemingly turn off insecure mode.
+  if (Package && Package.insecure) {
+    self.allow({
+      insert: function() {
+        return true;
+      },
+      update: function() {
+        return true;
+      },
+      fetch: [],
+      transform: null
+    });
+  }
+  // If insecure package is NOT in use, then adding the two deny functions
+  // does not have any effect on the main app's security paradigm. The
+  // user will still be required to add at least one allow function of her
+  // own for each operation for this collection. And the user may still add
+  // additional deny functions, but does not have to.
+};
+
+Meteor.Collection.prototype.simpleSchema = function c2SS() {
   var self = this;
   return self._c2 ? self._c2._simpleSchema : null;
 };
 
 var origInsert = Meteor.Collection.prototype.insert;
-Meteor.Collection.prototype.insert = function() {
+Meteor.Collection.prototype.insert = function c2Insert() {
   var self = this, args = _.toArray(arguments);
   if (self._c2) {
     args = doValidate.call(self, "insert", args, false,
@@ -284,7 +299,7 @@ Meteor.Collection.prototype.insert = function() {
 };
 
 var origUpdate = Meteor.Collection.prototype.update;
-Meteor.Collection.prototype.update = function() {
+Meteor.Collection.prototype.update = function c2Update() {
   var self = this, args = _.toArray(arguments);
   if (self._c2) {
     args = doValidate.call(self, "update", args, false,
@@ -298,7 +313,7 @@ Meteor.Collection.prototype.update = function() {
 };
 
 var origUpsert = Meteor.Collection.prototype.upsert;
-Meteor.Collection.prototype.upsert = function() {
+Meteor.Collection.prototype.upsert = function c2Upsert() {
   var self = this, args = _.toArray(arguments);
   if (self._c2) {
     args = doValidate.call(self, "upsert", args, false,
@@ -315,7 +330,7 @@ Meteor.Collection.prototype.upsert = function() {
  * Private
  */
 
-var doValidate = function(type, args, skipAutoValue, userId, isFromTrustedCode) {
+function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   var self = this,
           schema = self._c2._simpleSchema,
           doc, callback, error, options, isUpsert;
@@ -476,7 +491,7 @@ var doValidate = function(type, args, skipAutoValue, userId, isFromTrustedCode) 
       throw error;
     }
   }
-};
+}
 
 function wrapCallbackForNotUnique(col, doc, vCtx, cb) {
   return function (error) {

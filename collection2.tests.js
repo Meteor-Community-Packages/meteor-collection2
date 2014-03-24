@@ -190,14 +190,15 @@ BlackBox = new Meteor.Collection('black', {
   }
 });
 
-defaultValues = new Meteor.Collection("dv", {
-  schema: new SimpleSchema({
-    bool1: {
-      type: Boolean,
-      defaultValue: false
-    }
-  })
-});
+defaultValues = new Meteor.Collection("dv");
+
+// Ensure that attaching the schema after constructing works, too
+defaultValues.attachSchema(new SimpleSchema({
+  bool1: {
+    type: Boolean,
+    defaultValue: false
+  }
+}));
 
 contextCheck = new Meteor.Collection("contextCheck", {
   schema: new SimpleSchema({
@@ -708,16 +709,22 @@ Tinytest.addAsync("Collection2 - AutoValue Context", function(test, next) {
 });
 
 Tinytest.addAsync("Collection2 - DefaultValue Update", function(test, next) {
-  // Ensure that default values do not mess with inserts and updates of the field
-  defaultValues.insert({bool1: false}, function(err, testId) {
+  // Base case
+  defaultValues.insert({}, function(err, testId) {
     var p = defaultValues.findOne({_id: testId});
     test.equal(p.bool1, false);
-    defaultValues.update({_id: testId}, {$set: {bool1: true}}, function(err, res) {
-      p = defaultValues.findOne({_id: testId});
+
+    // Ensure that default values do not mess with inserts and updates of the field
+    defaultValues.insert({bool1: true}, function(err, testId) {
+      var p = defaultValues.findOne({_id: testId});
       test.equal(p.bool1, true);
-      next();
+      defaultValues.update({_id: testId}, {$set: {bool1: true}}, function(err, res) {
+        p = defaultValues.findOne({_id: testId});
+        test.equal(p.bool1, true);
+        next();
+      });
     });
-  });
+  });  
 });
 
 Tinytest.addAsync('Collection2 - Upsert', function(test, next) {
