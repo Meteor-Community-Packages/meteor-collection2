@@ -5,6 +5,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.10
+
+* Add `attachSchema` method for attaching a schema to collections created by another package, such as Meteor.users.
+* Ensure "notUnique" errors are added to invalidKeys, even when thrown on the server by MongoDB.
+
 ### 0.3.9
 
 * Fixed some issues with `this` object in autoValue functions. `userId` and `isUpdate` were sometimes not set correctly.
