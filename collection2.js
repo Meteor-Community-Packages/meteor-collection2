@@ -106,7 +106,8 @@ Meteor.Collection = function(name, options) {
 
       // If a developer wants to ensure that a field is `unique` we do a custom
       // query to verify that another field with the same value does not exist.
-      if (def.unique) {
+      // (_skipClientUniqueCheck is for tests)
+      if (def.unique && !self._skipClientUniqueCheck) {
         // If the value is not set we skip this test for performance reasons. The
         // authorization is exclusively determined by the `optional` parameter.
         if (val === void 0 || val === null)
@@ -454,6 +455,11 @@ var doValidate = function(type, args, skipAutoValue, userId, isFromTrustedCode) 
     } else {
       args[1] = doc;
     }
+    // If callback, set invalidKey when we get a mongo unique error
+    var last = args.length - 1;
+    if (typeof args[last] === 'function') {
+      args[last] = wrapCallbackForNotUnique(self, doc, options.validationContext, args[last]);
+    }
     return args;
   } else {
     var invalidKeys = ctx.invalidKeys();
@@ -471,6 +477,24 @@ var doValidate = function(type, args, skipAutoValue, userId, isFromTrustedCode) 
     }
   }
 };
+
+function wrapCallbackForNotUnique(col, doc, vCtx, cb) {
+  return function (error) {
+    if (error && ((error.name === "MongoError" && error.code === 11001) || error.message.indexOf('MongoError: E11000' !== -1)) && error.message.indexOf('c2_') !== -1) {
+      var fName = error.message.split('c2_')[1].split(' ')[0];
+      var mDoc = new MongoObject(doc);
+      var info = mDoc.getInfoForKey(fName);
+      var fVal = info ? info.value : void 0;
+      col.simpleSchema().namedContext(vCtx)._invalidKeys.push({
+        name: fName,
+        type: 'notUnique',
+        value: fVal,
+        message: col.simpleSchema().messageForError('notUnique', fName, null, fVal)
+      });
+    }
+    return cb.apply(this, arguments);
+  };
+}
 
 // Backwards compatibility; Meteor.Collection2 is deprecated
 Meteor.Collection2 = Meteor.Collection;

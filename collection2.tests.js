@@ -356,7 +356,7 @@ if (Meteor.isServer) {
     contextCheck.remove({});
   });
 } else {
-  Meteor.subscribe("books");
+  var booksSubscription = Meteor.subscribe("books");
   Meteor.subscribe("autovalues");
   Meteor.subscribe("defvalues");
   Meteor.subscribe("noschema");
@@ -402,6 +402,15 @@ Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
 // When unique: true, inserts should fail if another document already has the same value
 Tinytest.addAsync('Collection2 - Unique', function(test, next) {
   var isbn = Meteor.uuid();
+
+  function testUniqueISBN(name) {
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+    var key = invalidKeys[0] || {};
+
+    test.equal(key.name, name, 'We expected the key "' + name + '"');
+    test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
+  }
 
   var bookId = books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn, indexedIsbn: isbn}, function(error, result) {
     test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
@@ -456,12 +465,7 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
               books.update(bookId, {$set: {isbn: isbn + "A"}}, function(error) {
                 test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
 
-                var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-                test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-                var key = invalidKeys[0] || {};
-
-                test.equal(key.name, 'isbn', 'We expected the key "isbn"');
-                test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
+                testUniqueISBN('isbn');
 
                 // Test unique: true, index: true
                 // In this case we rely on MongoDB rejection on the server
@@ -469,10 +473,33 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
                   books.update({isbn: isbn + 'A'}, {$set: {indexedIsbn: isbn}}, function(err, res) {
                     test.equal(err.name, 'MongoError', 'We expect the violation of unique index to be rejected by MongoDB');
                     test.equal(err.code, 11001, 'We expect the violation of unique index to be rejected by MongoDB');
+
+                    // Test that we update invalidKeys on server from mongo error
+                    testUniqueISBN('indexedIsbn');
+
                     next();
                   });
                 } else {
-                  next();
+                  //skip unique check on the client so that we have to rely on the 
+                  //server to do notUnique checking
+                  books._skipClientUniqueCheck = true;
+                  //make sure we still get the error and invalidKeys sent back from the server;
+                  //this means that we can still show reactive "not unique" error messages even
+                  //if the uniqueness check doesn't fail until we're on the server
+                  var b = books.findOne({isbn: isbn + 'A'});
+                  books.update(b._id, {$set: {indexedIsbn: isbn}}, function(err, res) {
+                    // On the client, the mongo error is encapsulated in a Meteor 409 error
+                    test.equal(err.errorType, 'Meteor.Error', 'We expect the violation of unique index to be rejected by MongoDB');
+                    test.equal(err.error, 409, 'We expect the violation of unique index to be rejected by MongoDB');
+
+                    // Test that we update invalidKeys on server from mongo error
+                    testUniqueISBN('indexedIsbn');
+
+                    // undo skipping
+                    delete books._skipClientUniqueCheck;
+
+                    next();
+                  });
                 }
               });
             });
