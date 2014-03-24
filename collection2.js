@@ -284,47 +284,22 @@ Meteor.Collection.prototype.simpleSchema = function c2SS() {
   return self._c2 ? self._c2._simpleSchema : null;
 };
 
-var origInsert = Meteor.Collection.prototype.insert;
-Meteor.Collection.prototype.insert = function c2Insert() {
-  var self = this, args = _.toArray(arguments);
-  if (self._c2) {
-    args = doValidate.call(self, "insert", args, false,
-    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null, Meteor.isServer);
-    if (!args) {
-      //doValidate already called the callback or threw the error
-      return;
+// Wrap DB write operation methods
+_.each(['insert', 'update', 'upsert'], function(methodName) {
+  var _super = Meteor.Collection.prototype[methodName];
+  Meteor.Collection.prototype[methodName] = function () {
+    var self = this, args = _.toArray(arguments);
+    if (self._c2) {
+      args = doValidate.call(self, methodName, args, false,
+        (Meteor.isClient && Meteor.userId && Meteor.userId()) || null, Meteor.isServer);
+      if (!args) {
+        // doValidate already called the callback or threw the error
+        return;
+      }
     }
-  }
-  return origInsert.apply(self, args);
-};
-
-var origUpdate = Meteor.Collection.prototype.update;
-Meteor.Collection.prototype.update = function c2Update() {
-  var self = this, args = _.toArray(arguments);
-  if (self._c2) {
-    args = doValidate.call(self, "update", args, false,
-    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null, Meteor.isServer);
-    if (!args) {
-      //doValidate already called the callback or threw the error
-      return;
-    }
-  }
-  return origUpdate.apply(self, args);
-};
-
-var origUpsert = Meteor.Collection.prototype.upsert;
-Meteor.Collection.prototype.upsert = function c2Upsert() {
-  var self = this, args = _.toArray(arguments);
-  if (self._c2) {
-    args = doValidate.call(self, "upsert", args, false,
-    (Meteor.isClient && Meteor.userId && Meteor.userId()) || null, Meteor.isServer);
-    if (!args) {
-      //doValidate already called the callback or threw the error
-      return;
-    }
-  }
-  return origUpsert.apply(self, args);
-};
+    return _super.apply(self, args);
+  };
+});
 
 /*
  * Private
