@@ -5,6 +5,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.3.11
+
+A couple small changes to make sure return values and callback arguments match exactly what the original
+insert/update/upsert methods would do.
+
 ### 0.3.10
 
 * Add `attachSchema` method for attaching a schema to collections created by another package, such as Meteor.users.

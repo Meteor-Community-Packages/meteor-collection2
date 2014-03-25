@@ -294,7 +294,12 @@ _.each(['insert', 'update', 'upsert'], function(methodName) {
         (Meteor.isClient && Meteor.userId && Meteor.userId()) || null, Meteor.isServer);
       if (!args) {
         // doValidate already called the callback or threw the error
-        return;
+        if (methodName === "insert") {
+          // insert should always return an ID to match core behavior
+          return self._makeNewID();
+        } else {
+          return;
+        }
       }
     }
     return _super.apply(self, args);
@@ -461,7 +466,8 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     error = new Error(message);
     error.invalidKeys = invalidKeys;
     if (callback) {
-      callback(error);
+      // insert/update/upsert pass `false` when there's an error, so we do that
+      callback(error, false);
     } else {
       throw error;
     }

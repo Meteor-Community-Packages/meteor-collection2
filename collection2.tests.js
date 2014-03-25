@@ -383,11 +383,19 @@ if (Meteor.isServer) {
 
 // Test required field "copies"
 Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
-  books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
+  var numDone = 0;
+  function maybeNext() {
+    numDone++;
+    if (numDone === 2) {
+      next();
+    }
+  }
+
+  var id = books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
     //The insert will fail, error will be set,
     test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
-    //and result will be falsy because "copies" is required.
-    test.isFalse(!!result, 'result should be falsy because "copies" is required');
+    //and result will be false because "copies" is required.
+    test.isFalse(result, 'result should be false because "copies" is required');
     //The list of errors is available by calling books.simpleSchema().namedContext().invalidKeys()
     var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
@@ -396,8 +404,11 @@ Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
 
     test.equal(key.name, 'copies', 'We expected the key "copies"');
     test.equal(key.type, 'required', 'We expected the type to be required');
-    next();
+    maybeNext();
   });
+
+  test.equal(typeof id, 'string', 'We expected an ID to be returned');
+  maybeNext();
 });
 
 // When unique: true, inserts should fail if another document already has the same value
@@ -430,7 +441,7 @@ Tinytest.addAsync('Collection2 - Unique', function(test, next) {
         called = true;
         books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
           test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
-          test.isFalse(!!result, 'result should not be defined');
+          test.isFalse(result, 'result should be false');
 
           var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
           test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
@@ -891,7 +902,7 @@ if (Meteor.isClient) {
       books.insert({title: "Ulysses", author: "James Joyce", copies: 1}, function(error, result) {
         test.isTrue(!!error, 'We expected this to fail since access has to be set explicitly');
 
-        test.isFalse(!!result, 'result should be undefined');
+        test.isFalse(result, 'result should be false');
 
         test.equal((error || {}).error, 403, 'We should get Access denied');
 
