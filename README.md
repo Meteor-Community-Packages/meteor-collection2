@@ -442,3 +442,5 @@ and then submit a pull request.
 ### Major Contributors
 
 @mquandalle
+
+[![Support via Gittip](https://rawgithub.com/twolfson/gittip-badge/0.2.0/dist/gittip.png)](https://www.gittip.com/aldeed/)
