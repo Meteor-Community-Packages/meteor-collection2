@@ -95,6 +95,55 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
 });
 ```
 
+## Attaching a Schema to a Collection
+
+As you saw in the example, the typical way of attaching a SimpleSchema to a collection is to
+provide it as the `schema` option for the constructor. Another way to attach a schema is to
+call `myCollection.attachSchema(mySimpleSchemaInstance)`. This is particularly useful for
+collections created by other packages, such as the `Meteor.users` collection.
+
+Obviously, when you attach a schema, you must know what the schema should be. For `Meteor.users`,
+something like the following should work:
+
+```js
+{
+  username: {
+    type: String,
+    optional: true
+  },
+  emails: {
+    type: [Object],
+    optional: true,
+    blackbox: true
+  },
+  services: {
+    type: Object,
+    optional: true,
+    blackbox: true
+  },
+  createdAt: {
+    type: Date,
+    optional: true
+  },
+  profile: {
+    type: Object,
+    optional: true,
+    blackbox: true
+  }
+}
+```
+
+This schema has not been thoroughly vetted to ensure
+that it accounts for all possible properties the accounts packages might try to set. Furthermore,
+any other packages you add might also try to set additional properties. If you see warnings in the
+console about keys being removed, that's a good indication that you should add those keys to the
+schema.
+
+Note also that this schema uses the `blackbox: true` option for simplicity. You might choose instead
+to figure out a more specific schema.
+
+(If you figure out a more accurate `Meteor.users` schema, documentation pull requests are welcome.)
+
 ## Schema Format
 
 Refer to the
