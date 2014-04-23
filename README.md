@@ -112,10 +112,13 @@ something like the following should work:
     optional: true
   },
   emails: {
-    type: [Object],
-    optional: true,
-    blackbox: true
+    type: Array,
+    optional: true
   },
+  'emails.$': {
+    type: Object,
+    blackbox: true
+  }
   services: {
     type: Object,
     optional: true,
