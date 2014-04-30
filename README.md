@@ -154,18 +154,18 @@ Refer to the
 documentation for a list of all the available schema rules and validation
 methods.
 
-Use the `MyCollection2.simpleSchema()` method to access the bound `SimpleSchema`
+Use the `MyCollection.simpleSchema()` method to access the attached `SimpleSchema`
 instance for a Meteor.Collection instance. For example:
 
 ```js
-check(doc, MyCollection2.simpleSchema());
+check(doc, MyCollection.simpleSchema());
 ```
 
 ## Validation Contexts
 
 In the examples above, note that we called `namedContext()` with no arguments
 to access the SimpleSchema reactive validation methods. Contexts let you keep
-multiple separate lists of invalid keys for a single collection2.
+multiple separate lists of invalid keys for a single collection.
 In practice you might be able to get away with always using the default context.
 It depends on what you're doing. If you're using the context's reactive methods
 to update UI elements, you might find the need to use multiple contexts. For example,
@@ -451,40 +451,6 @@ Collection2 is simply calling SimpleSchema methods to do these things.
 This check happens on both the client and the server for client-initiated
 actions, giving you the speed of client-side validation along with the security
 of server-side validation.
-
-## Virtual Fields
-
-**NOTE: Virtual fields support may eventually be retired. I recommend using
-the [collection-helpers](https://github.com/dburles/meteor-collection-helpers)
-package instead since it achieves a similar result but does it more efficiently.**
-
-You can also implement easy virtual fields. Here's an example of that:
-
-```js
-Persons = new Meteor.Collection("persons", {
-    schema: new SimpleSchema({
-        firstName: {
-            type: String,
-            label: "First name",
-            max: 30
-        },
-        lastName: {
-            type: String,
-            label: "Last name",
-            max: 30
-        }
-    }),
-    virtualFields: {
-        fullName: function(person) {
-            return person.firstName + " " + person.lastName;
-        }
-    }
-});
-```
-
-This adds the virtual field to documents retrieved with `find()`, etc., which means you could
-now do `{{fullName}}` in your HTML as if fullName were actually stored in the MongoDB collection.
-However, you cannot query on a virtual field.
 
 ## Contributing
 
