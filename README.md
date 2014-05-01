@@ -105,6 +105,7 @@ collections created by other packages, such as the `Meteor.users` collection.
 Obviously, when you attach a schema, you must know what the schema should be. For `Meteor.users`,
 something like the following should work:
 
+`user`
 ```js
 {
     _id: {
@@ -139,6 +140,7 @@ something like the following should work:
 }
 ```
 
+`user.profile`
 ```js
 {
     firstName: {
@@ -181,6 +183,7 @@ something like the following should work:
 }
 ```
 
+`user.profile.country`
 ```js
 {
     name: {
