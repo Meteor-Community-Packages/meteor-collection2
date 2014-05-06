@@ -103,11 +103,12 @@ call `myCollection.attachSchema(mySimpleSchemaInstance)`. This is particularly u
 collections created by other packages, such as the `Meteor.users` collection.
 
 Obviously, when you attach a schema, you must know what the schema should be. For `Meteor.users`,
-something like the following should work:
+here is an example schema, which you might have to adjust for your own needs:
 
-`user`
 ```js
-{
+var Schema = {};
+
+Schema.User = new SimpleSchema({
     _id: {
         type: String,
         regEx: SimpleSchema.RegEx.Id
@@ -130,19 +131,17 @@ something like the following should work:
         type: Date
     },
     profile: {
-        type: 'Schema.user.profile',
+        type: Schema.UserProfile,
         optional: true
     },
     services: {
         type: Object,
+        optional: true,
         blackbox: true
     }
-}
-```
+});
 
-`user.profile`
-```js
-{
+Schema.UserProfile = new SimpleSchema({
     firstName: {
         type: String,
         regEx: /^[a-zA-Z-]{2,25}$/,
@@ -177,15 +176,12 @@ something like the following should work:
         optional: true
     },
     country: {
-        type: 'Schema.user.country',
+        type: Schema.UserCountry,
         optional: true
     }
-}
-```
+});
 
-`user.profile.country`
-```js
-{
+Schema.UserCountry = new SimpleSchema({
     name: {
         type: String
     },
@@ -193,7 +189,7 @@ something like the following should work:
         type: String,
         regEx: /^[A-Z]{2}$/
     }
-}
+});
 ```
 
 This schema has not been thoroughly vetted to ensure
