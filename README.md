@@ -105,34 +105,94 @@ collections created by other packages, such as the `Meteor.users` collection.
 Obviously, when you attach a schema, you must know what the schema should be. For `Meteor.users`,
 something like the following should work:
 
+`user`
 ```js
 {
-  username: {
-    type: String,
-    optional: true
-  },
-  emails: {
-    type: Array,
-    optional: true
-  },
-  'emails.$': {
-    type: Object,
-    blackbox: true
-  }
-  services: {
-    type: Object,
-    optional: true,
-    blackbox: true
-  },
-  createdAt: {
-    type: Date,
-    optional: true
-  },
-  profile: {
-    type: Object,
-    optional: true,
-    blackbox: true
-  }
+    _id: {
+        type: String,
+        regEx: SimpleSchema.RegEx.Id
+    },
+    username: {
+        type: String,
+        regEx: /^[a-z0-9A-Z_]{3,15}$/
+    },
+    emails: {
+        type: [Object]
+    },
+    "emails.$.address": {
+        type: String,
+        regEx: SimpleSchema.RegEx.Email
+    },
+    "emails.$.verified": {
+        type: Boolean
+    },
+    createdAt: {
+        type: Date
+    },
+    profile: {
+        type: 'Schema.user.profile',
+        optional: true
+    },
+    services: {
+        type: Object,
+        blackbox: true
+    }
+}
+```
+
+`user.profile`
+```js
+{
+    firstName: {
+        type: String,
+        regEx: /^[a-zA-Z-]{2,25}$/,
+        optional: true
+    },
+    lastName: {
+        type: String,
+        regEx: /^[a-zA-Z]{2,25}$/,
+        optional: true
+    },
+    birthday: {
+        type: Date,
+        optional: true
+    },
+    gender: {
+        type: String,
+        allowedValues: ['Male', 'Female'],
+        optional: true
+    },
+    organization : {
+        type: String,
+        regEx: /^[a-z0-9A-z .]{3,30}$/,
+        optional: true
+    },
+    website: {
+        type: String,
+        regEx: SimpleSchema.RegEx.Url,
+        optional: true
+    },
+    bio: {
+        type: String,
+        optional: true
+    },
+    country: {
+        type: 'Schema.user.country',
+        optional: true
+    }
+}
+```
+
+`user.profile.country`
+```js
+{
+    name: {
+        type: String
+    },
+    code: {
+        type: String,
+        regEx: /^[A-Z]{2}$/
+    }
 }
 ```
 
