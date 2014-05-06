@@ -36,44 +36,55 @@ user interface reactivity. You have to write very little markup and no event
 handling. Refer to the [autoform](https://github.com/aldeed/meteor-autoform)
 documentation for more information.
 
-## Example
+## Attaching a Schema to a Collection
 
-Define the schema for your collection by setting the `schema` option to
-a `SimpleSchema` instance.
+Let's say we have a normal "books" collection, defined in *common.js*:
 
 ```js
-Books = new Meteor.Collection("books", {
-    schema: new SimpleSchema({
-        title: {
-            type: String,
-            label: "Title",
-            max: 200
-        },
-        author: {
-            type: String,
-            label: "Author"
-        },
-        copies: {
-            type: Number,
-            label: "Number of copies",
-            min: 0
-        },
-        lastCheckedOut: {
-            type: Date,
-            label: "Last date this book was checked out",
-            optional: true
-        },
-        summary: {
-            type: String,
-            label: "Brief summary",
-            optional: true,
-            max: 1000
-        }
-    })
+Books = new Meteor.Collection("books");
+```
+
+Let's create a `SimpleSchema` schema for this collection. We'll do this in *common.js*, too:
+
+```js
+var Schemas = {};
+
+Schemas.Book = new SimpleSchema({
+    title: {
+        type: String,
+        label: "Title",
+        max: 200
+    },
+    author: {
+        type: String,
+        label: "Author"
+    },
+    copies: {
+        type: Number,
+        label: "Number of copies",
+        min: 0
+    },
+    lastCheckedOut: {
+        type: Date,
+        label: "Last date this book was checked out",
+        optional: true
+    },
+    summary: {
+        type: String,
+        label: "Brief summary",
+        optional: true,
+        max: 1000
+    }
 });
 ```
 
-Do an insert:
+Once we have the `SimpleSchema` instance, all we need to do is attach it to our collection using the `attachSchema` method. Again, we will do this in *common.js*:
+
+```js
+Books.attachSchema(Schemas.Book);
+```
+
+Now that our collection has a schema, we can do a validated insert on either the client or the server:
 
 ```js
 Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
@@ -84,7 +95,7 @@ Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) 
 });
 ```
 
-Or do an update:
+Or we can do a validated update:
 
 ```js
 Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
@@ -95,12 +106,7 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
 });
 ```
 
-## Attaching a Schema to a Collection
-
-As you saw in the example, the typical way of attaching a SimpleSchema to a collection is to
-provide it as the `schema` option for the constructor. Another way to attach a schema is to
-call `myCollection.attachSchema(mySimpleSchemaInstance)`. This is particularly useful for
-collections created by other packages, such as the `Meteor.users` collection.
+### Attach a Schema to Meteor.users
 
 Obviously, when you attach a schema, you must know what the schema should be. For `Meteor.users`,
 here is an example schema, which you might have to adjust for your own needs:
@@ -190,6 +196,8 @@ Schema.UserCountry = new SimpleSchema({
         regEx: /^[A-Z]{2}$/
     }
 });
+
+Meteor.users.attachSchema(Schema.User);
 ```
 
 This schema has not been thoroughly vetted to ensure
@@ -263,6 +271,8 @@ Or you can specify a certain validation context when calling either method:
 Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", author: "James Joyce"}, {modifier: false});
 Books.simpleSchema().namedContext("insertForm").validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false});
 ```
+
+Refer to the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package documentation for more information about these methods.
 
 ## Inserting or Updating Without Validating
 
@@ -489,7 +499,7 @@ will have the first argument (`error`) set to a generic error. But generally spe
 you would probably use the reactive methods provided by the SimpleSchema
 validation context to display the specific error messages to the user somewhere.
 The [autoform](https://github.com/aldeed/meteor-autoform) package provides
-some handlebars helpers for this purpose.
+some UI components and helpers for this purpose.
 
 ## More Details
 
@@ -516,5 +526,7 @@ and then submit a pull request.
 ### Major Contributors
 
 @mquandalle
+
+(Add yourself if you should be listed here.)
 
 [![Support via Gittip](https://rawgithub.com/twolfson/gittip-badge/0.2.0/dist/gittip.png)](https://www.gittip.com/aldeed/)
