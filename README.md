@@ -518,6 +518,51 @@ This check happens on both the client and the server for client-initiated
 actions, giving you the speed of client-side validation along with the security
 of server-side validation.
 
+## Problems?
+
+You might find yourself in a situation where it seems as though validation is not working correctly. While it's possible that you've found a bug, it's more likely that you're running into one of the following tricky, confusing situations.
+
+### SubObjects and Arrays of Objects
+
+One critical thing to know about Collection2 and SimpleSchema is that they don't validate the *saved document* but rather the *proposed insert doc* or the *update modifier*. In the case of updates, this means there is some information unknown to SimpleSchema, such as whether the array object you're attempting to modify already exists or not. If it doesn't exist, MongoDB would create it, so SimpleSchema will validate conservatively. It will assume that any properties not set by the modifier will not exist after the update. This means that the modifier will be deemed invalid if any required keys in the same object are not explicitly set in the update modifier.
+
+For example, say we add the following keys to our "books" schema:
+
+```js
+{
+    borrowedBy: {
+        type: [Object]
+    },
+    "borrowedBy.$.name": {
+        type: String
+    },
+    "borrowedBy.$.email": {
+        type: String,
+        regEx: SimpleSchema.RegEx.Email
+    },
+}
+```
+
+Every object in the `borrowedBy` array must have a `name` and `email` property.
+
+Now we discover that the name is incorrect in item 1, although the email address is correct. So we will just set the name to the correct value:
+
+```js
+Books.update(id, {$set: {"borrowedBy.1.name": "Frank"}});
+```
+
+However, this will not pass validation. Why? Because we don't know whether item 1 in the `borrowedBy` array already exists, so we don't know whether it will have the required `email` property after the update finishes.
+
+There are three ways to make this work:
+
+* `$set` the entire object
+* `$set` all required keys in the object
+* Perform the update on the server, and pass the `validate: false` option to skip validation.
+
+When this situation occurs on the client with an `autoForm`, it generally does not cause any problems because AutoForm is smart enough to `$set` the entire object; it's aware of this potential issue. However, this means that you need to ensure that all required properties are represented by an `input` on the form. In our example, if you want an `autoForm` that only shows a field for changing the borrowedBy `name` and not the `email`, you should include both fields but make the `email` field hidden. Alternatively, you can submit the `autoForm` to a server method and then do a server update without validation.
+
+Although these examples focused on an array of objects, sub-objects are treated basically the same way.
+
 ## Contributing
 
 Anyone is welcome to contribute. Fork, make and test your changes (`mrt test-packages ./`),
