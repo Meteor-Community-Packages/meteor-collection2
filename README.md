@@ -286,15 +286,6 @@ In addition to all the other schema validation options documented in the
 [simple-schema](https://github.com/aldeed/meteor-simple-schema) package, the
 collection2 package adds additional options explained in this section.
 
-### unique
-
-Set `unique: true` in your schema to ensure that non-unique values will never
-be set for the key. You may want to ensure a unique mongo index on the server
-as well. Refer to the documentation for the `index` option.
-
-The error message for this is very generic. It's best to define your own using
-`MyCollection.simpleSchema().messages()`. The error type string is "notUnique".
-
 ### denyInsert and denyUpdate
 
 If you set `denyUpdate: true`, any collection update that modifies the field
@@ -433,7 +424,7 @@ explain by way of several examples:
 }
 ```
 
-### index
+### index and unique
 
 Use the `index` option to ensure a MongoDB index for a specific field:
 
@@ -475,7 +466,10 @@ custom checking.
     unique: true
   }
 }
-``` 
+```
+
+For the `unique` option to work, `index` must be `true`, `1`, or `-1`. The error message for uniqueness is very generic. It's best to define your own using
+`MyCollection.simpleSchema().messages()`. The error type string is "notUnique".
 
 Indexes are built in the background so indexing does *not* block other database
 queries.
