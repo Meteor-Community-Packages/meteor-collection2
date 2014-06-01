@@ -1,6 +1,6 @@
 Package.describe({
   name: "collection2",
-  summary: "Wraps Meteor.Collection to provide support for automatic validation of insert and update operations on the client and server."
+  summary: "Allows you to attach a SimpleSchema to a Meteor.Collection, supporting automatic validation of insert and update operations on the client and server."
 });
 
 Package.on_use(function(api) {

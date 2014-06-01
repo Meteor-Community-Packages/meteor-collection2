@@ -5,6 +5,12 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.4.0
+
+* Validation errors that are caught on the server are now reactively added back on the client.
+* Custom `unique` checking is removed; we now rely entirely on the unique MongoDB index to cause errors, which we use to add `notUnique` validation errors. Because of the previous point about server validation errors being sent back to the client, this should be a transparent change.
+* The deprecated `Meteor.Collection2` constructor and `virtualFields` option no longer work.
+
 ### 0.3.11
 
 A couple small changes to make sure return values and callback arguments match exactly what the original
