@@ -46,7 +46,7 @@ var books = new Meteor.Collection("books", {
   })
 });
 
-var autoValues = new Meteor.Collection2("autoValues", {
+var autoValues = new Meteor.Collection("autoValues", {
   schema: {
     name: {
       type: String
@@ -123,20 +123,10 @@ var autoValues = new Meteor.Collection2("autoValues", {
       type: String,
       optional: true
     }
-  },
-  virtualFields: {
-    foo: function() {
-      return "bar";
-    }
   }
 });
 
 var noSchemaCollection = new Meteor.Collection('noSchema', {
-  virtualFields: {
-    foo: function() {
-      return "bar";
-    }
-  },
   transform: function(doc) {
     doc.userFoo = "userBar";
     return doc;
@@ -762,7 +752,6 @@ Tinytest.addAsync("Collection2 - No Schema", function(test, next) {
 
     var doc = noSchemaCollection.findOne({_id: newId});
     test.instanceOf(doc, Object);
-    test.equal(doc.foo, "bar", "Virtual Fields don't seem to be working");
     test.equal(doc.userFoo, "userBar", "User-supplied transforms are lost");
 
     noSchemaCollection.update({_id: newId}, {$set: {a: 3, b: 4}}, function(error, result) {

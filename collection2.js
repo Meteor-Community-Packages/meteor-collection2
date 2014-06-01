@@ -27,20 +27,8 @@ Meteor.Collection = function c2CollectionConstructor(name, options) {
     delete options.schema;
   }
 
-  // Set up virtual fields by adding or augmenting the transform
-  // before calling the constructor
   if (options.virtualFields) {
-    options.transform = (function(userTransform, virtualFields) {
-      return function(doc) {
-        //add all virtual fields to document whenever it's passed to a callback
-        _.each(virtualFields, function(func, fieldName) {
-          doc[fieldName] = func(doc);
-        });
-        //support user-supplied transformation function as well
-        return userTransform ? userTransform(doc) : doc;
-      };
-    })(options.transform, options.virtualFields);
-    delete options.virtualFields;
+    throw new Error('Collection2: Sorry, the virtualFields option is no longer supported.');
   }
 
   // Call original Meteor.Collection constructor
@@ -484,5 +472,7 @@ function wrapCallbackForParsingServerErrors(col, vCtx, cb) {
   };
 }
 
-// Backwards compatibility; Meteor.Collection2 is deprecated
-Meteor.Collection2 = Meteor.Collection;
+// Meteor.Collection2 is deprecated
+Meteor.Collection2 = function () {
+  throw new Error("Collection2: Doing `new Meteor.Collection2` no longer works. Just use a normal `new Meteor.Collection` call.");
+};
