@@ -30,12 +30,6 @@ var books = new Meteor.Collection("books", {
       type: String,
       label: "ISBN",
       optional: true,
-      unique: true,
-    },
-    indexedIsbn: {
-      type: String,
-      label: "ISBN",
-      optional: true,
       index: 1,
       unique: true
     },
@@ -412,113 +406,82 @@ Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
 });
 
 // When unique: true, inserts should fail if another document already has the same value
-Tinytest.addAsync('Collection2 - Unique', function(test, next) {
-  var isbn = Meteor.uuid();
-
-  function testUniqueISBN(name) {
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-    var key = invalidKeys[0] || {};
-
-    test.equal(key.name, name, 'We expected the key "' + name + '"');
-    test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
-  }
-
-  var bookId = books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn, indexedIsbn: isbn}, function(error, result) {
+var uniqueBookId;
+var isbn = Meteor.uuid();
+Tinytest.addAsync('Collection2 - Unique - Prep', function(test, next) {
+  // Insert isbn
+  uniqueBookId = books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
     test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
     test.isTrue(!!result, 'result should be defined');
 
     var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+    // Insert isbn+"A"
+    books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn+"A"}, function(error, result) {
+      test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
+      test.isTrue(!!result, 'result should be defined');
+
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+      next();
+    });
   });
+});
 
-  // Ensure that the next test doesn't begin until the previous document is
-  // fully inserted.
-  var called = false;
-  books.find({isbn: isbn}).observe({
-    added: function() {
-      if (!called) {
-        called = true;
-        books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
-          test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
-          test.isFalse(result, 'result should be false');
+Tinytest.addAsync('Collection2 - Unique - Insert Duplicate', function(test, next) {
+  books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
+    test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
+    test.isFalse(result, 'result should be false');
 
-          var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-          test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-          var key = invalidKeys[0] || {};
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+    var key = invalidKeys[0] || {};
 
-          test.equal(key.name, 'isbn', 'We expected the key "isbn"');
-          test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
+    test.equal(key.name, 'isbn', 'We expected the key "isbn"');
+    test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
+    next();
+  });
+});
 
-          //one last insertion to set up the update tests
-          books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn + "A"}, function(error, result) {
-            var context = books.simpleSchema().namedContext();
+Tinytest.addAsync('Collection2 - Unique - Validation Alone', function(test, next) {
+  //test validation without actual updating
+  var context = books.simpleSchema().namedContext();
 
-            //test validation without actual updating
+  //we don't know whether this would result in a non-unique value or not because
+  //we don't know which documents we'd be changing; therefore, no notUnique error
+  context.validate({$set: {isbn: isbn}}, {modifier: true});
+  var invalidKeys = context.invalidKeys();
+  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
-            //we don't know whether this would result in a non-unique value or not because
-            //we don't know which documents we'd be changing; therefore, no notUnique error
-            context.validate({$set: {isbn: isbn}}, {modifier: true});
-            var invalidKeys = context.invalidKeys();
-            test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+  context.validateOne({$set: {isbn: isbn}}, "isbn", {modifier: true});
+  invalidKeys = context.invalidKeys();
+  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+  next();
+});
 
-            context.validateOne({$set: {isbn: isbn}}, "isbn", {modifier: true});
-            invalidKeys = context.invalidKeys();
-            test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+Tinytest.addAsync('Collection2 - Unique - Update Self', function(test, next) {
+  // When unique: true, updates should not fail when the document being updated has the same value
+  books.update(uniqueBookId, {$set: {isbn: isbn}}, function(error) {
+    test.isFalse(!!error, 'We expected the update not to trigger an error since isbn is used only by the doc being updated');
 
-            // When unique: true, updates should fail if another document already has the same value but
-            // not when the document being updated has the same value
-            books.update(bookId, {$set: {isbn: isbn}}, function(error) {
-              test.isFalse(!!error, 'We expected the update not to trigger an error since isbn is used only by the doc being updated');
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+    test.equal(invalidKeys, [], 'We should get no invalidKeys back');
+    next();
+  });
+});
 
-              var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-              test.equal(invalidKeys, [], 'We should get no invalidKeys back');
+Tinytest.addAsync('Collection2 - Unique - Update Another', function(test, next) {
+  // When unique: true, updates should fail if another document already has the same value
+  books.update(uniqueBookId, {$set: {isbn: isbn + "A"}}, function(error) {
+    test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
 
-              books.update(bookId, {$set: {isbn: isbn + "A"}}, function(error) {
-                test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+    var key = invalidKeys[0] || {};
 
-                testUniqueISBN('isbn');
-
-                // Test unique: true, index: true
-                // In this case we rely on MongoDB rejection on the server
-                if (Meteor.isServer) {
-                  books.update({isbn: isbn + 'A'}, {$set: {indexedIsbn: isbn}}, function(err, res) {
-                    test.equal(err.name, 'MongoError', 'We expect the violation of unique index to be rejected by MongoDB');
-                    test.equal(err.code, 11001, 'We expect the violation of unique index to be rejected by MongoDB');
-
-                    // Test that we update invalidKeys on server from mongo error
-                    testUniqueISBN('indexedIsbn');
-
-                    next();
-                  });
-                } else {
-                  //skip unique check on the client so that we have to rely on the 
-                  //server to do notUnique checking
-                  books._skipClientUniqueCheck = true;
-                  //make sure we still get the error and invalidKeys sent back from the server;
-                  //this means that we can still show reactive "not unique" error messages even
-                  //if the uniqueness check doesn't fail until we're on the server
-                  var b = books.findOne({isbn: isbn + 'A'});
-                  books.update(b._id, {$set: {indexedIsbn: isbn}}, function(err, res) {
-                    // On the client, the mongo error is encapsulated in a Meteor 409 error
-                    test.equal(err.errorType, 'Meteor.Error', 'We expect the violation of unique index to be rejected by MongoDB');
-                    test.equal(err.error, 409, 'We expect the violation of unique index to be rejected by MongoDB');
-
-                    // Test that we update invalidKeys on server from mongo error
-                    testUniqueISBN('indexedIsbn');
-
-                    // undo skipping
-                    delete books._skipClientUniqueCheck;
-
-                    next();
-                  });
-                }
-              });
-            });
-          });
-        });
-      }
-    }
+    test.equal(key.name, 'isbn', 'We expected the key "isbn"');
+    test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
+    next();
   });
 });
 
@@ -824,10 +787,10 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
     var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
 
     if (Meteor.isClient) {
-      // When validate: false on the client, we should still get a validation error from the server
+      // When validate: false on the client, we should still get a validation error and invalidKeys back from the server
       test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
       test.isFalse(!!result, 'result should be falsy because "copies" is required');
-      test.equal(invalidKeys.length, 0, 'There should be no invalidKeys since validation happened on the server');
+      test.equal(invalidKeys.length, 1, 'There should be 1 invalidKey since validation happened on the server and errors were sent back');
 
       var insertedBook = books.findOne({title: title});
       test.isFalse(!!insertedBook, 'Book should not have been inserted because validation failed on server');
@@ -842,8 +805,8 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
     }
 
     // do a good one to set up update test
-    books.insert({title: title + " 2", author: "James Joyce", copies: 1}, {validate: false, validationContext: "validateFalse"}, function(error, newId) {
-      var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
+    books.insert({title: title + " 2", author: "James Joyce", copies: 1}, {validate: false, validationContext: "validateFalse2"}, function(error, newId) {
+      var invalidKeys = books.simpleSchema().namedContext("validateFalse2").invalidKeys();
 
       test.isFalse(!!error, "We expected no error because it's valid");
       test.isTrue(!!newId, "result should be set because it's valid");
@@ -852,14 +815,14 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
       var insertedBook = books.findOne({title: title + " 2"});
       test.isTrue(!!insertedBook, 'Book should have been inserted because it was valid');
 
-      books.update({_id: newId}, {copies: "Yes Please"}, {validate: false, validationContext: "validateFalse"}, function(error, result) {
-        var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
+      books.update({_id: newId}, {$set: {copies: "Yes Please"}}, {validate: false, validationContext: "validateFalse3"}, function(error, result) {
+        var invalidKeys = books.simpleSchema().namedContext("validateFalse3").invalidKeys();
 
         if (Meteor.isClient) {
-          // When validate: false on the client, we should still get a validation error from the server
+          // When validate: false on the client, we should still get a validation error and invalidKeys from the server
           test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
           test.isFalse(!!result, 'result should be falsy because "copies" is required');
-          test.equal(invalidKeys.length, 0, 'There should be no invalidKeys since validation happened on the server');
+          test.equal(invalidKeys.length, 1, 'There should be 1 invalidKey since validation happened on the server and invalidKeys were sent back');
 
           var updatedBook = books.findOne({_id: newId});
           test.isTrue(!!updatedBook, 'Book should still be there');
@@ -876,8 +839,8 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
         }
 
         // now try a good one
-        books.update({_id: newId}, {$set: {copies: 3}}, {validate: false, validationContext: "validateFalse"}, function(error, result) {
-          var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
+        books.update({_id: newId}, {$set: {copies: 3}}, {validate: false, validationContext: "validateFalse4"}, function(error, result) {
+          var invalidKeys = books.simpleSchema().namedContext("validateFalse4").invalidKeys();
           test.isFalse(!!error, "We expected no error because it's valid");
           //result is undefined for some reason, but it's happening for apps without
           //C2 as well, so must be a Meteor bug

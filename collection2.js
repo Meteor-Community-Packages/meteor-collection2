@@ -81,13 +81,19 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
 
   // Loop over fields definitions and ensure collection indexes (server side only)
   _.each(ss.schema(), function(definition, fieldName) {
-    if (Meteor.isServer && 'index' in definition) {
+    if (Meteor.isServer && ('index' in definition || definition.unique === true)) {
       Meteor.startup(function() {
-        var index = {};
-        var indexValue = definition['index'];
-        var indexName = 'c2_' + fieldName;
-        if (indexValue === true)
+        var index = {}, indexValue;
+        // If they specified `unique: true` but not `index`, we assume `index: 1` to set up the unique index in mongo
+        if ('index' in definition) {
+          indexValue = definition['index'];
+          if (indexValue === true) {
+            indexValue = 1;
+          }
+        } else {
           indexValue = 1;
+        }
+        var indexName = 'c2_' + fieldName;
         index[fieldName] = indexValue;
         var unique = !!definition.unique && (indexValue === 1 || indexValue === -1);
         var sparse = !!definition.optional && unique;
@@ -102,7 +108,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
           try {
             self._collection._dropIndex(indexName);
           } catch (err) {
-            console.warn(indexName + " index does not exist.");
+            console.warn("Collection2: Tried to drop mongo index " + indexName + ", but there is no index with that name");
           }
         }
       });
@@ -126,48 +132,6 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
       // This is an insert of a defined value into a field where denyUpdate=true
       if (op !== "$set" || (op === "$set" && val !== void 0)) {
         return "updateNotAllowed";
-      }
-    }
-
-    // If a developer wants to ensure that a field is `unique` we do a custom
-    // query to verify that another field with the same value does not exist.
-    // (_skipClientUniqueCheck is for tests)
-    if (def.unique && !self._skipClientUniqueCheck) {
-      // If the value is not set we skip this test for performance reasons. The
-      // authorization is exclusively determined by the `optional` parameter.
-      if (val === void 0 || val === null)
-        return true;
-
-      // On the server if the field also have an index we rely on MongoDB to do
-      // this verification -- which is a more efficient strategy.
-      if (Meteor.isServer && [1, -1, true].indexOf(def.index) !== -1)
-        return true;
-
-      test = {};
-      test[key] = val;
-      if (op && op !== "$inc") { //updating
-        sel = _.clone(self._c2._selector);
-        if (!sel) {
-          return true; //we can't determine whether we have a notUnique error
-        } else if (typeof sel === "string") {
-          sel = {_id: sel};
-        }
-
-        // Find count of docs where this key is already set to this value
-        totalUsing = self.find(test).count();
-
-        // Find count of docs that will be updated, where key
-        // is not already equal to val
-        // TODO this will overwrite if key is in selector already;
-        // need more advanced checking
-        sel[key] = {};
-        sel[key]["$ne"] = val;
-        totalWillUse = self.find(sel).count();
-
-        // If more than one would have the val after update, it's not unique
-        return totalUsing + totalWillUse > 1 ? "notUnique" : true;
-      } else {
-        return self.findOne(test) ? "notUnique" : true;
       }
     }
 
@@ -234,26 +198,24 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
   // that custom types are properly recognized for type validation.
   self.deny({
     insert: function(userId, doc) {
-      var ret = false;
       doValidate.call(self, "insert", [doc, {}, function(error) {
           if (error) {
-            ret = true;
+            throw new Meteor.Error(400, 'Bad Request', "INVALID: " + EJSON.stringify(error.invalidKeys));
           }
         }], true, userId, false);
 
-      return ret;
+      return false;
     },
     update: function(userId, doc, fields, modifier) {
       // NOTE: This will never be an upsert because client-side upserts
       // are not allowed once you define allow/deny functions
-      var ret = false;
       doValidate.call(self, "update", [null, modifier, {}, function(error) {
           if (error) {
-            ret = true;
+            throw new Meteor.Error(400, 'Bad Request', "INVALID: " + EJSON.stringify(error.invalidKeys));
           }
         }], true, userId, false);
 
-      return ret;
+      return false;
     },
     fetch: []
   });
@@ -351,10 +313,6 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   }
   options = options || {};
 
-  if (options.validate === false) {
-    return args;
-  }
-
   // If update was called with upsert:true or upsert was called, flag as an upsert
   isUpsert = (type === "upsert" || (type === "update" && options.upsert === true));
 
@@ -369,6 +327,20 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       if (err)
         Meteor._debug(type + " failed: " + (err.reason || err.stack));
     };
+  }
+
+  // If client validation is fine or is skipped but then something
+  // is found to be invalid on the server, we get that error back
+  // as a special Meteor.Error that we need to parse.
+  if (Meteor.isClient) {
+    var last = args.length - 1;
+    if (typeof args[last] === 'function') {
+      callback = args[last] = wrapCallbackForParsingServerErrors(self, options.validationContext, callback);
+    }
+  }
+
+  if (options.validate === false) {
+    return args;
   }
 
   // If _id has already been added, remove it temporarily if it's
@@ -450,10 +422,13 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     } else {
       args[1] = doc;
     }
+
     // If callback, set invalidKey when we get a mongo unique error
-    var last = args.length - 1;
-    if (typeof args[last] === 'function') {
-      args[last] = wrapCallbackForNotUnique(self, doc, options.validationContext, args[last]);
+    if (Meteor.isServer) {
+      var last = args.length - 1;
+      if (typeof args[last] === 'function') {
+        args[last] = wrapCallbackForParsingMongoValidationErrors(self, doc, options.validationContext, args[last]);
+      }
     }
     return args;
   } else {
@@ -474,19 +449,36 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   }
 }
 
-function wrapCallbackForNotUnique(col, doc, vCtx, cb) {
-  return function (error) {
+function addUniqueError(context, errorMessage) {
+  var name = errorMessage.split('c2_')[1].split(' ')[0];
+  var val = errorMessage.split('dup key:')[1].split('"')[1];
+  context.addInvalidKeys([{
+    name: name,
+    type: 'notUnique',
+    value: val
+  }]);
+}
+
+function wrapCallbackForParsingMongoValidationErrors(col, doc, vCtx, cb) {
+  return function wrappedCallbackForParsingMongoValidationErrors(error) {
     if (error && ((error.name === "MongoError" && error.code === 11001) || error.message.indexOf('MongoError: E11000' !== -1)) && error.message.indexOf('c2_') !== -1) {
-      var fName = error.message.split('c2_')[1].split(' ')[0];
-      var mDoc = new MongoObject(doc);
-      var info = mDoc.getInfoForKey(fName);
-      var fVal = info ? info.value : void 0;
-      col.simpleSchema().namedContext(vCtx)._invalidKeys.push({
-        name: fName,
-        type: 'notUnique',
-        value: fVal,
-        message: col.simpleSchema().messageForError('notUnique', fName, null, fVal)
-      });
+      addUniqueError(col.simpleSchema().namedContext(vCtx), error.message);
+    }
+    return cb.apply(this, arguments);
+  };
+}
+
+function wrapCallbackForParsingServerErrors(col, vCtx, cb) {
+  return function wrappedCallbackForParsingServerErrors(error) {
+    // Handle our own validation errors
+    var context = col.simpleSchema().namedContext(vCtx);
+    if (error instanceof Meteor.Error && error.error === 400 && error.details && error.details.slice(0, 8) === "INVALID:") {
+      var invalidKeysFromServer = EJSON.parse(error.details.slice(9));
+      context.addInvalidKeys(invalidKeysFromServer);
+    }
+    // Handle Mongo unique index errors, which are forwarded to the client as 409 errors
+    else if (error instanceof Meteor.Error && error.error === 409 && error.reason && error.reason.indexOf('E11000') !== -1) {
+      addUniqueError(context, error.reason);
     }
     return cb.apply(this, arguments);
   };
