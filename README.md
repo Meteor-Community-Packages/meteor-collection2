@@ -112,38 +112,15 @@ Obviously, when you attach a schema, you must know what the schema should be. Fo
 here is an example schema, which you might have to adjust for your own needs:
 
 ```js
-var Schema = {};
+Schema = {};
 
-Schema.User = new SimpleSchema({
-    _id: {
+Schema.UserCountry = new SimpleSchema({
+    name: {
+        type: String
+    },
+    code: {
         type: String,
-        regEx: SimpleSchema.RegEx.Id
-    },
-    username: {
-        type: String,
-        regEx: /^[a-z0-9A-Z_]{3,15}$/
-    },
-    emails: {
-        type: [Object]
-    },
-    "emails.$.address": {
-        type: String,
-        regEx: SimpleSchema.RegEx.Email
-    },
-    "emails.$.verified": {
-        type: Boolean
-    },
-    createdAt: {
-        type: Date
-    },
-    profile: {
-        type: Schema.UserProfile,
-        optional: true
-    },
-    services: {
-        type: Object,
-        optional: true,
-        blackbox: true
+        regEx: /^[A-Z]{2}$/
     }
 });
 
@@ -187,13 +164,36 @@ Schema.UserProfile = new SimpleSchema({
     }
 });
 
-Schema.UserCountry = new SimpleSchema({
-    name: {
-        type: String
-    },
-    code: {
+Schema.User = new SimpleSchema({
+    _id: {
         type: String,
-        regEx: /^[A-Z]{2}$/
+        regEx: SimpleSchema.RegEx.Id
+    },
+    username: {
+        type: String,
+        regEx: /^[a-z0-9A-Z_]{3,15}$/
+    },
+    emails: {
+        type: [Object]
+    },
+    "emails.$.address": {
+        type: String,
+        regEx: SimpleSchema.RegEx.Email
+    },
+    "emails.$.verified": {
+        type: Boolean
+    },
+    createdAt: {
+        type: Date
+    },
+    profile: {
+        type: Schema.UserProfile,
+        optional: true
+    },
+    services: {
+        type: Object,
+        optional: true,
+        blackbox: true
     }
 });
 
