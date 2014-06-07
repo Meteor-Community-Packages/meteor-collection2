@@ -47,6 +47,16 @@ for (var prop in constructor) {
   }
 }
 
+if (Meteor.isServer) {
+  // A function passed to Meteor.startup is only run on the server if
+  // the process has not yet started up. So we need a flag to tell
+  // us whether to wrap in Meteor.startup or not
+  var hasStartedUp = false;
+  Meteor.startup(function () {
+    hasStartedUp = true;
+  });
+}
+
 /**
  * Meteor.Collection.prototype.attachSchema
  * @param  {SimpleSchema|Object} ss - SimpleSchema instance or a schema definition object from which to create a new SimpleSchema instance
@@ -70,7 +80,8 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
   // Loop over fields definitions and ensure collection indexes (server side only)
   _.each(ss.schema(), function(definition, fieldName) {
     if (Meteor.isServer && ('index' in definition || definition.unique === true)) {
-      Meteor.startup(function() {
+      
+      function setUpIndex() {
         var index = {}, indexValue;
         // If they specified `unique: true` but not `index`, we assume `index: 1` to set up the unique index in mongo
         if ('index' in definition) {
@@ -82,7 +93,9 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
           indexValue = 1;
         }
         var indexName = 'c2_' + fieldName;
-        index[fieldName] = indexValue;
+        // In the index object, we want object array keys without the ".$" piece
+        var idxFieldName = fieldName.replace(/\.\$\./g, ".");
+        index[idxFieldName] = indexValue;
         var unique = !!definition.unique && (indexValue === 1 || indexValue === -1);
         var sparse = !!definition.optional && unique;
         if (indexValue !== false) {
@@ -99,7 +112,14 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
             console.warn("Collection2: Tried to drop mongo index " + indexName + ", but there is no index with that name");
           }
         }
-      });
+      }
+      
+      if (hasStartedUp) {
+        setUpIndex();
+      } else {
+        Meteor.startup(setUpIndex);
+      }
+
     }
   });
 

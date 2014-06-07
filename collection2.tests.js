@@ -396,9 +396,9 @@ Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
 });
 
 // When unique: true, inserts should fail if another document already has the same value
-var uniqueBookId;
-var isbn = Meteor.uuid();
+var uniqueBookId, isbn;
 Tinytest.addAsync('Collection2 - Unique - Prep', function(test, next) {
+  isbn = Random.id();
   // Insert isbn
   uniqueBookId = books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
     test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
@@ -473,6 +473,28 @@ Tinytest.addAsync('Collection2 - Unique - Update Another', function(test, next) 
     test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
     next();
   });
+});
+
+var testCollection = new Meteor.Collection("testCollection");
+Tinytest.add('Collection2 - Unique - Object Array', function(test) {
+  // We need to handle arrays of objects specially because the
+  // index key must be "a.b" if, for example, the schema key is "a.$.b".
+  // Here we make sure that works.
+  var testSchema = new SimpleSchema({
+    'a.$.b': {
+      type: String,
+      unique: true
+    }
+  });
+  
+  try {
+    testCollection.attachSchema(testSchema);
+  } catch (e) {
+    // If we error, that means collection2 tried to set up the index incorrectly,
+    // using the wrong index key
+  }
+
+  test.instanceOf(testCollection.simpleSchema(), SimpleSchema);
 });
 
 Tinytest.addAsync("Collection2 - denyInsert", function(test, next) {
