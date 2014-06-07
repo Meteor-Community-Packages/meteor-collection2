@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.4.1
+
+Indexing fixes
+
 ### 0.4.0
 
 * Validation errors that are caught on the server are now reactively added back on the client.
