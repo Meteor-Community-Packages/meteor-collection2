@@ -346,8 +346,7 @@ explain by way of several examples:
         } else {
           this.unset();
         }
-      },
-      denyUpdate: true
+      }
   },
   // Force value to be current date (on server) upon update
   // and don't allow it to be set upon insert.
