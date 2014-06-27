@@ -162,6 +162,8 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
       // Referenced doc is cleaned in place
       ss.clean(doc, {
         isModifier: false,
+        // We don't remove empty string here; they are removed on client if desired
+        removeEmptyStrings: false,
         extendAutoValueContext: {
           isInsert: true,
           isUpdate: false,
@@ -183,6 +185,8 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
       // Referenced modifier is cleaned in place
       ss.clean(modifier, {
         isModifier: true,
+        // We don't remove empty string here; they are removed on client if desired
+        removeEmptyStrings: false,
         extendAutoValueContext: {
           isInsert: false,
           isUpdate: true,
@@ -206,7 +210,8 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
   // that custom types are properly recognized for type validation.
   self.deny({
     insert: function(userId, doc) {
-      doValidate.call(self, "insert", [doc, {}, function(error) {
+      // We pass removeEmptyStrings: false because we will have removed on client if desired
+      doValidate.call(self, "insert", [doc, {removeEmptyStrings: false}, function(error) {
           if (error) {
             throw new Meteor.Error(400, 'Bad Request', "INVALID: " + EJSON.stringify(error.invalidKeys));
           }
@@ -216,8 +221,9 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
     },
     update: function(userId, doc, fields, modifier) {
       // NOTE: This will never be an upsert because client-side upserts
-      // are not allowed once you define allow/deny functions
-      doValidate.call(self, "update", [null, modifier, {}, function(error) {
+      // are not allowed once you define allow/deny functions.
+      // We pass removeEmptyStrings: false because we will have removed on client if desired
+      doValidate.call(self, "update", [null, modifier, {removeEmptyStrings: false}, function(error) {
           if (error) {
             throw new Meteor.Error(400, 'Bad Request', "INVALID: " + EJSON.stringify(error.invalidKeys));
           }
@@ -281,16 +287,14 @@ _.each(['insert', 'update', 'upsert'], function(methodName) {
  */
 
 function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
-  var self = this,
-          schema = self._c2._simpleSchema,
-          doc, callback, error, options, isUpsert;
+  var self = this, schema = self._c2._simpleSchema,
+      doc, callback, error, options, isUpsert, selector;
 
   if (!args.length) {
     throw new Error(type + " requires an argument");
   }
 
   // Gather arguments and cache the selector
-  self._c2._selector = null; //reset
   if (type === "insert") {
     doc = args[0];
     options = args[1];
@@ -306,7 +310,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     }
 
   } else if (type === "update" || type === "upsert") {
-    self._c2._selector = args[0];
+    selector = args[0];
     doc = args[1];
     options = args[2];
     callback = args[3];
@@ -359,7 +363,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     delete doc._id;
   }
 
-  function doClean(docToClean, getAutoValues, filter, autoConvert) {
+  function doClean(docToClean, getAutoValues, filter, autoConvert, removeEmptyStrings) {
     // Clean the doc/modifier in place (removes any virtual fields added
     // by the deny transform, too)
     schema.clean(docToClean, {
@@ -367,6 +371,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       autoConvert: autoConvert,
       getAutoValues: getAutoValues,
       isModifier: (type !== "insert"),
+      removeEmptyStrings: removeEmptyStrings,
       extendAutoValueContext: {
         isInsert: (type === "insert"),
         isUpdate: (type === "update" && options.upsert !== true),
@@ -379,7 +384,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   
   // Preliminary cleaning on both client and server. On the server, automatic
   // values will also be set at this point.
-  doClean(doc, (Meteor.isServer && !skipAutoValue), true, true);
+  doClean(doc, (Meteor.isServer && !skipAutoValue), true, true, options.removeEmptyStrings !== false);
 
   // On the server, upserts are possible; SimpleSchema handles upserts pretty
   // well by default, but it will not know about the fields in the selector,
@@ -388,9 +393,9 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   // to the $set in the modifier. This is no doubt prone to errors, but there
   // probably isn't any better way right now.
   var docToValidate = _.clone(doc);
-  if (Meteor.isServer && isUpsert && _.isObject(self._c2._selector)) {
+  if (Meteor.isServer && isUpsert && _.isObject(selector)) {
     var set = docToValidate.$set || {};
-    docToValidate.$set = _.clone(self._c2._selector);
+    docToValidate.$set = _.clone(selector);
     _.extend(docToValidate.$set, set);
   }
 
@@ -399,7 +404,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   // we will add them to docToValidate for validation purposes only.
   // This is because we want all actual values generated on the server.
   if (Meteor.isClient) {
-    doClean(docToValidate, true, false, false);
+    doClean(docToValidate, true, false, false, false);
   }
 
   // Validate doc
@@ -415,9 +420,6 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       isFromTrustedCode: isFromTrustedCode
     }
   });
-
-  // Clear the cached selector since it is only used during validation
-  self._c2._selector = null;
 
   if (isValid) {
     // Add the ID back
@@ -485,7 +487,7 @@ function wrapCallbackForParsingServerErrors(col, vCtx, cb) {
       context.addInvalidKeys(invalidKeysFromServer);
     }
     // Handle Mongo unique index errors, which are forwarded to the client as 409 errors
-    else if (error instanceof Meteor.Error && error.error === 409 && error.reason && error.reason.indexOf('E11000') !== -1) {
+    else if (error instanceof Meteor.Error && error.error === 409 && error.reason && error.reason.indexOf('E11000') !== -1 && error.reason.indexOf('c2_') !== -1) {
       addUniqueError(context, error.reason);
     }
     return cb.apply(this, arguments);

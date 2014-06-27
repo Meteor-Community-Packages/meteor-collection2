@@ -1,3 +1,11 @@
+function pub(col) {
+  if (Meteor.isServer) {
+    Meteor.publish(null, function () {
+      return col.find();
+    });
+  }
+}
+
 var books = new Meteor.Collection("books", {
   schema: new SimpleSchema({
     title: {
@@ -33,6 +41,14 @@ var books = new Meteor.Collection("books", {
       index: 1,
       unique: true
     },
+    field1: {
+      type: String,
+      optional: true
+    },
+    field2: {
+      type: String,
+      optional: true
+    },
     createdAt: {
       type: Date,
       optional: true,
@@ -45,6 +61,16 @@ var books = new Meteor.Collection("books", {
     }
   })
 });
+
+// Add one unique index outside of C2
+if (Meteor.isServer) {
+  try {
+    books._dropIndex({field1: 1, field2: 1});
+  } catch (err) {
+
+  }
+  books._ensureIndex({field1: 1, field2: 1}, {unique: true, sparse: true});
+} 
 
 var autoValues = new Meteor.Collection("autoValues", {
   schema: {
@@ -302,6 +328,14 @@ if (Meteor.isServer) {
     },
     allowAll: function() {
       shouldDeny = false;
+    },
+    removeAll: function () {
+      books.remove({});
+      autoValues.remove({});
+      defaultValues.remove({});
+      noSchemaCollection.remove({});
+      BlackBox.remove({});
+      contextCheck.remove({});
     }
   });
 
@@ -332,14 +366,6 @@ if (Meteor.isServer) {
     }
   });
 
-  Meteor.startup(function() {
-    books.remove({});
-    autoValues.remove({});
-    defaultValues.remove({});
-    noSchemaCollection.remove({});
-    BlackBox.remove({});
-    contextCheck.remove({});
-  });
 } else {
   var booksSubscription = Meteor.subscribe("books");
   Meteor.subscribe("autovalues");
@@ -364,6 +390,10 @@ if (Meteor.isServer) {
     // var indexes = books._collection._getIndexes();
   });
 }
+
+Tinytest.addAsync('Collection2 - Reset', function (test, next) {
+  Meteor.call("removeAll", next);
+});
 
 // Test required field "copies"
 Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
@@ -430,6 +460,35 @@ Tinytest.addAsync('Collection2 - Unique - Insert Duplicate', function(test, next
     test.equal(key.name, 'isbn', 'We expected the key "isbn"');
     test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
     next();
+  });
+});
+
+Tinytest.addAsync('Collection2 - Unique - Insert Duplicate Non-C2 Index', function(test, next) {
+  if (Meteor.isServer) {
+    var val = "foo";
+  } else {
+    var val = "bar";
+  }
+  // Good insert
+  books.insert({title: "Ulysses", author: "James Joyce", copies: 1, field1: val, field2: val}, function(error, result) {
+    test.isFalse(!!error, 'We expected the insert not to trigger an error since the fields are unique');
+    test.isTrue(!!result, 'result should be the new ID');
+
+    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+    var key = invalidKeys[0] || {};
+
+    // Bad insert
+    books.insert({title: "Ulysses", author: "James Joyce", copies: 1, field1: val, field2: val}, function(error, result) {
+      test.isTrue(!!error, 'We expected the insert to trigger an error since the fields are not unique');
+      test.isFalse(result, 'result should be false');
+
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back because this is a non-C2 unique index');
+      var key = invalidKeys[0] || {};
+      
+      next();
+    });
   });
 });
 
@@ -782,6 +841,55 @@ Tinytest.addAsync("Collection2 - No Schema", function(test, next) {
       //C2 as well, so must be a Meteor bug
       //test.isTrue(typeof result === "number", 'result should be the number of records updated');
       next();
+    });
+  });
+});
+
+// By default, empty strings are removed, but we can override
+var RES = new Meteor.Collection("RES");
+RES.attachSchema(new SimpleSchema({
+  foo: { type: String },
+  bar: { type: String, optional: true }
+}));
+pub(RES);
+RES.allow({
+  insert: function (userId, doc) {
+    return true;
+  },
+  update: function (userId, doc) {
+    return true;
+  }
+});
+
+Tinytest.addAsync("Collection2 - removeEmptyStrings", function(test, next) {
+  // Remove empty strings (default)
+  RES.insert({foo: "foo", bar: ""}, function(error, newId1) {
+    test.isFalse(!!error, 'There should be no error');
+    test.isTrue(!!newId1, 'result should be the inserted ID');
+
+    var doc = RES.findOne({_id: newId1});
+    test.instanceOf(doc, Object);
+    test.isUndefined(doc.bar);
+
+    // Don't remove empty strings
+    RES.insert({foo: "foo", bar: ""}, {removeEmptyStrings: false}, function(error, newId2) {
+      test.isFalse(!!error, 'There should be no error');
+      test.isTrue(!!newId2, 'result should be the inserted ID');
+
+      var doc = RES.findOne({_id: newId2});
+      test.instanceOf(doc, Object);
+      test.equal(doc.bar, "");
+    
+      // Don't remove empty strings for an update either
+      RES.update({_id: newId1}, {$set: {bar: ""}}, {removeEmptyStrings: false}, function(error, result) {
+        test.isFalse(!!error, 'There should be no error');
+        test.equal(result, 1, 'should have updated 1 record');
+
+        var doc = RES.findOne({_id: newId1});
+        test.instanceOf(doc, Object);
+        test.equal(doc.bar, "");
+        next();
+      });
     });
   });
 });
