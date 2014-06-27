@@ -5,6 +5,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.4.2
+
+* Fix index error
+* Add `removeEmptyStrings` option to insert/update methods. Pass `false` to disable the default behavior of removing empty string values for that insert or update operation.
+
 ### 0.4.1
 
 Indexing fixes
