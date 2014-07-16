@@ -1,11 +1,11 @@
 {
-  "name": "collection2",
+  "name": "siftnet-collection2",
   "description": "Allows you to attach a SimpleSchema to a Meteor.Collection, supporting automatic validation of insert and update operations on the client and server.",
-  "homepage": "https://github.com/aldeed/meteor-collection2",
-  "author": "Eric Dobbertin (http://dairystatedesigns.com)",
-  "version": "0.4.2",
-  "git": "https://github.com/aldeed/meteor-collection2.git",
+  "homepage": "https://github.com/priyadarshy/meteor-collection2",
+  "author": "Ashutosh Priyadarshy (ashutosh@hq.siftnet.com)",
+  "version": "0.5.0",
+  "git": "https://github.com/priyadarshy/meteor-collection2.git",
   "packages": {
-    "simple-schema": {}
+    "siftnet-simple-schema": {}
   }
 }

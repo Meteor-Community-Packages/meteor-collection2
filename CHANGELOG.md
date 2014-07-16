@@ -5,6 +5,12 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.5.0
+
+* Fork from aldeed/meteor-collection2 to pass through
+  `removeEmptyStrings` to simple-schema to allow "" to pass the required
+  check for a String type in a schema.
+
 ### 0.4.2
 
 * Fix index error
