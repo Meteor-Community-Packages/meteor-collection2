@@ -417,7 +417,8 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       isUpdate: (type === "update" && options.upsert !== true),
       isUpsert: isUpsert,
       userId: userId,
-      isFromTrustedCode: isFromTrustedCode
+      isFromTrustedCode: isFromTrustedCode,
+      requiredAllowsEmptyStrings: !options.removeEmptyStrings
     }
   });
 
