@@ -1,5 +1,5 @@
 Package.describe({
-  name: "collection2",
+  name: "siftnet-collection2",
   summary: "Allows you to attach a SimpleSchema to a Meteor.Collection, supporting automatic validation of insert and update operations on the client and server."
 });
 
