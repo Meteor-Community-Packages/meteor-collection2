@@ -4,9 +4,9 @@ Package.describe({
 });
 
 Package.on_use(function(api) {
-  api.use(['simple-schema', 'underscore', 'deps', 'check', 'mongo-livedata', 'ejson']);
+  api.use(['siftnet-simple-schema', 'underscore', 'deps', 'check', 'mongo-livedata', 'ejson']);
 
-  api.imply && api.imply('simple-schema', ['client', 'server']);
+  api.imply && api.imply('siftnet-simple-schema', ['client', 'server']);
 
   // Allow us to detect 'insecure'.
   api.use('insecure', {weak: true});
@@ -15,7 +15,7 @@ Package.on_use(function(api) {
 });
 
 Package.on_test(function(api) {
-  api.use(['collection2', 'tinytest', 'underscore', 'ejson', 'ordered-dict',
+  api.use(['siftnet-collection2', 'tinytest', 'underscore', 'ejson', 'ordered-dict',
     'random', 'deps']);
   api.use(['test-helpers'], 'server');
 
