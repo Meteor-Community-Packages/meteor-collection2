@@ -451,6 +451,7 @@ Tinytest.addAsync('Collection2 - Unique - Prep', function(test, next) {
 Tinytest.addAsync('Collection2 - Unique - Insert Duplicate', function(test, next) {
   books.insert({title: "Ulysses", author: "James Joyce", copies: 1, isbn: isbn}, function(error, result) {
     test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
+    test.equal(error.invalidKeys.length, 1, 'We should get one invalidKey back attached to the Error object');
     test.isFalse(result, 'result should be false');
 
     var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
@@ -523,6 +524,7 @@ Tinytest.addAsync('Collection2 - Unique - Update Another', function(test, next) 
   // When unique: true, updates should fail if another document already has the same value
   books.update(uniqueBookId, {$set: {isbn: isbn + "A"}}, function(error) {
     test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
+    test.equal(error.invalidKeys.length, 1, 'We should get one invalidKey back attached to the Error object');
 
     var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
@@ -908,6 +910,8 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
     if (Meteor.isClient) {
       // When validate: false on the client, we should still get a validation error and invalidKeys back from the server
       test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
+      // There should be an `invalidKeys` property on the error, too
+      test.equal(error.invalidKeys.length, 1, 'There should be 1 invalidKey on the Error object');
       test.isFalse(!!result, 'result should be falsy because "copies" is required');
       test.equal(invalidKeys.length, 1, 'There should be 1 invalidKey since validation happened on the server and errors were sent back');
 
@@ -940,6 +944,8 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
         if (Meteor.isClient) {
           // When validate: false on the client, we should still get a validation error and invalidKeys from the server
           test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
+          // There should be an `invalidKeys` property on the error, too
+          test.equal(error.invalidKeys.length, 1, 'There should be 1 invalidKey on the Error object');
           test.isFalse(!!result, 'result should be falsy because "copies" is required');
           test.equal(invalidKeys.length, 1, 'There should be 1 invalidKey since validation happened on the server and invalidKeys were sent back');
 
@@ -961,9 +967,7 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
         books.update({_id: newId}, {$set: {copies: 3}}, {validate: false, validationContext: "validateFalse4"}, function(error, result) {
           var invalidKeys = books.simpleSchema().namedContext("validateFalse4").invalidKeys();
           test.isFalse(!!error, "We expected no error because it's valid");
-          //result is undefined for some reason, but it's happening for apps without
-          //C2 as well, so must be a Meteor bug
-          //test.isTrue(!!result, "result should be set because it's valid");
+          test.equal(result, 1, "result should be set because it's valid");
           test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
 
           var updatedBook = books.findOne({_id: newId});
