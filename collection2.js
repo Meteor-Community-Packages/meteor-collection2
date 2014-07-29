@@ -213,7 +213,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
       // We pass removeEmptyStrings: false because we will have removed on client if desired
       doValidate.call(self, "insert", [doc, {removeEmptyStrings: false}, function(error) {
           if (error) {
-            throw new Meteor.Error(400, 'Bad Request', "INVALID: " + EJSON.stringify(error.invalidKeys));
+            throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
           }
         }], true, userId, false);
 
@@ -225,7 +225,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
       // We pass removeEmptyStrings: false because we will have removed on client if desired
       doValidate.call(self, "update", [null, modifier, {removeEmptyStrings: false}, function(error) {
           if (error) {
-            throw new Meteor.Error(400, 'Bad Request', "INVALID: " + EJSON.stringify(error.invalidKeys));
+            throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
           }
         }], true, userId, false);
 
@@ -443,14 +443,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     }
     return args;
   } else {
-    var invalidKeys = ctx.invalidKeys();
-    var message = "failed validation";
-    if (invalidKeys.length) {
-      var badKey = invalidKeys[0].name;
-      message += ": " + badKey + ": " + ctx.keyErrorMessage(badKey);
-    }
-    error = new Error(message);
-    error.invalidKeys = invalidKeys;
+    error = getErrorObject(ctx);
     if (callback) {
       // insert/update/upsert pass `false` when there's an error, so we do that
       callback(error, false);
@@ -458,6 +451,23 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       throw error;
     }
   }
+}
+
+function getErrorObject(context) {
+  var message, invalidKeys = context.invalidKeys();
+  if (invalidKeys.length) {
+    message = context.keyErrorMessage(invalidKeys[0].name);
+  } else {
+    message = "Failed validation";
+  }
+  var error = new Error(message);
+  error.invalidKeys = invalidKeys;
+  // If on the server, we add a sanitized error, too, in case we're
+  // called from a method.
+  if (Meteor.isServer) {
+    error.sanitizedError = new Meteor.Error(400, message);
+  }
+  return error;
 }
 
 function addUniqueError(context, errorMessage) {
@@ -473,7 +483,9 @@ function addUniqueError(context, errorMessage) {
 function wrapCallbackForParsingMongoValidationErrors(col, doc, vCtx, cb) {
   return function wrappedCallbackForParsingMongoValidationErrors(error) {
     if (error && ((error.name === "MongoError" && error.code === 11001) || error.message.indexOf('MongoError: E11000' !== -1)) && error.message.indexOf('c2_') !== -1) {
-      addUniqueError(col.simpleSchema().namedContext(vCtx), error.message);
+      var context = col.simpleSchema().namedContext(vCtx);
+      addUniqueError(context, error.message);
+      arguments[0] = getErrorObject(context);
     }
     return cb.apply(this, arguments);
   };
@@ -483,13 +495,15 @@ function wrapCallbackForParsingServerErrors(col, vCtx, cb) {
   return function wrappedCallbackForParsingServerErrors(error) {
     // Handle our own validation errors
     var context = col.simpleSchema().namedContext(vCtx);
-    if (error instanceof Meteor.Error && error.error === 400 && error.details && error.details.slice(0, 8) === "INVALID:") {
-      var invalidKeysFromServer = EJSON.parse(error.details.slice(9));
+    if (error instanceof Meteor.Error && error.error === 400 && error.reason === "INVALID" && typeof error.details === "string") {
+      var invalidKeysFromServer = EJSON.parse(error.details);
       context.addInvalidKeys(invalidKeysFromServer);
+      arguments[0] = getErrorObject(context);
     }
     // Handle Mongo unique index errors, which are forwarded to the client as 409 errors
     else if (error instanceof Meteor.Error && error.error === 409 && error.reason && error.reason.indexOf('E11000') !== -1 && error.reason.indexOf('c2_') !== -1) {
       addUniqueError(context, error.reason);
+      arguments[0] = getErrorObject(context);
     }
     return cb.apply(this, arguments);
   };

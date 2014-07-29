@@ -10,6 +10,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 * Fork from aldeed/meteor-collection2 to pass through
   `removeEmptyStrings` to simple-schema to allow "" to pass the required
   check for a String type in a schema.
+Update Utilities to take flag blankStringsAllowed. Update package.json, smart.json and Changelog to represent new fixes and version number.
+
+### 0.4.3
+
+Error objects that are thrown or passed to callbacks due to schema validation are now better. See the "What Happens When The Document Is Invalid?" section in the README.
 
 ### 0.4.2
 

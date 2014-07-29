@@ -91,7 +91,7 @@ Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) 
   //The insert will fail, error will be set,
   //and result will be undefined or false because "copies" is required.
   //
-  //The list of errors is available by calling Books.simpleSchema().namedContext().invalidKeys()
+  //The list of errors is available on `error.invalidKeys` or by calling Books.simpleSchema().namedContext().invalidKeys()
 });
 ```
 
@@ -102,7 +102,7 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
   //The update will fail, error will be set,
   //and result will be undefined or false because "copies" is required.
   //
-  //The list of errors is available by calling Books.simpleSchema().namedContext().invalidKeys()
+  //The list of errors is available on `error.invalidKeys` or by calling Books.simpleSchema().namedContext().invalidKeys()
 });
 ```
 
@@ -191,6 +191,17 @@ Schema.User = new SimpleSchema({
         optional: true
     },
     services: {
+        type: Object,
+        optional: true,
+        blackbox: true
+    },
+    // Add `roles` to your schema if you use the meteor-roles package.
+    // Note that when using this package, you must also specify the
+    // `Roles.GLOBAL_GROUP` group whenever you add a user to a role.
+    // Roles.addUsersToRoles(userId, ["admin"], Roles.GLOBAL_GROUP);
+    // You can't mix and match adding with and without a group since
+    // you will fail validation in some cases.
+    roles: {
         type: Object,
         optional: true,
         blackbox: true
@@ -487,12 +498,11 @@ function that is called as part of a C2 database operation:
 
 ## What Happens When The Document Is Invalid?
 
-The callback you specify as the last argument of your `insert()` or `update()` call
-will have the first argument (`error`) set to a generic error. But generally speaking,
-you would probably use the reactive methods provided by the SimpleSchema
-validation context to display the specific error messages to the user somewhere.
-The [autoform](https://github.com/aldeed/meteor-autoform) package provides
-some UI components and helpers for this purpose.
+The callback you specify as the last argument of your `insert()` or `update()` call will have the first argument (`error`) set to an `Error` instance. The error message for the first invalid key is set in the `error.message`, and the full `invalidKeys` array is available on `error.invalidKeys`. This is true on both client and server, even if validation for a client-initiated operation does not fail until checked on the server.
+
+If you attempt a synchronous operation in server code, the same validation error is thrown since there is no callback to pass it to. If this happens in a server method (defined with `Meteor.methods`), a more generic `Meteor.Error` is passed to your callback back on the client. This error does not have an `invalidKeys` property, but it does have the error message for the first invalid key set in `error.reason`.
+
+Generally speaking, you would probably not use the `Error` for displaying to the user. You can instead use the reactive methods provided by the SimpleSchema validation context to display the specific error messages to the user somewhere in the UI. The [autoform](https://github.com/aldeed/meteor-autoform) package provides some UI components and helpers for this purpose.
 
 ## More Details
 
