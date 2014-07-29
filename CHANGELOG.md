@@ -11,6 +11,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
   `removeEmptyStrings` to simple-schema to allow "" to pass the required
   check for a String type in a schema.
 
+### 0.4.3
+
+Error objects that are thrown or passed to callbacks due to schema validation are now better. See the "What Happens When The Document Is Invalid?" section in the README.
+>>>>>>> cb470de... bump version
+
 ### 0.4.2
 
 * Fix index error
