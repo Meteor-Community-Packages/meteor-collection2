@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.4.4
+
+If you add prototype properties to an object in a collection transform, those properties no longer interfere with proper validation or cause errors.
+
 ### 0.4.3
 
 Error objects that are thrown or passed to callbacks due to schema validation are now better. See the "What Happens When The Document Is Invalid?" section in the README.

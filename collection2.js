@@ -386,18 +386,24 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   // values will also be set at this point.
   doClean(doc, (Meteor.isServer && !skipAutoValue), true, true, options.removeEmptyStrings !== false);
 
+  // We clone before validating because in some cases we need to adjust the
+  // object a bit before validating it. If we adjusted `doc` itself, our
+  // changes would persist into the database.
+  var docToValidate = {};
+  for (var prop in doc) {
+    // We omit prototype properties when cloning because they will not be valid
+    // and mongo omits them when saving to the database anyway.
+    if (doc.hasOwnProperty(prop)) {
+      docToValidate[prop] = doc[prop];
+    }
+  }
+
   // On the server, upserts are possible; SimpleSchema handles upserts pretty
   // well by default, but it will not know about the fields in the selector,
   // which are also stored in the database if an insert is performed. So we
   // will allow these fields to be considered for validation by adding them
   // to the $set in the modifier. This is no doubt prone to errors, but there
   // probably isn't any better way right now.
-  var docToValidate = {};
-  for (var prop in doc) {
-    if (doc.hasOwnProperty(prop)) {
-      docToValidate[prop] = doc[prop];
-    }
-  }
   if (Meteor.isServer && isUpsert && _.isObject(selector)) {
     var set = docToValidate.$set || {};
     docToValidate.$set = _.clone(selector);
