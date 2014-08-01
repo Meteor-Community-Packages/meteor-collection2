@@ -392,7 +392,12 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   // will allow these fields to be considered for validation by adding them
   // to the $set in the modifier. This is no doubt prone to errors, but there
   // probably isn't any better way right now.
-  var docToValidate = _.clone(doc);
+  var docToValidate = {};
+  for (var prop in doc) {
+    if (doc.hasOwnProperty(prop)) {
+      docToValidate[prop] = doc[prop];
+    }
+  }
   if (Meteor.isServer && isUpsert && _.isObject(selector)) {
     var set = docToValidate.$set || {};
     docToValidate.$set = _.clone(selector);
