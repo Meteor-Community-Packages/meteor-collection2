@@ -244,6 +244,9 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
       update: function() {
         return true;
       },
+      remove: function () {
+        return true;
+      },
       fetch: [],
       transform: null
     });
