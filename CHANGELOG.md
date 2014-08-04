@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.4.5
+
+When you have the `insecure` package added to your app, you expect that you do not need to define allow functions. Previously, adding `collection2` in addition to `insecure` caused you to need to define a "remove" allow function in order to remove documents from the client. This is now fixed.
+
 ### 0.4.4
 
 If you add prototype properties to an object in a collection transform, those properties no longer interfere with proper validation or cause errors.
