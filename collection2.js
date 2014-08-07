@@ -67,12 +67,30 @@ if (Meteor.isServer) {
  * once for a single collection, or to call this for a collection that had a
  * schema object passed to its constructor.
  */
+
+var parseSimpleSchema = function(ss) {
+	if (ss instanceof SimpleSchema) {
+    	ss = ss.schema();
+  	}
+	return ss;
+}
+
+Meteor.Collection.prototype.attachBaseSchema = function(ss) {
+	
+	var self = this;
+	self.baseSchema = self.baseSchema || {};
+	ss = parseSimpleSchema(ss);
+
+	self.baseSchema = _.extend(self.baseSchema, ss);
+		
+}
+
 Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
   var self = this;
 
-  if (!(ss instanceof SimpleSchema)) {
-    ss = new SimpleSchema(ss);
-  }
+  self.attachBaseSchema(ss);
+  ss = new SimpleSchema(self.baseSchema);
+  console.log('Attaching final schema from baseSchema.', self.baseSchema);
 
   self._c2 = {};
   self._c2._simpleSchema = ss;
@@ -242,9 +260,6 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
         return true;
       },
       update: function() {
-        return true;
-      },
-      remove: function () {
         return true;
       },
       fetch: [],
