@@ -78,9 +78,9 @@ var parseSimpleSchema = function(ss) {
 Meteor.Collection.prototype.attachBaseSchema = function(ss) {
 	
 	var self = this;
-	self.baseSchema = self.baseSchema || {};
-	ss = parseSimpleSchema(ss);
 
+	ss = parseSimpleSchema(ss);
+	self.baseSchema = self.baseSchema || {};
 	self.baseSchema = _.extend(self.baseSchema, ss);
 		
 }
