@@ -509,21 +509,18 @@ Generally speaking, you would probably not use the `Error` for displaying to the
 For the curious, this is exactly what Collection2 does before every insert or update:
 
 1. Removes properties from your document or mongo modifier object if they are
-not explicitly listed in the schema.
-2. Automatically converts some properties to match what the schema expects, if possible.
-3. Adds automatic (forced or default) values based on your schema.
+not explicitly listed in the schema. (To skip this, set the `filter` option to `false` when you call `insert` or `update`.)
+2. Automatically converts some properties to match what the schema expects, if possible. (To skip this, set the `autoConvert` option to `false` when you call `insert` or `update`.)
+3. Optimizes your operation so that empty string values will not be stored. (To skip this, set the `removeEmptyStrings` option to `false` when you call `insert` or `update`.)
+3. Adds automatic (forced or default) values based on your schema. (Values are added only on the server and will make their way back to your client when your subscription is updated.)
 4. Validates your document or mongo modifier object.
 5. Performs the insert or update like normal, only if it was valid.
 
-Collection2 is simply calling SimpleSchema methods to do these things.
-
-This check happens on both the client and the server for client-initiated
-actions, giving you the speed of client-side validation along with the security
-of server-side validation.
+Collection2 is simply calling SimpleSchema methods to do these things. The validation happens on both the client and the server for client-initiated actions, giving you the speed of client-side validation along with the security of server-side validation.
 
 ## Problems?
 
-You might find yourself in a situation where it seems as though validation is not working correctly. While it's possible that you've found a bug, it's more likely that you're running into one of the following tricky, confusing situations.
+You might find yourself in a situation where it seems as though validation is not working correctly. First, you should enable SimpleSchema debug mode by setting `SimpleSchema.debug = true`, which may log some additional information. If you're still confused, read through the following tricky, confusing situations.
 
 ### SubObjects and Arrays of Objects
 

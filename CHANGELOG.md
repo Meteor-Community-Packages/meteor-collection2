@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 0.4.6
+
+Add `filter` and `autoConvert` options to insert/update methods. Pass `false` to disable the default behavior of filtering out extra properties and autoconverting types for that insert or update operation.
+
 ### 0.4.5
 
 When you have the `insecure` package added to your app, you expect that you do not need to define allow functions. Previously, adding `collection2` in addition to `insecure` caused you to need to define a "remove" allow function in order to remove documents from the client. This is now fixed.

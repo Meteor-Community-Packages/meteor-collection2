@@ -162,7 +162,9 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
       // Referenced doc is cleaned in place
       ss.clean(doc, {
         isModifier: false,
-        // We don't remove empty string here; they are removed on client if desired
+        // We don't do these here because they are done on the client if desired
+        filter: false,
+        autoConvert: false,
         removeEmptyStrings: false,
         extendAutoValueContext: {
           isInsert: true,
@@ -185,7 +187,9 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
       // Referenced modifier is cleaned in place
       ss.clean(modifier, {
         isModifier: true,
-        // We don't remove empty string here; they are removed on client if desired
+        // We don't do these here because they are done on the client if desired
+        filter: false,
+        autoConvert: false,
         removeEmptyStrings: false,
         extendAutoValueContext: {
           isInsert: false,
@@ -210,8 +214,8 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
   // that custom types are properly recognized for type validation.
   self.deny({
     insert: function(userId, doc) {
-      // We pass removeEmptyStrings: false because we will have removed on client if desired
-      doValidate.call(self, "insert", [doc, {removeEmptyStrings: false}, function(error) {
+      // We pass the false options because we will have done them on client if desired
+      doValidate.call(self, "insert", [doc, {removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
           if (error) {
             throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
           }
@@ -222,8 +226,8 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
     update: function(userId, doc, fields, modifier) {
       // NOTE: This will never be an upsert because client-side upserts
       // are not allowed once you define allow/deny functions.
-      // We pass removeEmptyStrings: false because we will have removed on client if desired
-      doValidate.call(self, "update", [null, modifier, {removeEmptyStrings: false}, function(error) {
+      // We pass the false options because we will have done them on client if desired
+      doValidate.call(self, "update", [null, modifier, {removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
           if (error) {
             throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
           }
@@ -387,7 +391,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   
   // Preliminary cleaning on both client and server. On the server, automatic
   // values will also be set at this point.
-  doClean(doc, (Meteor.isServer && !skipAutoValue), true, true, options.removeEmptyStrings !== false);
+  doClean(doc, (Meteor.isServer && !skipAutoValue), options.filter !== false, options.autoConvert !== false, options.removeEmptyStrings !== false);
 
   // We clone before validating because in some cases we need to adjust the
   // object a bit before validating it. If we adjusted `doc` itself, our
