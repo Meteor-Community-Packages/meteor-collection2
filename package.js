@@ -1,23 +1,50 @@
 Package.describe({
-  name: "collection2",
-  summary: "Allows you to attach a SimpleSchema to a Meteor.Collection, supporting automatic validation of insert and update operations on the client and server."
+  name: "aldeed:collection2",
+  summary: "Automatic validation of insert and update operations on the client and server.",
+  version: "0.4.6",
+  git: "https://github.com/aldeed/meteor-collection2.git"
 });
 
 Package.on_use(function(api) {
-  api.use(['simple-schema', 'underscore', 'deps', 'check', 'mongo-livedata', 'ejson']);
 
-  api.imply && api.imply('simple-schema', ['client', 'server']);
+  if (api.versionsFrom) {
+    api.use(['aldeed:simple-schema@0.7.0']);
+    api.imply(['aldeed:simple-schema']);
 
-  // Allow us to detect 'insecure'.
-  api.use('insecure', {weak: true});
+    api.use('underscore@1.0.0');
+    api.use('deps@1.0.0');
+    api.use('check@1.0.0');
+    api.use('mongo-livedata@1.0.0');
+    api.use('ejson@1.0.0');
 
+    // Allow us to detect 'insecure'.
+    api.use('insecure@1.0.0', {weak: true});
+  } else {
+    api.use(['simple-schema']);
+    api.imply(['simple-schema']);
+    api.use(['underscore', 'deps', 'check', 'mongo-livedata', 'ejson']);
+
+    // Allow us to detect 'insecure'.
+    api.use('insecure', {weak: true});
+  }
+  
   api.add_files(['collection2.js']);
 });
 
 Package.on_test(function(api) {
-  api.use(['collection2', 'tinytest', 'underscore', 'ejson', 'ordered-dict',
-    'random', 'deps']);
-  api.use(['test-helpers'], 'server');
+
+  if (api.versionsFrom) {
+    api.use('aldeed:collection2');
+    api.use('tinytest@1.0.0');
+    api.use('test-helpers@1.0.0');
+    api.use('underscore@1.0.0');
+    api.use('ejson@1.0.0');
+    api.use('ordered-dict@1.0.0');
+    api.use('random@1.0.0');
+    api.use('deps@1.0.0');
+  } else {
+    api.use(['collection2', 'tinytest', 'test-helpers', 'underscore', 'ejson', 'ordered-dict', 'random', 'deps']);
+  }
 
   api.add_files('collection2.tests.js');
 });
