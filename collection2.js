@@ -59,7 +59,9 @@ if (Meteor.isServer) {
 
 /**
  * Meteor.Collection.prototype.attachSchema
- * @param  {SimpleSchema|Object} ss - SimpleSchema instance or a schema definition object from which to create a new SimpleSchema instance
+ * @param {SimpleSchema|Object} ss - SimpleSchema instance or a schema definition object from which to create a new SimpleSchema instance
+ * @param {Object} [options]
+ * @param {Boolean} [options.transform=false] Set to `true` if your document must be passed through the collection's transform to properly validate.
  * @return {undefined}
  *
  * Use this method to attach a schema to a collection created by another package,
@@ -67,8 +69,9 @@ if (Meteor.isServer) {
  * once for a single collection, or to call this for a collection that had a
  * schema object passed to its constructor.
  */
-Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
+Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   var self = this;
+  options = options || {};
 
   if (!(ss instanceof SimpleSchema)) {
     ss = new SimpleSchema(ss);
@@ -209,10 +212,10 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
   // Second define deny functions to validate again on the server
   // for client-initiated inserts and updates. These should be
   // called after the clean/autovalue functions since we're adding
-  // them after. These must *not* have "transform: null" because
+  // them after. These must *not* have "transform: null" if options.transform is true because
   // we need to pass the doc through any transforms to be sure
   // that custom types are properly recognized for type validation.
-  self.deny({
+  self.deny(_.extend({
     insert: function(userId, doc) {
       // We pass the false options because we will have done them on client if desired
       doValidate.call(self, "insert", [doc, {removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
@@ -236,7 +239,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
       return false;
     },
     fetch: []
-  });
+  }, options.transform === true ? {} : {transform: null}));
 
   // If insecure package is in use, we need to add allow rules that return
   // true. Otherwise, it would seemingly turn off insecure mode.
@@ -371,8 +374,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   }
 
   function doClean(docToClean, getAutoValues, filter, autoConvert, removeEmptyStrings) {
-    // Clean the doc/modifier in place (removes any virtual fields added
-    // by the deny transform, too)
+    // Clean the doc/modifier in place
     schema.clean(docToClean, {
       filter: filter,
       autoConvert: autoConvert,

@@ -106,6 +106,14 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
 });
 ```
 
+### attachSchema options
+
+If your validation requires that your doc be transformed using the collection's transform function prior to being validated, then you must pass the `transform: true` option to `attachSchema` when you attach the schema:
+
+```js
+Books.attachSchema(Schemas.Book, {transform: true});
+```
+
 ### Attach a Schema to Meteor.users
 
 Obviously, when you attach a schema, you must know what the schema should be. For `Meteor.users`,

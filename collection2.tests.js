@@ -185,20 +185,21 @@ Document.prototype = {
 };
 
 BlackBox = new Meteor.Collection('black', {
-  schema: {
-    name: {
-      type: String
-    },
-    data: {
-      type: Document,
-      blackbox: true
-    }
-  },
   transform: function(doc) {
     doc.data = new Document(doc.data);
     return doc;
   }
 });
+
+BlackBox.attachSchema(new SimpleSchema({
+  name: {
+    type: String
+  },
+  data: {
+    type: Document,
+    blackbox: true
+  }  
+}), {transform: true});
 
 defaultValues = new Meteor.Collection("dv");
 

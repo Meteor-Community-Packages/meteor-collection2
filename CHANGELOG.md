@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### next
+
+* When a client-side operation is re-validated on the server, the doc is no longer transformed first. If your validation requires that your doc be transformed using the collection's transform function prior to being validated, then you must pass the `transform: true` option to `attachSchema` when you attach the schema.
+
 ### 0.4.6
 
 Add `filter` and `autoConvert` options to insert/update methods. Pass `false` to disable the default behavior of filtering out extra properties and autoconverting types for that insert or update operation.
