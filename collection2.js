@@ -169,6 +169,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) 
         filter: false,
         autoConvert: false,
         removeEmptyStrings: false,
+        trimStrings: false,
         extendAutoValueContext: {
           isInsert: true,
           isUpdate: false,
@@ -194,6 +195,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) 
         filter: false,
         autoConvert: false,
         removeEmptyStrings: false,
+        trimStrings: false,
         extendAutoValueContext: {
           isInsert: false,
           isUpdate: true,
@@ -218,7 +220,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) 
   self.deny(_.extend({
     insert: function(userId, doc) {
       // We pass the false options because we will have done them on client if desired
-      doValidate.call(self, "insert", [doc, {removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
+      doValidate.call(self, "insert", [doc, {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
           if (error) {
             throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
           }
@@ -230,7 +232,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) 
       // NOTE: This will never be an upsert because client-side upserts
       // are not allowed once you define allow/deny functions.
       // We pass the false options because we will have done them on client if desired
-      doValidate.call(self, "update", [null, modifier, {removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
+      doValidate.call(self, "update", [null, modifier, {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
           if (error) {
             throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
           }
@@ -373,7 +375,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     delete doc._id;
   }
 
-  function doClean(docToClean, getAutoValues, filter, autoConvert, removeEmptyStrings) {
+  function doClean(docToClean, getAutoValues, filter, autoConvert, removeEmptyStrings, trimStrings) {
     // Clean the doc/modifier in place
     schema.clean(docToClean, {
       filter: filter,
@@ -381,6 +383,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       getAutoValues: getAutoValues,
       isModifier: (type !== "insert"),
       removeEmptyStrings: removeEmptyStrings,
+      trimStrings: trimStrings,
       extendAutoValueContext: {
         isInsert: (type === "insert"),
         isUpdate: (type === "update" && options.upsert !== true),
@@ -393,7 +396,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   
   // Preliminary cleaning on both client and server. On the server, automatic
   // values will also be set at this point.
-  doClean(doc, (Meteor.isServer && !skipAutoValue), options.filter !== false, options.autoConvert !== false, options.removeEmptyStrings !== false);
+  doClean(doc, (Meteor.isServer && !skipAutoValue), options.filter !== false, options.autoConvert !== false, options.removeEmptyStrings !== false, options.trimStrings !== false);
 
   // We clone before validating because in some cases we need to adjust the
   // object a bit before validating it. If we adjusted `doc` itself, our
@@ -424,7 +427,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   // we will add them to docToValidate for validation purposes only.
   // This is because we want all actual values generated on the server.
   if (Meteor.isClient) {
-    doClean(docToValidate, true, false, false, false);
+    doClean(docToValidate, true, false, false, false, false);
   }
 
   // Validate doc
