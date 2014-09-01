@@ -8,7 +8,7 @@ Package.describe({
 Package.on_use(function(api) {
 
   if (api.versionsFrom) {
-    api.use(['aldeed:simple-schema@1.0.0']);
+    api.use(['aldeed:simple-schema@1.0.1']);
     api.imply(['aldeed:simple-schema']);
 
     api.use('underscore@1.0.0');

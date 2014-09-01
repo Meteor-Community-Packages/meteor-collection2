@@ -244,6 +244,13 @@ contextCheck = new Meteor.Collection("contextCheck", {
       autoValue: function () {
         return this.isUpdate;
       }
+    },
+    'context.docId': {
+      type: String,
+      optional: true,
+      autoValue: function () {
+        return this.docId;
+      }
     }
   })
 });
@@ -734,6 +741,7 @@ Tinytest.addAsync("Collection2 - AutoValue Context", function(test, next) {
     test.isTrue(ctx.context.isInsert, 'expected isInsert to be true');
     test.isFalse(ctx.context.isUpdate, 'expected isUpdate to be false');
     test.isNull(ctx.context.userId, 'expected userId to be null');
+    test.isUndefined(ctx.context.docId, 'expected docId to be undefined');
     if (Meteor.isClient) {
       test.isFalse(ctx.context.isFromTrustedCode, 'expected isFromTrustedCode to be false');
     } else {
@@ -746,12 +754,19 @@ Tinytest.addAsync("Collection2 - AutoValue Context", function(test, next) {
       test.isTrue(ctx.context.isUpdate, 'expected isUpdate to be true');
       test.isFalse(ctx.context.isInsert, 'expected isInsert to be false');
       test.isNull(ctx.context.userId, 'expected userId to be null');
+      test.equal(ctx.context.docId, testId, 'expected docId to be ' + testId);
       if (Meteor.isClient) {
         test.isFalse(ctx.context.isFromTrustedCode, 'expected isFromTrustedCode to be false');
       } else {
         test.isTrue(ctx.context.isFromTrustedCode, 'expected isFromTrustedCode to be true');
       }
-      next();
+
+      // make sure docId works with `_id` direct, too
+      contextCheck.update(testId, {$set: {foo: "bar"}}, function (error, result) {
+        ctx = contextCheck.findOne({_id: testId});
+        test.equal(ctx.context.docId, testId, 'expected docId to be ' + testId);
+        next();
+      });
     });
   });
 });

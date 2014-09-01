@@ -201,13 +201,14 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) 
           isUpdate: true,
           isUpsert: false,
           userId: userId,
-          isFromTrustedCode: false
+          isFromTrustedCode: false,
+          docId: doc && doc._id
         }
       });
 
       return false;
     },
-    fetch: [],
+    fetch: ['_id'],
     transform: null
   });
 
@@ -232,7 +233,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) 
       // NOTE: This will never be an upsert because client-side upserts
       // are not allowed once you define allow/deny functions.
       // We pass the false options because we will have done them on client if desired
-      doValidate.call(self, "update", [null, modifier, {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
+      doValidate.call(self, "update", [{_id: doc && doc._id}, modifier, {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
           if (error) {
             throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
           }
@@ -240,7 +241,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) 
 
       return false;
     },
-    fetch: []
+    fetch: ['_id']
   }, options.transform === true ? {} : {transform: null}));
 
   // If insecure package is in use, we need to add allow rules that return
@@ -389,7 +390,8 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpdate: (type === "update" && options.upsert !== true),
         isUpsert: isUpsert,
         userId: userId,
-        isFromTrustedCode: isFromTrustedCode
+        isFromTrustedCode: isFromTrustedCode,
+        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0
       }
     });
   }
@@ -440,7 +442,8 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       isUpdate: (type === "update" && options.upsert !== true),
       isUpsert: isUpsert,
       userId: userId,
-      isFromTrustedCode: isFromTrustedCode
+      isFromTrustedCode: isFromTrustedCode,
+      docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0
     }
   });
 
