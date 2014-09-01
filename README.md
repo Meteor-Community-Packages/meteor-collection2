@@ -297,7 +297,7 @@ Refer to the [simple-schema](https://github.com/aldeed/meteor-simple-schema) pac
 
 To skip validation, use the `validate: false` option when calling `insert` or
 `update`. On the client (untrusted code), this will skip only client-side
-validation. On the server (trusted code), it will skip all validation.
+validation. On the server (trusted code), it will skip all validation. The object is still cleaned and autoValues are still generated.
 
 ## Additional SimpleSchema Options
 

@@ -9,7 +9,7 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 * When a client-side operation is re-validated on the server, the doc is no longer transformed first. If your validation requires that your doc be transformed using the collection's transform function prior to being validated, then you must pass the `transform: true` option to `attachSchema` when you attach the schema.
 * For `custom` and `autoValue` functions, `this.docId` is now set to the `_id` property of the document being updated. This will be set only for an update or upsert, and only when the selector includes (or is) the `_id` or when the operation is initiated on the client.
-
+* The `validate: false` option now skips the validation only. It cleans the object, including generating autoValues.
 
 ### 0.4.6
 

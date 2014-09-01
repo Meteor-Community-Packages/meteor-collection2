@@ -364,10 +364,6 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     }
   }
 
-  if (options.validate === false) {
-    return args;
-  }
-
   // If _id has already been added, remove it temporarily if it's
   // not explicitly defined in the schema.
   var id;
@@ -434,18 +430,23 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
 
   // Validate doc
   var ctx = schema.namedContext(options.validationContext);
-  var isValid = ctx.validate(docToValidate, {
-    modifier: (type === "update" || type === "upsert"),
-    upsert: isUpsert,
-    extendedCustomContext: {
-      isInsert: (type === "insert"),
-      isUpdate: (type === "update" && options.upsert !== true),
-      isUpsert: isUpsert,
-      userId: userId,
-      isFromTrustedCode: isFromTrustedCode,
-      docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0
-    }
-  });
+  var isValid;
+  if (options.validate === false) {
+    isValid = true;
+  } else {
+    isValid = ctx.validate(docToValidate, {
+      modifier: (type === "update" || type === "upsert"),
+      upsert: isUpsert,
+      extendedCustomContext: {
+        isInsert: (type === "insert"),
+        isUpdate: (type === "update" && options.upsert !== true),
+        isUpsert: isUpsert,
+        userId: userId,
+        isFromTrustedCode: isFromTrustedCode,
+        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0
+      }
+    });
+  }
 
   if (isValid) {
     // Add the ID back
