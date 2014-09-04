@@ -80,7 +80,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
   // Loop over fields definitions and ensure collection indexes (server side only)
   _.each(ss.schema(), function(definition, fieldName) {
     if (Meteor.isServer && ('index' in definition || definition.unique === true)) {
-      
+
       function setUpIndex() {
         var index = {}, indexValue;
         // If they specified `unique: true` but not `index`, we assume `index: 1` to set up the unique index in mongo
@@ -113,7 +113,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
           }
         }
       }
-      
+
       if (hasStartedUp) {
         setUpIndex();
       } else {
@@ -262,6 +262,20 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss) {
   // additional deny functions, but does not have to.
 };
 
+Meteor.Collection.prototype.extendSchema = function c2ExtendSchema(newSchema) {
+
+  var self = this;
+
+  if (newSchema instanceof SimpleSchema) { newSchema = newSchema.schema(); }
+  if (!_.isObject(newSchema)) { newSchema = {}; }
+
+  var oldSchema = self._c2 && self._c2._simpleSchema ? self._c2._simpleSchema.schema() : {},
+      extSchema = _.extend(oldSchema, newSchema);
+
+  self.attachSchema(extSchema);
+
+}
+
 Meteor.Collection.prototype.simpleSchema = function c2SS() {
   var self = this;
   return self._c2 ? self._c2._simpleSchema : null;
@@ -388,7 +402,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       }
     });
   }
-  
+
   // Preliminary cleaning on both client and server. On the server, automatic
   // values will also be set at this point.
   doClean(doc, (Meteor.isServer && !skipAutoValue), options.filter !== false, options.autoConvert !== false, options.removeEmptyStrings !== false);
