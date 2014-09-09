@@ -9,6 +9,7 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 * Updates for Meteor 0.9.1
 * You can no longer use the `schema` constructor option to attach a schema to a collection. You must call `attachSchema` instead.
+* You can now call `attachSchema` more than once. The schema you attach will extend all previous schemas you've attached. This can be useful for widely used collections like Meteor.users.
 
 ### 1.0.0
 

@@ -18,6 +18,32 @@ Tinytest.addAsync('Collection2 - Reset', function (test, next) {
   Meteor.call("removeAll", next);
 });
 
+// Attach more than one schema
+Tinytest.add('Collection2 - Attach Multiple Schemas', function(test) {
+  var c = new Meteor.Collection("multiSchema");
+
+  // Attach two different schemas
+  c.attachSchema(partOne);
+  c.attachSchema(partTwo);
+
+  // Check the combined schema
+  var combinedSchema = c.simpleSchema();
+  test.isTrue(_.contains(combinedSchema._schemaKeys, 'one'));
+  test.isTrue(_.contains(combinedSchema._schemaKeys, 'two'));
+  test.equal(combinedSchema.schema('two').type, String);
+
+  // Attach a third schema and make sure that it extends/overwrites the others
+  c.attachSchema(partThree);
+  combinedSchema = c.simpleSchema();
+  test.isTrue(_.contains(combinedSchema._schemaKeys, 'one'));
+  test.isTrue(_.contains(combinedSchema._schemaKeys, 'two'));
+  test.equal(combinedSchema.schema('two').type, Number);
+
+  // Ensure that we've only attached two deny functions
+  test.length(c._validators.insert.deny, 2);
+  test.length(c._validators.update.deny, 2);
+});
+
 // Test required field "copies"
 Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
   var numDone = 0;

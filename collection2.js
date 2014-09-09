@@ -43,7 +43,14 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     ss = new SimpleSchema(ss);
   }
 
-  self._c2 = {};
+  self._c2 = self._c2 || {};
+
+  // If we've already attached one schema, we combine both into a new schema
+  if (self._c2._simpleSchema) {
+    ss = new SimpleSchema([self._c2._simpleSchema, ss]);
+  }
+
+  // Track the schema in the collection
   self._c2._simpleSchema = ss;
 
   // Loop over fields definitions and ensure collection indexes (server side only)
@@ -110,123 +117,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     return true;
   });
 
-  // First define deny functions to extend doc with the results of clean
-  // and autovalues. This must be done with "transform: null" or we would be
-  // extending a clone of doc and therefore have no effect.
-  self.deny({
-    insert: function(userId, doc) {
-      // If _id has already been added, remove it temporarily if it's
-      // not explicitly defined in the schema.
-      var id;
-      if (Meteor.isServer && doc._id && !ss.allowsKey("_id")) {
-        id = doc._id;
-        delete doc._id;
-      }
-
-      // Referenced doc is cleaned in place
-      ss.clean(doc, {
-        isModifier: false,
-        // We don't do these here because they are done on the client if desired
-        filter: false,
-        autoConvert: false,
-        removeEmptyStrings: false,
-        trimStrings: false,
-        extendAutoValueContext: {
-          isInsert: true,
-          isUpdate: false,
-          isUpsert: false,
-          userId: userId,
-          isFromTrustedCode: false
-        }
-      });
-
-      // Add the ID back
-      if (id) {
-        doc._id = id;
-      }
-
-      return false;
-    },
-    update: function(userId, doc, fields, modifier) {
-
-      // Referenced modifier is cleaned in place
-      ss.clean(modifier, {
-        isModifier: true,
-        // We don't do these here because they are done on the client if desired
-        filter: false,
-        autoConvert: false,
-        removeEmptyStrings: false,
-        trimStrings: false,
-        extendAutoValueContext: {
-          isInsert: false,
-          isUpdate: true,
-          isUpsert: false,
-          userId: userId,
-          isFromTrustedCode: false,
-          docId: doc && doc._id
-        }
-      });
-
-      return false;
-    },
-    fetch: ['_id'],
-    transform: null
-  });
-
-  // Second define deny functions to validate again on the server
-  // for client-initiated inserts and updates. These should be
-  // called after the clean/autovalue functions since we're adding
-  // them after. These must *not* have "transform: null" if options.transform is true because
-  // we need to pass the doc through any transforms to be sure
-  // that custom types are properly recognized for type validation.
-  self.deny(_.extend({
-    insert: function(userId, doc) {
-      // We pass the false options because we will have done them on client if desired
-      doValidate.call(self, "insert", [doc, {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
-          if (error) {
-            throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
-          }
-        }], true, userId, false);
-
-      return false;
-    },
-    update: function(userId, doc, fields, modifier) {
-      // NOTE: This will never be an upsert because client-side upserts
-      // are not allowed once you define allow/deny functions.
-      // We pass the false options because we will have done them on client if desired
-      doValidate.call(self, "update", [{_id: doc && doc._id}, modifier, {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
-          if (error) {
-            throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
-          }
-        }], true, userId, false);
-
-      return false;
-    },
-    fetch: ['_id']
-  }, options.transform === true ? {} : {transform: null}));
-
-  // If insecure package is in use, we need to add allow rules that return
-  // true. Otherwise, it would seemingly turn off insecure mode.
-  if (Package && Package.insecure) {
-    self.allow({
-      insert: function() {
-        return true;
-      },
-      update: function() {
-        return true;
-      },
-      remove: function () {
-        return true;
-      },
-      fetch: [],
-      transform: null
-    });
-  }
-  // If insecure package is NOT in use, then adding the two deny functions
-  // does not have any effect on the main app's security paradigm. The
-  // user will still be required to add at least one allow function of her
-  // own for each operation for this collection. And the user may still add
-  // additional deny functions, but does not have to.
+  defineDeny(self, options);
+  keepInsecure(self);
 };
 
 Mongo.Collection.prototype.simpleSchema = function c2SS() {
@@ -494,4 +386,137 @@ function wrapCallbackForParsingServerErrors(col, vCtx, cb) {
     }
     return cb.apply(this, arguments);
   };
+}
+
+var alreadyInsecured = {};
+function keepInsecure(c) {
+  // If insecure package is in use, we need to add allow rules that return
+  // true. Otherwise, it would seemingly turn off insecure mode.
+  if (Package && Package.insecure && !alreadyInsecured[c._name]) {
+    c.allow({
+      insert: function() {
+        return true;
+      },
+      update: function() {
+        return true;
+      },
+      remove: function () {
+        return true;
+      },
+      fetch: [],
+      transform: null
+    });
+    alreadyInsecured[c._name] = true;
+  }
+  // If insecure package is NOT in use, then adding the two deny functions
+  // does not have any effect on the main app's security paradigm. The
+  // user will still be required to add at least one allow function of her
+  // own for each operation for this collection. And the user may still add
+  // additional deny functions, but does not have to.
+}
+
+var alreadyDefined = {};
+function defineDeny(c, options) {
+  if (!alreadyDefined[c._name]) {
+
+    // First define deny functions to extend doc with the results of clean
+    // and autovalues. This must be done with "transform: null" or we would be
+    // extending a clone of doc and therefore have no effect.
+    c.deny({
+      insert: function(userId, doc) {
+        var ss = c.simpleSchema();
+        // If _id has already been added, remove it temporarily if it's
+        // not explicitly defined in the schema.
+        var id;
+        if (Meteor.isServer && doc._id && !ss.allowsKey("_id")) {
+          id = doc._id;
+          delete doc._id;
+        }
+
+        // Referenced doc is cleaned in place
+        ss.clean(doc, {
+          isModifier: false,
+          // We don't do these here because they are done on the client if desired
+          filter: false,
+          autoConvert: false,
+          removeEmptyStrings: false,
+          trimStrings: false,
+          extendAutoValueContext: {
+            isInsert: true,
+            isUpdate: false,
+            isUpsert: false,
+            userId: userId,
+            isFromTrustedCode: false
+          }
+        });
+
+        // Add the ID back
+        if (id) {
+          doc._id = id;
+        }
+
+        return false;
+      },
+      update: function(userId, doc, fields, modifier) {
+        var ss = c.simpleSchema();
+        // Referenced modifier is cleaned in place
+        ss.clean(modifier, {
+          isModifier: true,
+          // We don't do these here because they are done on the client if desired
+          filter: false,
+          autoConvert: false,
+          removeEmptyStrings: false,
+          trimStrings: false,
+          extendAutoValueContext: {
+            isInsert: false,
+            isUpdate: true,
+            isUpsert: false,
+            userId: userId,
+            isFromTrustedCode: false,
+            docId: doc && doc._id
+          }
+        });
+
+        return false;
+      },
+      fetch: ['_id'],
+      transform: null
+    });
+
+    // Second define deny functions to validate again on the server
+    // for client-initiated inserts and updates. These should be
+    // called after the clean/autovalue functions since we're adding
+    // them after. These must *not* have "transform: null" if options.transform is true because
+    // we need to pass the doc through any transforms to be sure
+    // that custom types are properly recognized for type validation.
+    c.deny(_.extend({
+      insert: function(userId, doc) {
+        // We pass the false options because we will have done them on client if desired
+        doValidate.call(c, "insert", [doc, {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
+            if (error) {
+              throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+            }
+          }], true, userId, false);
+
+        return false;
+      },
+      update: function(userId, doc, fields, modifier) {
+        // NOTE: This will never be an upsert because client-side upserts
+        // are not allowed once you define allow/deny functions.
+        // We pass the false options because we will have done them on client if desired
+        doValidate.call(c, "update", [{_id: doc && doc._id}, modifier, {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
+            if (error) {
+              throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+            }
+          }], true, userId, false);
+
+        return false;
+      },
+      fetch: ['_id']
+    }, options.transform === true ? {} : {transform: null}));
+
+    // note that we've already done this collection so that we don't do it again
+    // if attachSchema is called again
+    alreadyDefined[c._name] = true;
+  }
 }

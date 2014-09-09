@@ -183,3 +183,15 @@ RESSchema = new SimpleSchema({
   foo: { type: String },
   bar: { type: String, optional: true }
 });
+
+partOne = new SimpleSchema({
+  one: { type: String }
+});
+
+partTwo = new SimpleSchema({
+  two: { type: String }
+});
+
+partThree = new SimpleSchema({
+  two: { type: Number }
+});
