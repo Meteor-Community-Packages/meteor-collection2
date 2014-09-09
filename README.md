@@ -12,10 +12,10 @@ against schemas.
 
 ## Installation
 
-Install using Meteorite. When in a Meteorite-managed app directory, enter:
+In your Meteor app directory, enter:
 
 ```
-$ mrt add collection2
+$ meteor add aldeed:collection2
 ```
 
 ## Why Use Collection2?
@@ -314,20 +314,21 @@ If you set `denyUpdate: true`, any collection update that modifies the field
 will fail. For instance:
 
 ```js
-Posts = new Meteor.Collection('posts', {
-  schema: new SimpleSchema({
-    title: {
-      type: String
-    },
-    content: {
-      type: String
-    },
-    createdAt: {
-      type: Date,
-      denyUpdate: true
-    }
-  })
+var PostSchema = new SimpleSchema({
+  title: {
+    type: String
+  },
+  content: {
+    type: String
+  },
+  createdAt: {
+    type: Date,
+    denyUpdate: true
+  }
 });
+
+Posts = new Meteor.Collection('posts');
+Posts.attachSchema(PostSchema);
 
 var postId = Posts.insert({title: 'Hello', content: 'World', createdAt: new Date});
 ```

@@ -17,48 +17,14 @@ SimpleSchema.messages({
  * Public API
  */
 
-var constructor = Meteor.Collection;
-Meteor.Collection = function c2CollectionConstructor(name, options) {
-  var self = this, ss;
-  options = options || {};
-
-  if (options.schema) {
-    ss = options.schema;
-    delete options.schema;
-  }
-
-  if (options.virtualFields) {
-    throw new Error('Collection2: Sorry, the virtualFields option is no longer supported.');
-  }
-
-  // Call original Meteor.Collection constructor
-  constructor.call(self, name, options);
-
-  // Attach schema
-  ss && self.attachSchema(ss);
-};
-
-// Make sure prototype and normal properties are kept
-Meteor.Collection.prototype = constructor.prototype;
-
-for (var prop in constructor) {
-  if (constructor.hasOwnProperty(prop)) {
-    Meteor.Collection[prop] = constructor[prop];
-  }
-}
-
-if (Meteor.isServer) {
-  // A function passed to Meteor.startup is only run on the server if
-  // the process has not yet started up. So we need a flag to tell
-  // us whether to wrap in Meteor.startup or not
-  var hasStartedUp = false;
-  Meteor.startup(function () {
-    hasStartedUp = true;
-  });
+// backwards compatibility
+if (typeof Mongo === "undefined") {
+  Mongo = {};
+  Mongo.Collection = Meteor.Collection;
 }
 
 /**
- * Meteor.Collection.prototype.attachSchema
+ * Mongo.Collection.prototype.attachSchema
  * @param {SimpleSchema|Object} ss - SimpleSchema instance or a schema definition object from which to create a new SimpleSchema instance
  * @param {Object} [options]
  * @param {Boolean} [options.transform=false] Set to `true` if your document must be passed through the collection's transform to properly validate.
@@ -69,7 +35,7 @@ if (Meteor.isServer) {
  * once for a single collection, or to call this for a collection that had a
  * schema object passed to its constructor.
  */
-Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
+Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   var self = this;
   options = options || {};
 
@@ -117,12 +83,7 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) 
         }
       }
       
-      if (hasStartedUp) {
-        setUpIndex();
-      } else {
-        Meteor.startup(setUpIndex);
-      }
-
+      Meteor.startup(setUpIndex);
     }
   });
 
@@ -268,15 +229,15 @@ Meteor.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) 
   // additional deny functions, but does not have to.
 };
 
-Meteor.Collection.prototype.simpleSchema = function c2SS() {
+Mongo.Collection.prototype.simpleSchema = function c2SS() {
   var self = this;
   return self._c2 ? self._c2._simpleSchema : null;
 };
 
 // Wrap DB write operation methods
 _.each(['insert', 'update', 'upsert'], function(methodName) {
-  var _super = Meteor.Collection.prototype[methodName];
-  Meteor.Collection.prototype[methodName] = function () {
+  var _super = Mongo.Collection.prototype[methodName];
+  Mongo.Collection.prototype[methodName] = function () {
     var self = this, args = _.toArray(arguments);
     if (self._c2) {
       args = doValidate.call(self, methodName, args, false,
@@ -534,8 +495,3 @@ function wrapCallbackForParsingServerErrors(col, vCtx, cb) {
     return cb.apply(this, arguments);
   };
 }
-
-// Meteor.Collection2 is deprecated
-Meteor.Collection2 = function () {
-  throw new Error("Collection2: Doing `new Meteor.Collection2` no longer works. Just use a normal `new Meteor.Collection` call.");
-};
