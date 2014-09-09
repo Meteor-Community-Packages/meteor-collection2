@@ -5,6 +5,11 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 2.0.0
+
+* Updates for Meteor 0.9.1
+* You can no longer use the `schema` constructor option to attach a schema to a collection. You must call `attachSchema` instead.
+
 ### 1.0.0
 
 * When a client-side operation is re-validated on the server, the doc is no longer transformed first. If your validation requires that your doc be transformed using the collection's transform function prior to being validated, then you must pass the `transform: true` option to `attachSchema` when you attach the schema.

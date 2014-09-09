@@ -46,5 +46,11 @@ Package.on_test(function(api) {
     api.use(['collection2', 'tinytest', 'test-helpers', 'underscore', 'ejson', 'ordered-dict', 'random', 'deps']);
   }
 
-  api.add_files('collection2.tests.js');
+  api.add_files([
+    'tests/schemas.js',
+    'tests/collections.js',
+    'tests/pubsub.js',
+    'tests/security.js',
+    'tests/tests.js'
+  ]);
 });
