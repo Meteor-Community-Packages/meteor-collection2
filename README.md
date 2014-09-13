@@ -1,12 +1,12 @@
 Collection2 [![Build Status](https://travis-ci.org/aldeed/meteor-collection2.png?branch=master)](https://travis-ci.org/aldeed/meteor-collection2)
 =========================
 
-A smart package for Meteor that extends Meteor.Collection to provide support
+A smart package for Meteor that extends Mongo.Collection to provide support
 for specifying a schema and then validating against that schema
 when inserting and updating.
 
 This package requires and automatically installs the 
-[simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
+[aldeed:simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
 which provides the `SimpleSchema` object type for defining and validating
 against schemas.
 
@@ -29,11 +29,11 @@ easily display customizable validation error messages to the user without any
 event handling.
 * Schema validation for all inserts and updates is automatic on both the client
 and the server, providing both speed and security.
-* The [autoform](https://github.com/aldeed/meteor-autoform) package can
+* The [aldeed:autoform](https://github.com/aldeed/meteor-autoform) package can
 take your collection's schema and automatically create HTML5 forms based on it.
 AutoForm provides automatic database operations, method calls, validation, and
 user interface reactivity. You have to write very little markup and no event
-handling. Refer to the [autoform](https://github.com/aldeed/meteor-autoform)
+handling. Refer to the [AutoForm](https://github.com/aldeed/meteor-autoform)
 documentation for more information.
 
 ## Attaching a Schema to a Collection
@@ -41,7 +41,7 @@ documentation for more information.
 Let's say we have a normal "books" collection, defined in *common.js*:
 
 ```js
-Books = new Meteor.Collection("books");
+Books = new Mongo.Collection("books");
 ```
 
 Let's create a `SimpleSchema` schema for this collection. We'll do this in *common.js*, too:
@@ -241,7 +241,7 @@ documentation for a list of all the available schema rules and validation
 methods.
 
 Use the `MyCollection.simpleSchema()` method to access the attached `SimpleSchema`
-instance for a Meteor.Collection instance. For example:
+instance for a Mongo.Collection instance. For example:
 
 ```js
 check(doc, MyCollection.simpleSchema());
@@ -327,7 +327,7 @@ var PostSchema = new SimpleSchema({
   }
 });
 
-Posts = new Meteor.Collection('posts');
+Posts = new Mongo.Collection('posts');
 Posts.attachSchema(PostSchema);
 
 var postId = Posts.insert({title: 'Hello', content: 'World', createdAt: new Date});
