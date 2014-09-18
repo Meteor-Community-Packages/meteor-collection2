@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 2.0.1
+
+Update simple-schema dependency version
+
 ### 2.0.0
 
 * Updates for Meteor 0.9.1
