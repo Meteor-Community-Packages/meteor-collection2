@@ -304,7 +304,7 @@ validation. On the server (trusted code), it will skip all validation. The objec
 
 ## Inserting or Updating Without Cleaning
 
-### Don't remove elements not in schema
+### Avoid removing elements not in schema
 
 To skip this, set the `filter` option to `false` when you call `insert` or `update`.
 
