@@ -302,6 +302,24 @@ To skip validation, use the `validate: false` option when calling `insert` or
 `update`. On the client (untrusted code), this will skip only client-side
 validation. On the server (trusted code), it will skip all validation. The object is still cleaned and autoValues are still generated.
 
+## Inserting or Updating Without Cleaning
+
+### Avoid removing elements not in schema
+
+To skip this, set the `filter` option to `false` when you call `insert` or `update`.
+
+### Avoid conversion of values to match what schema expects
+
+To skip this, set the `autoConvert` option to `false` when you call `insert` or `update`.
+
+### Avoid removing empty strings
+
+To skip this, set the `removeEmptyStrings` option to `false` when you call `insert` or `update`.
+
+### Avoid automatic values
+
+Can't currently disable this.
+
 ## Additional SimpleSchema Options
 
 In addition to all the other schema validation options documented in the 
