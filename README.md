@@ -304,21 +304,21 @@ validation. On the server (trusted code), it will skip all validation. The objec
 
 ## Inserting or Updating Without Cleaning
 
-### Avoid removing elements not in schema
+### Skip removing properties that are not in the schema
 
-To skip this, set the `filter` option to `false` when you call `insert` or `update`.
+To skip object property filtering, set the `filter` option to `false` when you call `insert` or `update`.
 
-### Avoid conversion of values to match what schema expects
+### Skip conversion of values to match what schema expects
 
-To skip this, set the `autoConvert` option to `false` when you call `insert` or `update`.
+To skip automatic value conversion, set the `autoConvert` option to `false` when you call `insert` or `update`.
 
-### Avoid removing empty strings
+### Skip removing empty strings
 
-To skip this, set the `removeEmptyStrings` option to `false` when you call `insert` or `update`.
+To skip removing empty strings, set the `removeEmptyStrings` option to `false` when you call `insert` or `update`.
 
-### Avoid automatic values
+### Skip generating automatic values
 
-Can't currently disable this.
+To skip adding automatic values, set the `getAutoValues` option to `false` when you call `insert` or `update`. This works only in server code.
 
 ## Additional SimpleSchema Options
 
@@ -544,8 +544,8 @@ For the curious, this is exactly what Collection2 does before every insert or up
 not explicitly listed in the schema. (To skip this, set the `filter` option to `false` when you call `insert` or `update`.)
 2. Automatically converts some properties to match what the schema expects, if possible. (To skip this, set the `autoConvert` option to `false` when you call `insert` or `update`.)
 3. Optimizes your operation so that empty string values will not be stored. (To skip this, set the `removeEmptyStrings` option to `false` when you call `insert` or `update`.)
-3. Adds automatic (forced or default) values based on your schema. (Values are added only on the server and will make their way back to your client when your subscription is updated.)
-4. Validates your document or mongo modifier object.
+3. Adds automatic (forced or default) values based on your schema. Values are added only on the server and will make their way back to your client when your subscription is updated. (To skip this in server code, set the `getAutoValues` option to `false` when you call `insert` or `update`.)
+4. Validates your document or mongo modifier object. (To skip this, set the `validate` option to `false` when you call `insert` or `update`.)
 5. Performs the insert or update like normal, only if it was valid.
 
 Collection2 is simply calling SimpleSchema methods to do these things. The validation happens on both the client and the server for client-initiated actions, giving you the speed of client-side validation along with the security of server-side validation.

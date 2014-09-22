@@ -244,6 +244,11 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       }
     });
   }
+
+  // On the server, we allow passing `getAutoValues: false` to disable autoValue functions
+  if (Meteor.isServer && options.getAutoValues === false) {
+    skipAutoValue = true;
+  }
   
   // Preliminary cleaning on both client and server. On the server, automatic
   // values will also be set at this point.

@@ -5,6 +5,10 @@ A smart package for Meteor that extends Meteor.Collection to provide support for
 
 ## Change Log
 
+### 2.1.0
+
+You can now set `getAutoValues` to `false` when calling `insert` or `update` in server code. This will skip adding all automatic values.
+
 ### 2.0.1
 
 Update simple-schema dependency version

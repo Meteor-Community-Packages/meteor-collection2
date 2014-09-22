@@ -6,7 +6,11 @@
     ],
     [
       "application-configuration",
-      "1.0.1-glasser1"
+      "1.0.2"
+    ],
+    [
+      "base64",
+      "1.0.0"
     ],
     [
       "binary-heap",
@@ -22,7 +26,7 @@
     ],
     [
       "ddp",
-      "1.0.8-rc0"
+      "1.0.8"
     ],
     [
       "deps",
@@ -30,11 +34,11 @@
     ],
     [
       "ejson",
-      "1.0.1"
+      "1.0.2"
     ],
     [
       "follower-livedata",
-      "1.0.1-rc0"
+      "1.0.1"
     ],
     [
       "geojson-utils",
@@ -50,19 +54,19 @@
     ],
     [
       "logging",
-      "1.0.2-cordova1"
-    ],
-    [
-      "meteor",
       "1.0.3"
     ],
     [
+      "meteor",
+      "1.1.0"
+    ],
+    [
       "minimongo",
-      "1.0.2-glasser1"
+      "1.0.3"
     ],
     [
       "mongo",
-      "1.0.4-rc1"
+      "1.0.5"
     ],
     [
       "mongo-livedata",
@@ -82,7 +86,7 @@
     ],
     [
       "tracker",
-      "1.0.2-rc0"
+      "1.0.2"
     ],
     [
       "underscore",
