@@ -241,7 +241,8 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpsert: isUpsert,
         userId: userId,
         isFromTrustedCode: isFromTrustedCode,
-        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0
+        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
+        isLocalCollection: isLocalCollection
       }
     });
   }
@@ -299,7 +300,8 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpsert: isUpsert,
         userId: userId,
         isFromTrustedCode: isFromTrustedCode,
-        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0
+        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
+        isLocalCollection: isLocalCollection
       }
     });
   }
@@ -422,6 +424,8 @@ var alreadyDefined = {};
 function defineDeny(c, options) {
   if (!alreadyDefined[c._name]) {
 
+    var isLocalCollection = (c._connection === null);
+
     // First define deny functions to extend doc with the results of clean
     // and autovalues. This must be done with "transform: null" or we would be
     // extending a clone of doc and therefore have no effect.
@@ -449,7 +453,8 @@ function defineDeny(c, options) {
             isUpdate: false,
             isUpsert: false,
             userId: userId,
-            isFromTrustedCode: false
+            isFromTrustedCode: false,
+            isLocalCollection: isLocalCollection
           }
         });
 
@@ -476,7 +481,8 @@ function defineDeny(c, options) {
             isUpsert: false,
             userId: userId,
             isFromTrustedCode: false,
-            docId: doc && doc._id
+            docId: doc && doc._id,
+            isLocalCollection: isLocalCollection
           }
         });
 
