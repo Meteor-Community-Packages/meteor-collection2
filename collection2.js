@@ -23,11 +23,14 @@ if (typeof Mongo === "undefined") {
   Mongo.Collection = Meteor.Collection;
 }
 
+
+
 /**
  * Mongo.Collection.prototype.attachSchema
  * @param {SimpleSchema|Object} ss - SimpleSchema instance or a schema definition object from which to create a new SimpleSchema instance
  * @param {Object} [options]
  * @param {Boolean} [options.transform=false] Set to `true` if your document must be passed through the collection's transform to properly validate.
+ * @param {Boolean} [options.replace=false] Set to `true` to replace any existing schema instead of combining
  * @return {undefined}
  *
  * Use this method to attach a schema to a collection created by another package,
@@ -35,6 +38,8 @@ if (typeof Mongo === "undefined") {
  * once for a single collection, or to call this for a collection that had a
  * schema object passed to its constructor.
  */
+
+
 Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   var self = this;
   options = options || {};
@@ -45,10 +50,13 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
 
   self._c2 = self._c2 || {};
 
-  // If we've already attached one schema, we combine both into a new schema
-  if (self._c2._simpleSchema) {
+  // If we've already attached one schema, we combine both into a new schema unless options.replace =true
+  if (self._c2._simpleSchema  && !options.replace) {
     ss = new SimpleSchema([self._c2._simpleSchema, ss]);
   }
+
+  // Remove the replace key from options before the object is used later
+  options = _.omit(options, "replace")
 
   // Track the schema in the collection
   self._c2._simpleSchema = ss;
@@ -120,6 +128,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   defineDeny(self, options);
   keepInsecure(self);
 };
+
+
 
 Mongo.Collection.prototype.simpleSchema = function c2SS() {
   var self = this;
