@@ -55,6 +55,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     ss = new SimpleSchema([self._c2._simpleSchema, ss]);
   }
 
+  // Remove the replace key from options before the object is used later
   options = _.omit(options, "replace")
 
   // Track the schema in the collection
