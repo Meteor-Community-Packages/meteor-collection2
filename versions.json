@@ -22,19 +22,19 @@
     ],
     [
       "check",
-      "1.0.0"
+      "1.0.1"
     ],
     [
       "ddp",
-      "1.0.8"
+      "1.0.9"
     ],
     [
       "deps",
-      "1.0.3"
+      "1.0.4"
     ],
     [
       "ejson",
-      "1.0.2"
+      "1.0.3"
     ],
     [
       "follower-livedata",
@@ -58,7 +58,7 @@
     ],
     [
       "meteor",
-      "1.1.0"
+      "1.1.1"
     ],
     [
       "minimongo",
@@ -66,11 +66,11 @@
     ],
     [
       "mongo",
-      "1.0.5"
+      "1.0.6"
     ],
     [
       "mongo-livedata",
-      "1.0.4"
+      "1.0.5"
     ],
     [
       "ordered-dict",
@@ -94,6 +94,6 @@
     ]
   ],
   "pluginDependencies": [],
-  "toolVersion": "meteor-tool@1.0.31",
+  "toolVersion": "meteor-tool@1.0.32",
   "format": "1.0"
 }
