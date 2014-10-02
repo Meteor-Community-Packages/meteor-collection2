@@ -56,7 +56,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   // Loop over fields definitions and ensure collection indexes (server side only)
   _.each(ss.schema(), function(definition, fieldName) {
     if (Meteor.isServer && ('index' in definition || definition.unique === true)) {
-      
+
       function setUpIndex() {
         var index = {}, indexValue;
         // If they specified `unique: true` but not `index`, we assume `index: 1` to set up the unique index in mongo
@@ -89,7 +89,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
           }
         }
       }
-      
+
       Meteor.startup(setUpIndex);
     }
   });
@@ -154,7 +154,8 @@ _.each(['insert', 'update', 'upsert'], function(methodName) {
 
 function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   var self = this, schema = self._c2._simpleSchema,
-      doc, callback, error, options, isUpsert, selector;
+      doc, callback, error, options, isUpsert, selector,
+      isLocalCollection = self._connection === null;
 
   if (!args.length) {
     throw new Error(type + " requires an argument");
@@ -240,14 +241,16 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpsert: isUpsert,
         userId: userId,
         isFromTrustedCode: isFromTrustedCode,
-        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0
+        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
+        isLocalCollection: isLocalCollection
       }
     });
   }
-  
-  // Preliminary cleaning on both client and server. On the server, automatic
-  // values will also be set at this point.
-  doClean(doc, (Meteor.isServer && !skipAutoValue), options.filter !== false, options.autoConvert !== false, options.removeEmptyStrings !== false, options.trimStrings !== false);
+
+  // Preliminary cleaning on both client and server. On the server and
+  // client's local collections, automatic values will also be set at
+  // this point.
+  doClean(doc, ((Meteor.isServer || isLocalCollection) && !skipAutoValue), options.filter !== false, options.autoConvert !== false, options.removeEmptyStrings !== false, options.trimStrings !== false);
 
   // We clone before validating because in some cases we need to adjust the
   // object a bit before validating it. If we adjusted `doc` itself, our
@@ -274,10 +277,11 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   }
 
   // Set automatic values for validation on the client.
-  // On the server, we already updated doc with auto values, but on the client,
-  // we will add them to docToValidate for validation purposes only.
+  // On the server and client's local collections, we already updated doc
+  // with auto values, but on the client, we will add them to docToValidate
+  // for validation purposes only.
   // This is because we want all actual values generated on the server.
-  if (Meteor.isClient) {
+  if (Meteor.isClient && !isLocalCollection) {
     doClean(docToValidate, true, false, false, false, false);
   }
 
@@ -296,7 +300,8 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpsert: isUpsert,
         userId: userId,
         isFromTrustedCode: isFromTrustedCode,
-        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0
+        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
+        isLocalCollection: isLocalCollection
       }
     });
   }
@@ -419,6 +424,8 @@ var alreadyDefined = {};
 function defineDeny(c, options) {
   if (!alreadyDefined[c._name]) {
 
+    var isLocalCollection = (c._connection === null);
+
     // First define deny functions to extend doc with the results of clean
     // and autovalues. This must be done with "transform: null" or we would be
     // extending a clone of doc and therefore have no effect.
@@ -446,7 +453,8 @@ function defineDeny(c, options) {
             isUpdate: false,
             isUpsert: false,
             userId: userId,
-            isFromTrustedCode: false
+            isFromTrustedCode: false,
+            isLocalCollection: isLocalCollection
           }
         });
 
@@ -473,7 +481,8 @@ function defineDeny(c, options) {
             isUpsert: false,
             userId: userId,
             isFromTrustedCode: false,
-            docId: doc && doc._id
+            docId: doc && doc._id,
+            isLocalCollection: isLocalCollection
           }
         });
 
