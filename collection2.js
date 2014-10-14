@@ -154,7 +154,8 @@ _.each(['insert', 'update', 'upsert'], function(methodName) {
 
 function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   var self = this, schema = self._c2._simpleSchema,
-      doc, callback, error, options, isUpsert, selector;
+      doc, callback, error, options, isUpsert, selector,
+      isLocalCollection = self._connection === null;
 
   if (!args.length) {
     throw new Error(type + " requires an argument");
@@ -240,19 +241,20 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpsert: isUpsert,
         userId: userId,
         isFromTrustedCode: isFromTrustedCode,
-        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0
+        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
+        isLocalCollection: isLocalCollection
       }
     });
   }
 
-  // On the server, we allow passing `getAutoValues: false` to disable autoValue functions
-  if (Meteor.isServer && options.getAutoValues === false) {
+  // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
+  if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
     skipAutoValue = true;
   }
   
-  // Preliminary cleaning on both client and server. On the server, automatic
-  // values will also be set at this point.
-  doClean(doc, (Meteor.isServer && !skipAutoValue), options.filter !== false, options.autoConvert !== false, options.removeEmptyStrings !== false, options.trimStrings !== false);
+  // Preliminary cleaning on both client and server. On the server and for local
+  // collections, automatic values will also be set at this point.
+  doClean(doc, ((Meteor.isServer || isLocalCollection) && !skipAutoValue), options.filter !== false, options.autoConvert !== false, options.removeEmptyStrings !== false, options.trimStrings !== false);
 
   // We clone before validating because in some cases we need to adjust the
   // object a bit before validating it. If we adjusted `doc` itself, our
@@ -282,7 +284,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   // On the server, we already updated doc with auto values, but on the client,
   // we will add them to docToValidate for validation purposes only.
   // This is because we want all actual values generated on the server.
-  if (Meteor.isClient) {
+  if (Meteor.isClient && !isLocalCollection) {
     doClean(docToValidate, true, false, false, false, false);
   }
 
@@ -301,7 +303,8 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpsert: isUpsert,
         userId: userId,
         isFromTrustedCode: isFromTrustedCode,
-        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0
+        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
+        isLocalCollection: isLocalCollection
       }
     });
   }
@@ -424,6 +427,8 @@ var alreadyDefined = {};
 function defineDeny(c, options) {
   if (!alreadyDefined[c._name]) {
 
+    var isLocalCollection = (c._connection === null);
+
     // First define deny functions to extend doc with the results of clean
     // and autovalues. This must be done with "transform: null" or we would be
     // extending a clone of doc and therefore have no effect.
@@ -451,7 +456,8 @@ function defineDeny(c, options) {
             isUpdate: false,
             isUpsert: false,
             userId: userId,
-            isFromTrustedCode: false
+            isFromTrustedCode: false,
+            isLocalCollection: isLocalCollection
           }
         });
 
@@ -478,7 +484,8 @@ function defineDeny(c, options) {
             isUpsert: false,
             userId: userId,
             isFromTrustedCode: false,
-            docId: doc && doc._id
+            docId: doc && doc._id,
+            isLocalCollection: isLocalCollection
           }
         });
 
