@@ -28,6 +28,7 @@ if (typeof Mongo === "undefined") {
  * @param {SimpleSchema|Object} ss - SimpleSchema instance or a schema definition object from which to create a new SimpleSchema instance
  * @param {Object} [options]
  * @param {Boolean} [options.transform=false] Set to `true` if your document must be passed through the collection's transform to properly validate.
+ * @param {Boolean} [options.replace=false] Set to `true` to replace any existing schema instead of combining
  * @return {undefined}
  *
  * Use this method to attach a schema to a collection created by another package,
@@ -45,8 +46,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
 
   self._c2 = self._c2 || {};
 
-  // If we've already attached one schema, we combine both into a new schema
-  if (self._c2._simpleSchema) {
+  // If we've already attached one schema, we combine both into a new schema unless options.replace is `true`
+  if (self._c2._simpleSchema && options.replace !== true) {
     ss = new SimpleSchema([self._c2._simpleSchema, ss]);
   }
 
