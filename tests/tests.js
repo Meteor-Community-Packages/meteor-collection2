@@ -20,7 +20,7 @@ Tinytest.addAsync('Collection2 - Reset', function (test, next) {
 
 // Attach more than one schema
 Tinytest.add('Collection2 - Attach Multiple Schemas', function(test) {
-  var c = new Meteor.Collection("multiSchema");
+  var c = new Mongo.Collection("multiSchema");
 
   // Attach two different schemas
   c.attachSchema(partOne);
@@ -185,7 +185,7 @@ Tinytest.addAsync('Collection2 - Unique - Update Another', function(test, next) 
   });
 });
 
-var testCollection = new Meteor.Collection("testCollection");
+var testCollection = new Mongo.Collection("testCollection");
 Tinytest.add('Collection2 - Unique - Object Array', function(test) {
   // We need to handle arrays of objects specially because the
   // index key must be "a.b" if, for example, the schema key is "a.$.b".

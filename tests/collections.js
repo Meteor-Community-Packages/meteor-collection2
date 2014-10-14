@@ -1,6 +1,6 @@
 /* books */
 
-books = new Meteor.Collection("books");
+books = new Mongo.Collection("books");
 books.attachSchema(booksSchema);
 
 // Add one unique index outside of C2
@@ -15,12 +15,12 @@ if (Meteor.isServer) {
 
 /* autoValues */
 
-autoValues = new Meteor.Collection("autoValues");
+autoValues = new Mongo.Collection("autoValues");
 autoValues.attachSchema(avSchema);
 
 /* noSchemaCollection */
 
-noSchemaCollection = new Meteor.Collection('noSchema', {
+noSchemaCollection = new Mongo.Collection('noSchema', {
   transform: function(doc) {
     doc.userFoo = "userBar";
     return doc;
@@ -54,7 +54,7 @@ Document.prototype = {
   }
 };
 
-BlackBox = new Meteor.Collection('black', {
+BlackBox = new Mongo.Collection('black', {
   transform: function(doc) {
     doc.data = new Document(doc.data);
     return doc;
@@ -73,15 +73,15 @@ BlackBox.attachSchema(new SimpleSchema({
 
 /* defaultValues */
 
-defaultValues = new Meteor.Collection("dv");
+defaultValues = new Mongo.Collection("dv");
 defaultValues.attachSchema(defaultValuesSchema);
 
 /* contextCheck */
 
-contextCheck = new Meteor.Collection("contextCheck");
+contextCheck = new Mongo.Collection("contextCheck");
 contextCheck.attachSchema(contextCheckSchema);
 
 /* RES */
 
-RES = new Meteor.Collection("RES");
+RES = new Mongo.Collection("RES");
 RES.attachSchema(RESSchema);

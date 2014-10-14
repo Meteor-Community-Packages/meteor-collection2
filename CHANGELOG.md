@@ -1,7 +1,7 @@
 Collection2
 =========================
 
-A smart package for Meteor that extends Meteor.Collection to provide support for specifying a schema and then validating against that schema when inserting and updating.
+A smart package for Meteor that extends Mongo.Collection to provide support for specifying a schema and then validating against that schema when inserting and updating.
 
 ## Change Log
 
