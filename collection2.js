@@ -85,7 +85,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
           try {
             self._collection._dropIndex(indexName);
           } catch (err) {
-            console.warn("Collection2: Tried to drop mongo index " + indexName + ", but there is no index with that name");
+            // no index with that name, which is what we want
           }
         }
       }
