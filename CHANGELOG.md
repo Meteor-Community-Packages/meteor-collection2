@@ -5,6 +5,13 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.2.0
+
+* A warning is no longer shown in the server log when a schema tries to drop an index that doesn't exist.
+* When your schema contains autoValues and you attach it to a LocalCollection (connection: null), the autoValues are now added properly. (Thanks @zimme)
+* A new property `isLocalCollection` is set on `this` within an autoValue or custom function. (Thanks @zimme)
+* You can now pass `replace: true` option to `attachSchema` to replace any already attached schemas. The default behavior is still to extend already attached schemas. (Thanks @paulellery)
+
 ### 2.1.0
 
 You can now set `getAutoValues` to `false` when calling `insert` or `update` in server code. This will skip adding all automatic values.
