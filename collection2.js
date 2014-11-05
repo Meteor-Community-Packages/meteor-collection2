@@ -298,7 +298,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     isValid = ctx.validate(docToValidate, {
       modifier: (type === "update" || type === "upsert"),
       upsert: isUpsert,
-      extendedCustomContext: {
+      extendedCustomContext: _.extend({
         isInsert: (type === "insert"),
         isUpdate: (type === "update" && options.upsert !== true),
         isUpsert: isUpsert,
@@ -306,7 +306,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isFromTrustedCode: isFromTrustedCode,
         docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
         isLocalCollection: isLocalCollection
-      }
+      },(options.extendedCustomContext||{}))
     });
   }
 
