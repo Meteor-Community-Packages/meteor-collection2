@@ -458,6 +458,7 @@ function defineDeny(c, options) {
             isUpsert: false,
             userId: userId,
             isFromTrustedCode: false,
+            docId: id,
             isLocalCollection: isLocalCollection
           }
         });
