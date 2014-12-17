@@ -1,3 +1,5 @@
+/* global Meteor, _, SimpleSchema, Mongo:true, Match, Package, EJSON */
+
 // Extend the schema options allowed by SimpleSchema
 SimpleSchema.extendOptions({
   index: Match.Optional(Match.OneOf(Number, String, Boolean)),
@@ -54,15 +56,36 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   // Track the schema in the collection
   self._c2._simpleSchema = ss;
 
+  function ensureIndex(c, index, indexName, unique, sparse) {
+    Meteor.startup(function () {
+      c._collection._ensureIndex(index, {
+        background: true,
+        name: indexName,
+        unique: unique,
+        sparse: sparse
+      });
+    });
+  }
+
+  function dropIndex(c, indexName) {
+    Meteor.startup(function () {
+      try {
+        c._collection._dropIndex(indexName);
+      } catch (err) {
+        // no index with that name, which is what we want
+      }
+    });
+  }
+
   // Loop over fields definitions and ensure collection indexes (server side only)
-  _.each(ss.schema(), function(definition, fieldName) {
-    if (Meteor.isServer && ('index' in definition || definition.unique === true)) {
-      
-      function setUpIndex() {
+  if (Meteor.isServer) {
+    _.each(ss.schema(), function(definition, fieldName) {
+      if ('index' in definition || definition.unique === true) {
         var index = {}, indexValue;
-        // If they specified `unique: true` but not `index`, we assume `index: 1` to set up the unique index in mongo
+        // If they specified `unique: true` but not `index`,
+        // we assume `index: 1` to set up the unique index in mongo
         if ('index' in definition) {
-          indexValue = definition['index'];
+          indexValue = definition.index;
           if (indexValue === true) {
             indexValue = 1;
           }
@@ -75,33 +98,21 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         index[idxFieldName] = indexValue;
         var unique = !!definition.unique && (indexValue === 1 || indexValue === -1);
         var sparse = !!definition.optional && unique;
-        if (indexValue !== false) {
-          self._collection._ensureIndex(index, {
-            background: true,
-            name: indexName,
-            unique: unique,
-            sparse: sparse
-          });
+
+        if (indexValue === false) {
+          dropIndex(self, indexName);
         } else {
-          try {
-            self._collection._dropIndex(indexName);
-          } catch (err) {
-            // no index with that name, which is what we want
-          }
+          ensureIndex(self, index, indexName, unique, sparse);
         }
       }
-      
-      Meteor.startup(setUpIndex);
-    }
-  });
+    });
+  }
 
   // Set up additional checks
   ss.validator(function() {
-    var test, totalUsing, totalWillUse, sel;
     var def = this.definition;
     var val = this.value;
     var op = this.operator;
-    var key = this.key;
 
     if (def.denyInsert && val !== void 0 && !op) {
       // This is an insert of a defined value into a field where denyInsert=true
@@ -155,8 +166,8 @@ _.each(['insert', 'update', 'upsert'], function(methodName) {
 
 function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   var self = this, schema = self._c2._simpleSchema,
-      doc, callback, error, options, isUpsert, selector,
-      isLocalCollection = self._connection === null;
+      doc, callback, error, options, isUpsert, selector, last, hasCallback,
+      isLocalCollection = (self._connection === null);
 
   if (!args.length) {
     throw new Error(type + " requires an argument");
@@ -193,6 +204,10 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   }
   options = options || {};
 
+  last = args.length - 1;
+
+  hasCallback = (typeof args[last] === 'function');
+
   // If update was called with upsert:true or upsert was called, flag as an upsert
   isUpsert = (type === "upsert" || (type === "update" && options.upsert === true));
 
@@ -204,19 +219,17 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     // baffled if their writes don't work because their database is
     // down.
     callback = function(err) {
-      if (err)
+      if (err) {
         Meteor._debug(type + " failed: " + (err.reason || err.stack));
+      }
     };
   }
 
   // If client validation is fine or is skipped but then something
   // is found to be invalid on the server, we get that error back
   // as a special Meteor.Error that we need to parse.
-  if (Meteor.isClient) {
-    var last = args.length - 1;
-    if (typeof args[last] === 'function') {
-      callback = args[last] = wrapCallbackForParsingServerErrors(self, options.validationContext, callback);
-    }
+  if (Meteor.isClient && hasCallback) {
+    callback = args[last] = wrapCallbackForParsingServerErrors(self, options.validationContext, callback);
   }
 
   // If _id has already been added, remove it temporarily if it's
@@ -315,6 +328,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     if (id) {
       doc._id = id;
     }
+
     // Update the args to reflect the cleaned doc
     if (type === "insert") {
       args[0] = doc;
@@ -323,12 +337,10 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     }
 
     // If callback, set invalidKey when we get a mongo unique error
-    if (Meteor.isServer) {
-      var last = args.length - 1;
-      if (typeof args[last] === 'function') {
-        args[last] = wrapCallbackForParsingMongoValidationErrors(self, doc, options.validationContext, args[last]);
-      }
+    if (Meteor.isServer && hasCallback) {
+      args[last] = wrapCallbackForParsingMongoValidationErrors(self, doc, options.validationContext, args[last]);
     }
+
     return args;
   } else {
     error = getErrorObject(ctx);
