@@ -236,7 +236,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       isModifier: (type !== "insert"),
       removeEmptyStrings: removeEmptyStrings,
       trimStrings: trimStrings,
-      extendAutoValueContext: {
+      extendAutoValueContext: _.extend({
         isInsert: (type === "insert"),
         isUpdate: (type === "update" && options.upsert !== true),
         isUpsert: isUpsert,
@@ -244,7 +244,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isFromTrustedCode: isFromTrustedCode,
         docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
         isLocalCollection: isLocalCollection
-      }
+      }, options.extendAutoValueContext || {})
     });
   }
 
@@ -306,7 +306,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isFromTrustedCode: isFromTrustedCode,
         docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
         isLocalCollection: isLocalCollection
-      },(options.extendedCustomContext||{}))
+      }, options.extendedCustomContext || {})
     });
   }
 
