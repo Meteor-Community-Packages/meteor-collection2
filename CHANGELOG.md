@@ -5,6 +5,16 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.3.0
+
+You can now pass an `extendedCustomContext` option when calling insert or update. Set this to an object that will be used to extend `this` within any custom validation functions that are called.
+
+You can now pass an `extendAutoValueContext` option when calling insert or update. Set this to an object that will be used to extend `this` within any autoValue functions that are called.
+
+Note that the `extendedCustomContext` and `extendAutoValueContext` options will work fine for calls in server code or calls against local (unmanaged) collections in client code, but they will not work with calls against normal (managed) collections in client code. When the second round of validation happens on the server, your custom contexts will not be set.
+
+Also: When a validation `error` is passed to the `insert` or `update` callback, `error.validationContext` is now set to the validation context that was used.
+
 ### 2.2.0
 
 * A warning is no longer shown in the server log when a schema tries to drop an index that doesn't exist.
