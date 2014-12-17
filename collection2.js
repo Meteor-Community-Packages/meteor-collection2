@@ -362,6 +362,7 @@ function getErrorObject(context) {
   }
   var error = new Error(message);
   error.invalidKeys = invalidKeys;
+  error.validationContext = context;
   // If on the server, we add a sanitized error, too, in case we're
   // called from a method.
   if (Meteor.isServer) {
