@@ -1,7 +1,3 @@
-function equals(a, b) {
-  return !!(EJSON.stringify(a) === EJSON.stringify(b));
-}
-
 Tinytest.add('Collection2 - Test Environment', function(test) {
   test.isTrue(typeof SimpleSchema !== 'undefined', 'test environment not initialized SimpleSchema');
 });
@@ -46,13 +42,7 @@ Tinytest.add('Collection2 - Attach Multiple Schemas', function(test) {
 
 // Test required field "copies"
 Tinytest.addAsync('Collection2 - Insert Required', function(test, next) {
-  var numDone = 0;
-  function maybeNext() {
-    numDone++;
-    if (numDone === 2) {
-      next();
-    }
-  }
+  var maybeNext = _.after(2, next);
 
   var id = books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
     //The insert will fail, error will be set,
@@ -136,7 +126,7 @@ Tinytest.addAsync('Collection2 - Unique - Insert Duplicate Non-C2 Index', functi
       var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back because this is a non-C2 unique index');
       var key = invalidKeys[0] || {};
-      
+
       next();
     });
   });
@@ -196,7 +186,7 @@ Tinytest.add('Collection2 - Unique - Object Array', function(test) {
       unique: true
     }
   });
-  
+
   try {
     testCollection.attachSchema(testSchema);
   } catch (e) {
@@ -428,7 +418,7 @@ Tinytest.addAsync("Collection2 - DefaultValue Update", function(test, next) {
         next();
       });
     });
-  });  
+  });
 });
 
 Tinytest.addAsync('Collection2 - Upsert', function(test, next) {
@@ -523,7 +513,7 @@ Tinytest.addAsync("Collection2 - removeEmptyStrings", function(test, next) {
       var doc = RES.findOne({_id: newId2});
       test.instanceOf(doc, Object);
       test.equal(doc.bar, "");
-    
+
       // Don't remove empty strings for an update either
       RES.update({_id: newId1}, {$set: {bar: ""}}, {removeEmptyStrings: false}, function(error, result) {
         test.isFalse(!!error, 'There should be no error');
@@ -643,23 +633,3 @@ if (Meteor.isClient) {
     });
   });
 }
-
-//Test API:
-//test.isFalse(v, msg)
-//test.isTrue(v, msg)
-//test.equal(actual, expected, message, not)
-//test.length(obj, len)
-//test.include(s, v)
-//test.isNaN(v, msg)
-//test.isUndefined(v, msg)
-//test.isNotNull
-//test.isNull
-//test.throws(func)
-//test.instanceOf(obj, klass)
-//test.notEqual(actual, expected, message)
-//test.runId()
-//test.exception(exception)
-//test.expect_fail()
-//test.ok(doc)
-//test.fail(doc)
-//test.equal(a, b, msg)
