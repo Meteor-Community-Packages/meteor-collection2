@@ -3,7 +3,7 @@
 Package.describe({
   name: "aldeed:collection2",
   summary: "Automatic validation of insert and update operations on the client and server.",
-  version: "2.3.0",
+  version: "2.3.1",
   git: "https://github.com/aldeed/meteor-collection2.git"
 });
 

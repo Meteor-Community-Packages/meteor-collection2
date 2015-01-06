@@ -5,6 +5,10 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.3.1
+
+Fix handling of _id property on client to match server.
+
 ### 2.3.0
 
 You can now pass an `extendedCustomContext` option when calling insert or update. Set this to an object that will be used to extend `this` within any custom validation functions that are called.
