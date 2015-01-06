@@ -235,7 +235,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   // If _id has already been added, remove it temporarily if it's
   // not explicitly defined in the schema.
   var id;
-  if (Meteor.isServer && doc._id && !schema.allowsKey("_id")) {
+  if (doc._id && !schema.allowsKey("_id")) {
     id = doc._id;
     delete doc._id;
   }
