@@ -1,14 +1,11 @@
-Collection2 [![Build Status](https://travis-ci.org/aldeed/meteor-collection2.png?branch=master)](https://travis-ci.org/aldeed/meteor-collection2)
+[![Build Status](https://travis-ci.org/aldeed/meteor-collection2.png?branch=master)](https://travis-ci.org/aldeed/meteor-collection2)
+
+Collection2
 =========================
 
-A smart package for Meteor that extends Mongo.Collection to provide support
-for specifying a schema and then validating against that schema
-when inserting and updating.
+A Meteor package that allows you to attach a schema to a Mongo.Collection. Automatically validates against that schema when inserting and updating from client or server code.
 
-This package requires and automatically installs the 
-[aldeed:simple-schema](https://github.com/aldeed/meteor-simple-schema) package,
-which provides the `SimpleSchema` object type for defining and validating
-against schemas.
+This package requires and automatically installs the [aldeed:simple-schema](https://github.com/aldeed/meteor-simple-schema) package, which defines the schema syntax and provides the validation logic.
 
 ## Installation
 
