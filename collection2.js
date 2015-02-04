@@ -255,7 +255,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpsert: isUpsert,
         userId: userId,
         isFromTrustedCode: isFromTrustedCode,
-        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
+        docId: ((type === "update" || type === "upsert") && selector) ? selector._id || selector : void 0,
         isLocalCollection: isLocalCollection
       }, options.extendAutoValueContext || {})
     });
@@ -317,7 +317,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpsert: isUpsert,
         userId: userId,
         isFromTrustedCode: isFromTrustedCode,
-        docId: ((type === "update" || type === "upsert") && selector && selector._id) ? selector._id : void 0,
+        docId: ((type === "update" || type === "upsert") && selector) ? selector._id || selector : void 0,
         isLocalCollection: isLocalCollection
       }, options.extendedCustomContext || {})
     });
