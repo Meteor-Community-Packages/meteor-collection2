@@ -5,6 +5,11 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.3.2
+
+* Properly set `docId` in `autoValue` and `custom` contexts when provided as non-object. (Thanks @FatBoyXPC)
+* Update SimpleSchema package dependency version
+
 ### 2.3.1
 
 Fix handling of _id property on client to match server.
