@@ -9,8 +9,8 @@ Package.describe({
 
 Package.onUse(function(api) {
 
-  api.use(['aldeed:simple-schema@1.0.3']);
-  api.imply(['aldeed:simple-schema']);
+  api.use('aldeed:simple-schema@1.3.0');
+  api.imply('aldeed:simple-schema');
 
   api.use('underscore@1.0.0');
   api.use('check@1.0.0');
@@ -21,7 +21,7 @@ Package.onUse(function(api) {
   // Allow us to detect 'insecure'.
   api.use('insecure@1.0.0', {weak: true});
   
-  api.add_files(['collection2.js']);
+  api.addFiles(['collection2.js']);
 });
 
 Package.onTest(function(api) {
@@ -35,7 +35,7 @@ Package.onTest(function(api) {
   api.use('random@1.0.0');
   api.use('deps@1.0.0');
 
-  api.add_files([
+  api.addFiles([
     'tests/schemas.js',
     'tests/collections.js',
     'tests/pubsub.js',
