@@ -140,24 +140,30 @@ Mongo.Collection.prototype.simpleSchema = function c2SS() {
 
 // Wrap DB write operation methods
 _.each(['insert', 'update', 'upsert'], function(methodName) {
-  var _super = Mongo.Collection.prototype[methodName];
-  Mongo.Collection.prototype[methodName] = function () {
-    var self = this, args = _.toArray(arguments);
-    if (self._c2) {
-      args = doValidate.call(self, methodName, args, false,
-        (Meteor.isClient && Meteor.userId && Meteor.userId()) || null, Meteor.isServer);
-      if (!args) {
-        // doValidate already called the callback or threw the error
-        if (methodName === "insert") {
-          // insert should always return an ID to match core behavior
-          return self._makeNewID();
-        } else {
-          return;
+    var _super = Mongo.Collection.prototype[methodName];
+    Mongo.Collection.prototype[methodName] = function() {
+        var self = this,
+            args = _.toArray(arguments);
+        if (self._c2) {
+
+            var userId = null;
+            try { // https://github.com/aldeed/meteor-collection2/issues/175
+                userId = Meteor.userId();
+            } catch (err) {}
+
+            args = doValidate.call(self, methodName, args, false, userId, Meteor.isServer);
+            if (!args) {
+                // doValidate already called the callback or threw the error
+                if (methodName === "insert") {
+                    // insert should always return an ID to match core behavior
+                    return self._makeNewID();
+                } else {
+                    return;
+                }
+            }
         }
-      }
-    }
-    return _super.apply(self, args);
-  };
+        return _super.apply(self, args);
+    };
 });
 
 /*
