@@ -179,6 +179,29 @@ contextCheckSchema = new SimpleSchema({
   }
 });
 
+books2Schema = new SimpleSchema({
+  title: {
+    type: String,
+    label: "Title",
+    max: 200,
+    index: 1
+  },
+  author: {
+    type: String,
+    label: "Author"
+  },
+  borrowedBy: {
+      type: [Object]
+  },
+  "borrowedBy.$.name": {
+      type: String
+  },
+  "borrowedBy.$.email": {
+      type: String,
+      regEx: SimpleSchema.RegEx.Email
+  }
+});
+
 RESSchema = new SimpleSchema({
   foo: { type: String },
   bar: { type: String, optional: true }

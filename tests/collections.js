@@ -85,3 +85,8 @@ contextCheck.attachSchema(contextCheckSchema);
 
 RES = new Mongo.Collection("RES");
 RES.attachSchema(RESSchema);
+
+/* Test Arrays of Objects */
+
+books2 = new Mongo.Collection("books2");
+books2.attachSchema(books2Schema);

@@ -242,6 +242,34 @@ Tinytest.addAsync("Collection2 - denyUpdate", function(test, next) {
   });
 });
 
+Tinytest.addAsync("Collection2 - denyUpdate Array of Objects (lacking required fields)", function (test, next) {
+  books2.insert({title: "Critical Path", author: "Buckminster Fuller", borrowedBy: [{name: "Andy Kaufman", email: "akaufman@gmail.com"}]}, function(error, newId) {
+
+    console.log('Inserted Critical Path at: ', newId);
+    debugger;
+    books2.update({_id: newId}, {$set: {'borrowedBy.1.name': 'UG Krishnamurti'}}, function (error, result) {
+      console.log('error: ', error);
+      console.log('result: ', result);
+      test.isTrue(!!error, 'This update should throw an error since the modifier lacks some necessary fields');
+      next();
+    });
+  });
+});
+
+Tinytest.addAsync("Collection2 - denyUpdate Array of Objects (with all required fields)", function (test, next) {
+  books2.insert({title: "Tao Te Ching", author: "Lao Tzu", borrowedBy: [{name: "Andy Kaufman", email: "akaufman@gmail.com"}]}, function(error, newId) {
+
+    console.log('Inserted Tao Te Ching at: ', newId);
+
+    books2.update({_id: newId}, {$set: {'borrowedBy.1.name': 'UG Krishnamurti', 'borrowedBy.1.email': 'ugkrishnamurti@gmail.com'}}, function (error, result) {
+      console.log('error: ', error);
+      console.log('result: ', result);
+      test.isTrue(!error, 'This update should not throw an error since the modifier contains all required fields');
+      next();
+    });
+  });
+});
+
 if (Meteor.isServer) {
   //no validation when calling underlying _collection on the server
   Tinytest.addAsync("Collection2 - _collection on the server", function(test, next) {
