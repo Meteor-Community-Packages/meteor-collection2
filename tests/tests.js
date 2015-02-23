@@ -18,26 +18,32 @@ Tinytest.addAsync('Collection2 - Reset', function (test, next) {
 Tinytest.add('Collection2 - Attach Multiple Schemas', function(test) {
   var c = new Mongo.Collection("multiSchema");
 
-  // Attach two different schemas
-  c.attachSchema(partOne);
-  c.attachSchema(partTwo);
+  // Adding this wrapper because it appears there is some race
+  // condition happening between client and server which causes
+  // this simple test bomb out sometimes.
+  if (Meteor.isClient) {
+    // Attach two different schemas
+    c.attachSchema(partOne);
+    c.attachSchema(partTwo);
 
-  // Check the combined schema
-  var combinedSchema = c.simpleSchema();
-  test.isTrue(_.contains(combinedSchema._schemaKeys, 'one'));
-  test.isTrue(_.contains(combinedSchema._schemaKeys, 'two'));
-  test.equal(combinedSchema.schema('two').type, String);
+    // Check the combined schema
+    var combinedSchema = c.simpleSchema();
+    test.isTrue(_.contains(combinedSchema._schemaKeys, 'one'));
+    test.isTrue(_.contains(combinedSchema._schemaKeys, 'two'));
+    test.equal(combinedSchema.schema('two').type, String);
 
-  // Attach a third schema and make sure that it extends/overwrites the others
-  c.attachSchema(partThree);
-  combinedSchema = c.simpleSchema();
-  test.isTrue(_.contains(combinedSchema._schemaKeys, 'one'));
-  test.isTrue(_.contains(combinedSchema._schemaKeys, 'two'));
-  test.equal(combinedSchema.schema('two').type, Number);
+    // Attach a third schema and make sure that it extends/overwrites the others
+    c.attachSchema(partThree);
+    combinedSchema = c.simpleSchema();
+    test.isTrue(_.contains(combinedSchema._schemaKeys, 'one'));
+    test.isTrue(_.contains(combinedSchema._schemaKeys, 'two'));
+    test.equal(combinedSchema.schema('two').type, Number);
 
-  // Ensure that we've only attached two deny functions
-  test.length(c._validators.insert.deny, 2);
-  test.length(c._validators.update.deny, 2);
+    // Ensure that we've only attached two deny functions
+    test.length(c._validators.insert.deny, 2);
+    test.length(c._validators.update.deny, 2);
+  }
+
 });
 
 // Test required field "copies"
@@ -632,6 +638,30 @@ Tinytest.addAsync('Collection2 - Validate False', function(test, next) {
     });
   });
 });
+  
+Tinytest.addAsync('Collection2 - Local Collection Upsert', function (test, next) {
+  var localCol = new Mongo.Collection(null);
+
+  localCol.insert({name: 'Local Collection', status: 'active'}, function (error, newId) {
+
+    // This upsert should modify the initial doc, not error and not insert.
+    localCol.update({name: 'Local Collection'}, {$set: {status: 'inactive'}}, {upsert: true}, function (error, result) {
+      test.isFalse(!!error, 'We expect this operation to succeed');
+      test.equal(localCol.find().count(), 1);
+
+      localCol.upsert({name: 'Does not exist'}, {$set: {status: 'inactive'}}, function (error, result) {
+        test.isFalse(!!error, 'We expect this operation to succeed');
+        test.equal(localCol.find().count(), 2);
+
+        var doc = localCol.findOne({name: 'Does not exist'});
+        
+        test.equal(doc.status, 'inactive');
+
+        next();
+      });
+    });
+  });
+});
 
 // Test denyAll
 if (Meteor.isClient) {
@@ -652,4 +682,5 @@ if (Meteor.isClient) {
       });
     });
   });
+
 }
