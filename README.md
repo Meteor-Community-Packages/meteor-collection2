@@ -255,6 +255,14 @@ instance for a Mongo.Collection instance. For example:
 check(doc, MyCollection.simpleSchema());
 ```
 
+## Passing Options
+
+In Meteor, the `update` function accepts an options argument. Collection2 changes the `insert` function signature to also accept options in the same way, as an optional second argument. Whenever this documentation says to "use X option", it's referring to this options argument. For example:
+
+```js
+myCollection.insert(doc, {validate: false});
+```
+
 ## Validation Contexts
 
 In the examples above, note that we called `namedContext()` with no arguments
