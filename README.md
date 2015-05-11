@@ -396,15 +396,15 @@ explain by way of several examples:
   // and prevent updates thereafter.
   createdAt: {
     type: Date,
-      autoValue: function() {
-        if (this.isInsert) {
-          return new Date;
-        } else if (this.isUpsert) {
-          return {$setOnInsert: new Date};
-        } else {
-          this.unset();
-        }
+    autoValue: function() {
+      if (this.isInsert) {
+        return new Date;
+      } else if (this.isUpsert) {
+        return {$setOnInsert: new Date};
+      } else {
+        this.unset();
       }
+    }
   },
   // Force value to be current date (on server) upon update
   // and don't allow it to be set upon insert.
