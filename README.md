@@ -566,6 +566,12 @@ not explicitly listed in the schema. (To skip this, set the `filter` option to `
 
 Collection2 is simply calling SimpleSchema methods to do these things. The validation happens on both the client and the server for client-initiated actions, giving you the speed of client-side validation along with the security of server-side validation.
 
+## Community Add-On Packages
+
+### Automatic Migrations
+
+The [davidyaha:collection2-migrations](https://atmospherejs.com/davidyaha/collection2-migrations) package can watch for schema changes between server restarts and perform some automatic data migration and cleanup.
+
 ## Problems?
 
 You might find yourself in a situation where it seems as though validation is not working correctly. First, you should enable SimpleSchema debug mode by setting `SimpleSchema.debug = true`, which may log some additional information. If you're still confused, read through the following tricky, confusing situations.
