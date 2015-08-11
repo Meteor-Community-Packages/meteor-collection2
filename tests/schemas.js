@@ -7,7 +7,9 @@ booksSchema = new SimpleSchema({
   },
   author: {
     type: String,
-    label: "Author"
+    label: "Author",
+    index: 'text',
+    indexWeight: 5
   },
   copies: {
     type: Number,
@@ -23,7 +25,9 @@ booksSchema = new SimpleSchema({
     type: String,
     label: "Brief summary",
     optional: true,
-    max: 1000
+    max: 1000,
+    index: 'text',
+    indexWeight: 1
   },
   isbn: {
     type: String,

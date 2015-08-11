@@ -498,6 +498,13 @@ Set to `1` or `true` for an ascending index. Set to `-1` for a descending index.
 Or you may set this to another type of specific MongoDB index, such as `"2d"`.
 Indexes works on embedded sub-documents as well.
 
+Note that `text` index work differently. There can be only one `text` index per
+MongoDB collection. When using `index: 'text'` you can optionally include the
+`indexWeight: num` option. Where `num` is an integer greater than zero. Defaults
+to 1. This is the relative weight compared to all the fields that have the `text`
+index. See the MongoDB [docs](http://docs.mongodb.org/manual/tutorial/control-results-of-text-search/).
+If any one of the fields has `sparse: true` then the index will have `sparse: true`.
+
 If you have created an index for a field by mistake and you want to remove it,
 set `index` to `false`:
 

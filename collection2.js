@@ -3,6 +3,7 @@
 // Extend the schema options allowed by SimpleSchema
 SimpleSchema.extendOptions({
   index: Match.Optional(Match.OneOf(Number, String, Boolean)),
+  indexWeight: Match.Optional(Match.Integer),
   unique: Match.Optional(Boolean),
   denyInsert: Match.Optional(Boolean),
   denyUpdate: Match.Optional(Boolean)
@@ -56,14 +57,9 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   // Track the schema in the collection
   self._c2._simpleSchema = ss;
 
-  function ensureIndex(c, index, indexName, unique, sparse) {
+  function ensureIndex(c, index, options) {
     Meteor.startup(function () {
-      c._collection._ensureIndex(index, {
-        background: true,
-        name: indexName,
-        unique: unique,
-        sparse: sparse
-      });
+      c._collection._ensureIndex(index, _.extend(options, {background: true}));
     });
   }
 
@@ -79,6 +75,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
 
   // Loop over fields definitions and ensure collection indexes (server side only)
   if (Meteor.isServer) {
+    var textIndex = {};
+    var textIndexSparse = false;
     _.each(ss.schema(), function(definition, fieldName) {
       if ('index' in definition || definition.unique === true) {
         var index = {}, indexValue;
@@ -86,7 +84,11 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         // we assume `index: 1` to set up the unique index in mongo
         if ('index' in definition) {
           indexValue = definition.index;
-          if (indexValue === true) {
+          if (indexValue === 'text') {
+            textIndex[indexValue] = definition.indexWeight || 1;
+            textIndexSparse = textIndexSparse || !!definition.optional;
+            return;
+          } else if (indexValue === true) {
             indexValue = 1;
           }
         } else {
@@ -102,10 +104,20 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         if (indexValue === false) {
           dropIndex(self, indexName);
         } else {
-          ensureIndex(self, index, indexName, unique, sparse);
+          ensureIndex(self, index, {name: indexName, unique: unique, sparse: sparse});
         }
       }
     });
+    if (!_.isEmpty(textIndex)) {
+      var index = {};
+      var weights = {};
+      _.each(textIndex, function (v, k) {
+        index[k] = 'text';
+        weights[k] = v;
+      });
+      ensureIndex(self, index, {name: 'c2_textIndex', sparse: textIndexSparse,
+                                weights: weights});
+    }
   }
 
   // Set up additional checks
