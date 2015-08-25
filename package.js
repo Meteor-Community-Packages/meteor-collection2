@@ -1,9 +1,9 @@
 /* global Package */
 
 Package.describe({
-  name: "aldeed:collection2",
+  name: "kdorsel:collection2",
   summary: "Automatic validation of insert and update operations on the client and server.",
-  version: "2.3.3",
+  version: "2.3.4",
   git: "https://github.com/aldeed/meteor-collection2.git"
 });
 
@@ -20,7 +20,7 @@ Package.onUse(function(api) {
 
   // Allow us to detect 'insecure'.
   api.use('insecure@1.0.0', {weak: true});
-  
+
   api.addFiles(['collection2.js']);
 });
 
