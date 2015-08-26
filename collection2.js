@@ -4,6 +4,7 @@
 SimpleSchema.extendOptions({
   index: Match.Optional(Match.OneOf(Number, String, Boolean)),
   unique: Match.Optional(Boolean),
+  sparse: Match.Optional(Boolean),
   denyInsert: Match.Optional(Boolean),
   denyUpdate: Match.Optional(Boolean)
 });
@@ -97,7 +98,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         var idxFieldName = fieldName.replace(/\.\$\./g, ".");
         index[idxFieldName] = indexValue;
         var unique = !!definition.unique && (indexValue === 1 || indexValue === -1);
-        var sparse = !!definition.optional && unique;
+        var sparse = definition.sparse && unique;
 
         if (indexValue === false) {
           dropIndex(self, indexName);
@@ -271,7 +272,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
     skipAutoValue = true;
   }
-  
+
   // Preliminary cleaning on both client and server. On the server and for local
   // collections, automatic values will also be set at this point.
   doClean(doc, ((Meteor.isServer || isLocalCollection) && !skipAutoValue), options.filter !== false, options.autoConvert !== false, options.removeEmptyStrings !== false, options.trimStrings !== false);
