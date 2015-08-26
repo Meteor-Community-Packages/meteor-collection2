@@ -402,7 +402,7 @@ explain by way of several examples:
       } else if (this.isUpsert) {
         return {$setOnInsert: new Date};
       } else {
-        this.unset();
+        this.unset();  // Prevent user from supplying their own value
       }
     }
   },
@@ -418,8 +418,8 @@ explain by way of several examples:
     denyInsert: true,
     optional: true
   },
-  // Whenever the "content" field is updated, automatically set
-  // the first word of the content into firstWord field.
+  // Whenever the "content" field is updated, automatically store
+  // the first word of the content into the "firstWord" field.
   firstWord: {
     type: String,
     optional: true,
@@ -428,7 +428,7 @@ explain by way of several examples:
       if (content.isSet) {
         return content.value.split(' ')[0];
       } else {
-        this.unset(); // Prevent user from supplying her own value
+        this.unset();
       }
     }
   },
@@ -496,7 +496,7 @@ Use the `index` option to ensure a MongoDB index for a specific field:
 
 Set to `1` or `true` for an ascending index. Set to `-1` for a descending index.
 Or you may set this to another type of specific MongoDB index, such as `"2d"`.
-Indexes works on embedded sub-documents as well.
+Indexes work on embedded sub-documents as well.
 
 If you have created an index for a field by mistake and you want to remove it,
 set `index` to `false`:
@@ -619,7 +619,7 @@ Although these examples focused on an array of objects, sub-objects are treated 
 
 ## Contributing
 
-Anyone is welcome to contribute. Fork, make and test your changes (`mrt test-packages ./`),
+Anyone is welcome to contribute. Fork, make and test your changes (`meteor test-packages ./`),
 and then submit a pull request.
 
 ### Major Contributors
