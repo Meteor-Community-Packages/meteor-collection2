@@ -98,7 +98,12 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         var idxFieldName = fieldName.replace(/\.\$\./g, ".");
         index[idxFieldName] = indexValue;
         var unique = !!definition.unique && (indexValue === 1 || indexValue === -1);
-        var sparse = definition.sparse && unique;
+        var sparse = definition.sparse || false;
+
+        // If unique and optional, force sparse to prevent errors
+        if (!sparse && unique && definition.optional) {
+          sparse = true;
+        }
 
         if (indexValue === false) {
           dropIndex(self, indexName);
