@@ -145,7 +145,7 @@ Mongo.Collection.prototype.simpleSchema = function c2SS() {
 };
 
 // Wrap DB write operation methods
-_.each(['insert', 'update', 'upsert'], function(methodName) {
+_.each(['insert', 'update'], function(methodName) {
     var _super = Mongo.Collection.prototype[methodName];
     Mongo.Collection.prototype[methodName] = function() {
         var self = this,
@@ -200,7 +200,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
       args = [doc];
     }
 
-  } else if (type === "update" || type === "upsert") {
+  } else if (type === "update") {
     selector = args[0];
     doc = args[1];
     options = args[2];
@@ -220,8 +220,8 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
 
   hasCallback = (typeof args[last] === 'function');
 
-  // If update was called with upsert:true or upsert was called, flag as an upsert
-  isUpsert = (type === "upsert" || (type === "update" && options.upsert === true));
+  // If update was called with upsert:true, flag as an upsert
+  isUpsert = (type === "update" && options.upsert === true);
 
   // Add a default callback function if we're on the client and no callback was given
   if (Meteor.isClient && !callback) {
