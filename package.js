@@ -16,6 +16,7 @@ Package.onUse(function(api) {
   api.use('check@1.0.0');
   api.use('mongo@1.0.4');
   api.imply('mongo');
+  api.use('minimongo@1.0.0');
   api.use('ejson@1.0.0');
 
   // Allow us to detect 'insecure'.

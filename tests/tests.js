@@ -14,6 +14,36 @@ Tinytest.addAsync('Collection2 - Reset', function (test, next) {
   Meteor.call("removeAll", next);
 });
 
+Tinytest.add('Collection2 - Mongo.Collection - simpleSchema', function (test) {
+  var mc = new Mongo.Collection('mc');
+
+  mc.attachSchema(new SimpleSchema({
+    foo: {type: String}
+  }));
+
+  test.instanceOf(mc.simpleSchema(), SimpleSchema);
+
+  // It should work on the LocalCollection instance, too
+  if (Meteor.isClient) {
+    test.instanceOf(mc._collection, LocalCollection);
+    test.instanceOf(mc._collection.simpleSchema(), SimpleSchema);
+  }
+});
+
+Tinytest.add('Collection2 - LocalCollection - simpleSchema', function (test) {
+  var lc = new Mongo.Collection(null);
+
+  lc.attachSchema(new SimpleSchema({
+    foo: {type: String}
+  }));
+
+  test.instanceOf(lc.simpleSchema(), SimpleSchema);
+
+  // It should work on the LocalCollection instance, too
+  test.instanceOf(lc._collection, LocalCollection);
+  test.instanceOf(lc._collection.simpleSchema(), SimpleSchema);
+});
+
 // Attach more than one schema
 Tinytest.add('Collection2 - Attach Multiple Schemas', function (test) {
   var c = new Mongo.Collection("multiSchema");
@@ -729,7 +759,6 @@ if (Meteor.isServer) {
         av: 'abc'
       }
     }, function (error, result) {
-      console.log(error, result, times);
       test.equal(times, 1, 'AutoValue functions should run only once for an upsert');
       next();
     });

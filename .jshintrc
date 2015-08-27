@@ -160,6 +160,7 @@
     "booksSubscription": true,
     "partOne": true,
     "partTwo": true,
-    "partThree": true
+    "partThree": true,
+    "LocalCollection": false
   }
 }

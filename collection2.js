@@ -59,6 +59,11 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   // Track the schema in the collection
   self._c2._simpleSchema = ss;
 
+  if (self._collection instanceof LocalCollection) {
+    self._collection._c2 = self._collection._c2 || {};
+    self._collection._c2._simpleSchema = ss;
+  }
+
   function ensureIndex(c, index, indexName, unique, sparse) {
     Meteor.startup(function () {
       c._collection._ensureIndex(index, {
@@ -141,10 +146,12 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   keepInsecure(self);
 };
 
-Mongo.Collection.prototype.simpleSchema = function c2SS() {
-  var self = this;
-  return self._c2 ? self._c2._simpleSchema : null;
-};
+_.each([Mongo.Collection, LocalCollection], function (obj) {
+  obj.prototype.simpleSchema = function () {
+    var self = this;
+    return self._c2 ? self._c2._simpleSchema : null;
+  };
+});
 
 // Wrap DB write operation methods
 _.each(['insert', 'update'], function(methodName) {
