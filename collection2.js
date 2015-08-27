@@ -28,9 +28,11 @@ if (typeof Mongo === "undefined") {
 
 /**
  * Mongo.Collection.prototype.attachSchema
- * @param {SimpleSchema|Object} ss - SimpleSchema instance or a schema definition object from which to create a new SimpleSchema instance
+ * @param {SimpleSchema|Object} ss - SimpleSchema instance or a schema definition object
+ *    from which to create a new SimpleSchema instance
  * @param {Object} [options]
- * @param {Boolean} [options.transform=false] Set to `true` if your document must be passed through the collection's transform to properly validate.
+ * @param {Boolean} [options.transform=false] Set to `true` if your document must be passed
+ *    through the collection's transform to properly validate.
  * @param {Boolean} [options.replace=false] Set to `true` to replace any existing schema instead of combining
  * @return {undefined}
  *
@@ -280,7 +282,14 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
 
   // Preliminary cleaning on both client and server. On the server and for local
   // collections, automatic values will also be set at this point.
-  doClean(doc, ((Meteor.isServer || isLocalCollection) && !skipAutoValue), options.filter !== false, options.autoConvert !== false, options.removeEmptyStrings !== false, options.trimStrings !== false);
+  doClean(
+    doc,
+    ((Meteor.isServer || isLocalCollection) && !skipAutoValue),
+    options.filter !== false,
+    options.autoConvert !== false,
+    options.removeEmptyStrings !== false,
+    options.trimStrings !== false
+  );
 
   // We clone before validating because in some cases we need to adjust the
   // object a bit before validating it. If we adjusted `doc` itself, our
@@ -395,30 +404,41 @@ function addUniqueError(context, errorMessage) {
 
 function wrapCallbackForParsingMongoValidationErrors(col, doc, vCtx, cb) {
   return function wrappedCallbackForParsingMongoValidationErrors(error) {
-    if (error && ((error.name === "MongoError" && error.code === 11001) || error.message.indexOf('MongoError: E11000' !== -1)) && error.message.indexOf('c2_') !== -1) {
+    var args = _.toArray(arguments);
+    if (error &&
+        ((error.name === "MongoError" && error.code === 11001) || error.message.indexOf('MongoError: E11000' !== -1)) &&
+        error.message.indexOf('c2_') !== -1) {
       var context = col.simpleSchema().namedContext(vCtx);
       addUniqueError(context, error.message);
-      arguments[0] = getErrorObject(context);
+      args[0] = getErrorObject(context);
     }
-    return cb.apply(this, arguments);
+    return cb.apply(this, args);
   };
 }
 
 function wrapCallbackForParsingServerErrors(col, vCtx, cb) {
   return function wrappedCallbackForParsingServerErrors(error) {
+    var args = _.toArray(arguments);
     // Handle our own validation errors
     var context = col.simpleSchema().namedContext(vCtx);
-    if (error instanceof Meteor.Error && error.error === 400 && error.reason === "INVALID" && typeof error.details === "string") {
+    if (error instanceof Meteor.Error &&
+        error.error === 400 &&
+        error.reason === "INVALID" &&
+        typeof error.details === "string") {
       var invalidKeysFromServer = EJSON.parse(error.details);
       context.addInvalidKeys(invalidKeysFromServer);
-      arguments[0] = getErrorObject(context);
+      args[0] = getErrorObject(context);
     }
     // Handle Mongo unique index errors, which are forwarded to the client as 409 errors
-    else if (error instanceof Meteor.Error && error.error === 409 && error.reason && error.reason.indexOf('E11000') !== -1 && error.reason.indexOf('c2_') !== -1) {
+    else if (error instanceof Meteor.Error &&
+             error.error === 409 &&
+             error.reason &&
+             error.reason.indexOf('E11000') !== -1 &&
+             error.reason.indexOf('c2_') !== -1) {
       addUniqueError(context, error.reason);
-      arguments[0] = getErrorObject(context);
+      args[0] = getErrorObject(context);
     }
-    return cb.apply(this, arguments);
+    return cb.apply(this, args);
   };
 }
 
@@ -531,11 +551,22 @@ function defineDeny(c, options) {
     c.deny(_.extend({
       insert: function(userId, doc) {
         // We pass the false options because we will have done them on client if desired
-        doValidate.call(c, "insert", [doc, {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
-            if (error) {
-              throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+        doValidate.call(
+          c,
+          "insert",
+          [
+            doc,
+            {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false},
+            function(error) {
+              if (error) {
+                throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+              }
             }
-          }], true, userId, false);
+          ],
+          true,
+          userId,
+          false
+        );
 
         return false;
       },
@@ -543,11 +574,23 @@ function defineDeny(c, options) {
         // NOTE: This will never be an upsert because client-side upserts
         // are not allowed once you define allow/deny functions.
         // We pass the false options because we will have done them on client if desired
-        doValidate.call(c, "update", [{_id: doc && doc._id}, modifier, {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false}, function(error) {
-            if (error) {
-              throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+        doValidate.call(
+          c,
+          "update",
+          [
+            {_id: doc && doc._id},
+            modifier,
+            {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false},
+            function(error) {
+              if (error) {
+                throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+              }
             }
-          }], true, userId, false);
+          ],
+          true,
+          userId,
+          false
+        );
 
         return false;
       },

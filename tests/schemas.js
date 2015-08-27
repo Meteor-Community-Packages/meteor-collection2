@@ -106,13 +106,13 @@ avSchema = new SimpleSchema({
       if (content.isSet) {
         if (this.isInsert) {
           return [{
-              date: new Date,
+              date: new Date(),
               content: content.value
             }];
         } else {
           return {
             $push: {
-              date: new Date,
+              date: new Date(),
               content: content.value
             }
           };

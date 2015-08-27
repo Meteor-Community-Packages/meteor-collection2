@@ -3,7 +3,7 @@ Tinytest.add('Collection2 - Test Environment', function (test) {
 });
 
 if (Meteor.isServer) {
-  Tinytest.add('Collection2 - Ensure Index', function (test) {
+  Tinytest.add('Collection2 - Ensure Index', function () {
     // We need to have an access to the getIndexes method of the embedded
     // collection in order to test this feature.
     // var indexes = books._collection._getIndexes();
@@ -122,11 +122,8 @@ Tinytest.addAsync('Collection2 - Unique - Insert Duplicate', function (test, nex
 });
 
 Tinytest.addAsync('Collection2 - Unique - Insert Duplicate Non-C2 Index', function (test, next) {
-  if (Meteor.isServer) {
-    var val = "foo";
-  } else {
-    var val = "bar";
-  }
+  var val = Meteor.isServer ? 'foo' : 'bar';
+
   // Good insert
   books.insert({
     title: "Ulysses",
@@ -140,7 +137,6 @@ Tinytest.addAsync('Collection2 - Unique - Insert Duplicate Non-C2 Index', functi
 
     var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-    var key = invalidKeys[0] || {};
 
     // Bad insert
     books.insert({
@@ -155,7 +151,6 @@ Tinytest.addAsync('Collection2 - Unique - Insert Duplicate Non-C2 Index', functi
 
       var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back because this is a non-C2 unique index');
-      var key = invalidKeys[0] || {};
 
       next();
     });
@@ -197,7 +192,8 @@ Tinytest.addAsync('Collection2 - Unique - Update Self', function (test, next) {
       isbn: isbn
     }
   }, function (error) {
-    test.isFalse(!!error, 'We expected the update not to trigger an error since isbn is used only by the doc being updated');
+    test.isFalse(!!error,
+      'We expected the update not to trigger an error since isbn is used only by the doc being updated');
 
     var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys, [], 'We should get no invalidKeys back');
@@ -212,7 +208,9 @@ Tinytest.addAsync('Collection2 - Unique - Update Another', function (test, next)
       isbn: isbn + "A"
     }
   }, function (error) {
-    test.isTrue(!!error, 'We expected the update to trigger an error since isbn we want to change to is already used by a different document');
+    test.isTrue(!!error,
+      'We expected the update to trigger an error since isbn we want to change to is ' +
+      'already used by a different document');
     test.equal(error.invalidKeys.length, 1, 'We should get one invalidKey back attached to the Error object');
 
     var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
@@ -252,8 +250,8 @@ Tinytest.addAsync("Collection2 - denyInsert", function (test, next) {
     title: "Ulysses",
     author: "James Joyce",
     copies: 1,
-    updatedAt: new Date
-  }, function (error, result) {
+    updatedAt: new Date()
+  }, function (error) {
     test.isTrue(!!error, 'We expected the insert to trigger an error since updatedAt has denyInsert set to true');
 
     var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
@@ -274,9 +272,10 @@ Tinytest.addAsync("Collection2 - denyUpdate", function (test, next) {
     title: "Ulysses",
     author: "James Joyce",
     copies: 1,
-    createdAt: new Date
+    createdAt: new Date()
   }, function (error, newId) {
-    test.isFalse(!!error, 'We expected the insert not to trigger an error since createdAt denies updates but not inserts');
+    test.isFalse(!!error,
+      'We expected the insert not to trigger an error since createdAt denies updates but not inserts');
 
     var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
     test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
@@ -284,9 +283,9 @@ Tinytest.addAsync("Collection2 - denyUpdate", function (test, next) {
       _id: newId
     }, {
       $set: {
-        createdAt: new Date
+        createdAt: new Date()
       }
-    }, function (error, result) {
+    }, function (error) {
       test.isTrue(!!error, 'We expected the insert to trigger an error since createdAt has denyUpdate set to true');
 
       var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
@@ -301,10 +300,11 @@ Tinytest.addAsync("Collection2 - denyUpdate", function (test, next) {
         _id: newId
       }, {
         $set: {
-          updatedAt: new Date
+          updatedAt: new Date()
         }
-      }, function (error, result) {
-        test.isFalse(!!error, 'We expected the update not to trigger an error since updatedAt denies inserts but not updates');
+      }, function (error) {
+        test.isFalse(!!error,
+          'We expected the update not to trigger an error since updatedAt denies inserts but not updates');
 
         var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
         test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
@@ -321,8 +321,8 @@ if (Meteor.isServer) {
       title: "Ulysses",
       author: "James Joyce",
       copies: 1,
-      updatedAt: new Date
-    }, function (error, result) {
+      updatedAt: new Date()
+    }, function (error) {
       test.isFalse(!!error, 'We expected the insert not to trigger an error since we are on the server');
       next();
     });
@@ -331,7 +331,7 @@ if (Meteor.isServer) {
 
 Tinytest.addAsync("Collection2 - Black Box", function (test, next) {
 
-  var now = new Date;
+  var now = new Date();
 
   var boxData = {
     name: "Test",
@@ -421,7 +421,8 @@ Tinytest.addAsync("Collection2 - AutoValue Insert", function (test, next) {
 
       test.instanceOf(p.dateDefault, Date);
       if (p.dateDefault instanceof Date) {
-        test.equal(p.dateDefault.getTime(), myDate.getTime(), 'expected the dateDefault to be correctly set after insert');
+        test.equal(p.dateDefault.getTime(), myDate.getTime(),
+          'expected the dateDefault to be correctly set after insert');
       }
 
       test.instanceOf(p.dateForce, Date);
@@ -458,7 +459,7 @@ Tinytest.addAsync("Collection2 - AutoValue Update", function (test, next) {
       $set: {
         content: "Test Content"
       }
-    }, function (err, res) {
+    }, function () {
       var p = autoValues.findOne({
         _id: testId
       });
@@ -473,7 +474,7 @@ Tinytest.addAsync("Collection2 - AutoValue Update", function (test, next) {
 
 Tinytest.addAsync("Collection2 - AutoValue Context", function (test, next) {
   contextCheck.insert({}, function (error, testId) {
-    test.isFalse(!!error, 'insert failed: ' + (error && error.message))
+    test.isFalse(!!error, 'insert failed: ' + (error && error.message));
     var ctx = contextCheck.findOne({
       _id: testId
     });
@@ -493,7 +494,7 @@ Tinytest.addAsync("Collection2 - AutoValue Context", function (test, next) {
       $set: {
         foo: "bar"
       }
-    }, function (error, result) {
+    }, function () {
       ctx = contextCheck.findOne({
         _id: testId
       });
@@ -513,7 +514,7 @@ Tinytest.addAsync("Collection2 - AutoValue Context", function (test, next) {
         $set: {
           foo: "bar"
         }
-      }, function (error, result) {
+      }, function () {
         ctx = contextCheck.findOne({
           _id: testId
         });
@@ -546,7 +547,7 @@ Tinytest.addAsync("Collection2 - DefaultValue Update", function (test, next) {
         $set: {
           bool1: true
         }
-      }, function (err, res) {
+      }, function () {
         p = defaultValues.findOne({
           _id: testId
         });
@@ -575,7 +576,7 @@ if (Meteor.isServer) {
       test.isFalse(!!error, 'We expected the upsert not to trigger an error since the doc is valid for an insert');
       test.equal(result.numberAffected, 1, 'Upsert should update one record');
 
-      invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
       next();
@@ -601,7 +602,7 @@ if (Meteor.isServer) {
       test.isFalse(!!error, 'We expected the upsert not to trigger an error since the doc is valid for an insert');
       test.equal(result, 1, 'Upsert should update one record');
 
-      invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
       next();
@@ -624,7 +625,7 @@ if (Meteor.isServer) {
       test.isTrue(!!error, 'We expected the upsert to trigger an error since the doc is invalid for an insert');
       test.isFalse(result, 'Upsert should update no records');
 
-      invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
 
       next();
@@ -648,7 +649,7 @@ if (Meteor.isServer) {
       test.isTrue(!!error, 'We expected the upsert to trigger an error since the doc is invalid for an insert');
       test.isFalse(result, 'Upsert should update no records');
 
-      invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
 
       next();
@@ -666,10 +667,11 @@ if (Meteor.isServer) {
         copies: 1
       }
     }, function (error, result) {
-      test.isFalse(!!error, 'We expected the upsert to trigger an error since the doc is valid for an insert with selector');
+      test.isFalse(!!error,
+        'We expected the upsert to trigger an error since the doc is valid for an insert with selector');
       test.equal(result.numberAffected, 1, 'Upsert should update one record');
 
-      invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
       next();
@@ -689,10 +691,11 @@ if (Meteor.isServer) {
     }, {
       upsert: true
     }, function (error, result) {
-      test.isFalse(!!error, 'We expected the upsert to trigger an error since the doc is valid for an insert with selector');
+      test.isFalse(!!error,
+        'We expected the upsert to trigger an error since the doc is valid for an insert with selector');
       test.equal(result, 1, 'Upsert should update one record');
 
-      invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
 
       next();
@@ -755,7 +758,7 @@ Tinytest.addAsync("Collection2 - No Schema", function (test, next) {
         a: 3,
         b: 4
       }
-    }, function (error, result) {
+    }, function (error) {
       test.isFalse(!!error, 'There should be no error since there is no schema');
       //result is undefined for some reason, but it's happening for apps without
       //C2 as well, so must be a Meteor bug
@@ -836,6 +839,7 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
     validate: false,
     validationContext: "validateFalse"
   }, function (error, result) {
+    var insertedBook;
     var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
 
     if (Meteor.isClient) {
@@ -844,9 +848,10 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
       // There should be an `invalidKeys` property on the error, too
       test.equal(error.invalidKeys.length, 1, 'There should be 1 invalidKey on the Error object');
       test.isFalse(!!result, 'result should be falsy because "copies" is required');
-      test.equal(invalidKeys.length, 1, 'There should be 1 invalidKey since validation happened on the server and errors were sent back');
+      test.equal(invalidKeys.length, 1,
+        'There should be 1 invalidKey since validation happened on the server and errors were sent back');
 
-      var insertedBook = books.findOne({
+      insertedBook = books.findOne({
         title: title
       });
       test.isFalse(!!insertedBook, 'Book should not have been inserted because validation failed on server');
@@ -856,7 +861,7 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
       test.isTrue(!!result, 'result should be set because we skipped validation');
       test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
 
-      var insertedBook = books.findOne({
+      insertedBook = books.findOne({
         title: title
       });
       test.isTrue(!!insertedBook, 'Book should have been inserted because we skipped validation on server');
@@ -892,6 +897,7 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
         validate: false,
         validationContext: "validateFalse3"
       }, function (error, result) {
+        var updatedBook;
         var invalidKeys = books.simpleSchema().namedContext("validateFalse3").invalidKeys();
 
         if (Meteor.isClient) {
@@ -900,24 +906,27 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
           // There should be an `invalidKeys` property on the error, too
           test.equal(error.invalidKeys.length, 1, 'There should be 1 invalidKey on the Error object');
           test.isFalse(!!result, 'result should be falsy because "copies" is required');
-          test.equal(invalidKeys.length, 1, 'There should be 1 invalidKey since validation happened on the server and invalidKeys were sent back');
+          test.equal(invalidKeys.length, 1,
+            'There should be 1 invalidKey since validation happened on the server and invalidKeys were sent back');
 
-          var updatedBook = books.findOne({
+          updatedBook = books.findOne({
             _id: newId
           });
           test.isTrue(!!updatedBook, 'Book should still be there');
-          test.equal(updatedBook.copies, 1, 'copies should still be 1 because our new value failed validation on the server');
+          test.equal(updatedBook.copies, 1,
+            'copies should still be 1 because our new value failed validation on the server');
         } else {
           // When validate: false on the server, validation should be skipped
           test.isFalse(!!error, 'We expected no error because we skipped validation');
           test.isTrue(!!result, 'result should be set because we skipped validation');
           test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
 
-          var updatedBook = books.findOne({
+          updatedBook = books.findOne({
             _id: newId
           });
           test.isTrue(!!updatedBook, 'Book should still be there');
-          test.equal(updatedBook.copies, "Yes Please", 'copies should be changed despite being invalid because we skipped validation on the server');
+          test.equal(updatedBook.copies, "Yes Please",
+            'copies should be changed despite being invalid because we skipped validation on the server');
         }
 
         // now try a good one

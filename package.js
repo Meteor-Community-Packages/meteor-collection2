@@ -34,6 +34,7 @@ Package.onTest(function(api) {
   api.use('ordered-dict@1.0.0');
   api.use('random@1.0.0');
   api.use('deps@1.0.0');
+  api.use('minimongo@1.0.0');
 
   api.addFiles([
     'tests/schemas.js',
