@@ -5,6 +5,11 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.4.0
+
+* Validation and cleaning is no longer duplicated when using the `upsert` method instead of `{upsert: true}` option.
+* Added `sparse` option which can be set to `true` along with `index` option to force a sparse index
+
 ### 2.3.3
 
 Use latest simple-schema version
