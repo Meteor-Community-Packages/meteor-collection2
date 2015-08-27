@@ -498,7 +498,7 @@ Set to `1` or `true` for an ascending index. Set to `-1` for a descending index.
 Or you may set this to another type of specific MongoDB index, such as `"2d"`.
 Indexes work on embedded sub-documents as well.
 
-If you have created an index for a field by mistake and you want to remove it,
+If you have created an index for a field by mistake and you want to remove or change it,
 set `index` to `false`:
 
 ```js
@@ -509,6 +509,8 @@ set `index` to `false`:
   }
 }
 ```
+
+IMPORTANT: If you need to change anything about an index, you must first start the app with `index: false` to drop the old index, and then restart with the correct index properties.
 
 If a field has the `unique` option set to `true`, the MongoDB index will be a
 unique index as well. Then on the server, Collection2 will rely on MongoDB
