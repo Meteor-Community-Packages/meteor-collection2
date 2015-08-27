@@ -200,6 +200,7 @@ Schema.User = new SimpleSchema({
         type: Schema.UserProfile,
         optional: true
     },
+    // Make sure this services field is in your schema if you're using any of the accounts packages
     services: {
         type: Object,
         optional: true,
