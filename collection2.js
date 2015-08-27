@@ -378,7 +378,7 @@ function getErrorObject(context) {
   // If on the server, we add a sanitized error, too, in case we're
   // called from a method.
   if (Meteor.isServer) {
-    error.sanitizedError = new Meteor.Error(400, message);
+    error.sanitizedError = new Meteor.Error(400, message, EJSON.stringify(error.invalidKeys));
   }
   return error;
 }
