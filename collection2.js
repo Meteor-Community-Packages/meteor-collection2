@@ -193,9 +193,10 @@ _.each(['insert', 'update'], function(methodName) {
  */
 
 function doValidate(type, args, getAutoValues, userId, isFromTrustedCode) {
-  var self = this, schema = self._c2._simpleSchema,
-      doc, callback, error, options, isUpsert, selector, last, hasCallback,
-      isLocalCollection = (self._connection === null);
+  var self = this, doc, callback, error, options, isUpsert, selector, last, hasCallback;
+
+  var schema = self.simpleSchema();
+  var isLocalCollection = (self._connection === null);
 
   if (!args.length) {
     throw new Error(type + " requires an argument");
@@ -244,6 +245,16 @@ function doValidate(type, args, getAutoValues, userId, isFromTrustedCode) {
     getAutoValues = false;
   }
 
+  // Determine validation context
+  var validationContext = options.validationContext;
+  if (validationContext) {
+    if (typeof validationContext === 'string') {
+      validationContext = schema.namedContext(validationContext);
+    }
+  } else {
+    validationContext = schema.namedContext();
+  }
+
   // Add a default callback function if we're on the client and no callback was given
   if (Meteor.isClient && !callback) {
     // Client can't block, so it can't report errors by exception,
@@ -262,7 +273,7 @@ function doValidate(type, args, getAutoValues, userId, isFromTrustedCode) {
   // is found to be invalid on the server, we get that error back
   // as a special Meteor.Error that we need to parse.
   if (Meteor.isClient && hasCallback) {
-    callback = args[last] = wrapCallbackForParsingServerErrors(self, options.validationContext, callback);
+    callback = args[last] = wrapCallbackForParsingServerErrors(validationContext, callback);
   }
 
   // Get the docId for passing in the autoValue/custom context
@@ -346,12 +357,11 @@ function doValidate(type, args, getAutoValues, userId, isFromTrustedCode) {
   }
 
   // Validate doc
-  var ctx = schema.namedContext(options.validationContext);
   var isValid;
   if (options.validate === false) {
     isValid = true;
   } else {
-    isValid = ctx.validate(docToValidate, {
+    isValid = validationContext.validate(docToValidate, {
       modifier: (type === "update" || type === "upsert"),
       upsert: isUpsert,
       extendedCustomContext: _.extend({
@@ -382,12 +392,12 @@ function doValidate(type, args, getAutoValues, userId, isFromTrustedCode) {
 
     // If callback, set invalidKey when we get a mongo unique error
     if (Meteor.isServer && hasCallback) {
-      args[last] = wrapCallbackForParsingMongoValidationErrors(self, doc, options.validationContext, args[last]);
+      args[last] = wrapCallbackForParsingMongoValidationErrors(validationContext, args[last]);
     }
 
     return args;
   } else {
-    error = getErrorObject(ctx);
+    error = getErrorObject(validationContext);
     if (callback) {
       // insert/update/upsert pass `false` when there's an error, so we do that
       callback(error, false);
@@ -425,32 +435,30 @@ function addUniqueError(context, errorMessage) {
   }]);
 }
 
-function wrapCallbackForParsingMongoValidationErrors(col, doc, vCtx, cb) {
+function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
   return function wrappedCallbackForParsingMongoValidationErrors(error) {
     var args = _.toArray(arguments);
     if (error &&
         ((error.name === "MongoError" && error.code === 11001) || error.message.indexOf('MongoError: E11000' !== -1)) &&
         error.message.indexOf('c2_') !== -1) {
-      var context = col.simpleSchema().namedContext(vCtx);
-      addUniqueError(context, error.message);
-      args[0] = getErrorObject(context);
+      addUniqueError(validationContext, error.message);
+      args[0] = getErrorObject(validationContext);
     }
     return cb.apply(this, args);
   };
 }
 
-function wrapCallbackForParsingServerErrors(col, vCtx, cb) {
+function wrapCallbackForParsingServerErrors(validationContext, cb) {
   return function wrappedCallbackForParsingServerErrors(error) {
     var args = _.toArray(arguments);
     // Handle our own validation errors
-    var context = col.simpleSchema().namedContext(vCtx);
     if (error instanceof Meteor.Error &&
         error.error === 400 &&
         error.reason === "INVALID" &&
         typeof error.details === "string") {
       var invalidKeysFromServer = EJSON.parse(error.details);
-      context.addInvalidKeys(invalidKeysFromServer);
-      args[0] = getErrorObject(context);
+      validationContext.addInvalidKeys(invalidKeysFromServer);
+      args[0] = getErrorObject(validationContext);
     }
     // Handle Mongo unique index errors, which are forwarded to the client as 409 errors
     else if (error instanceof Meteor.Error &&
@@ -458,8 +466,8 @@ function wrapCallbackForParsingServerErrors(col, vCtx, cb) {
              error.reason &&
              error.reason.indexOf('E11000') !== -1 &&
              error.reason.indexOf('c2_') !== -1) {
-      addUniqueError(context, error.reason);
-      args[0] = getErrorObject(context);
+      addUniqueError(validationContext, error.reason);
+      args[0] = getErrorObject(validationContext);
     }
     return cb.apply(this, args);
   };
