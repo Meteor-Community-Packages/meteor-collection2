@@ -5,6 +5,11 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.5.0
+
+* `docId` is now set in the autoValue and custom contexts for inserts, too, if possible
+* The `validationContext` option can now be a reference to a context instead of a string name
+
 ### 2.4.0
 
 * Validation and cleaning is no longer duplicated when using the `upsert` method instead of `{upsert: true}` option.
