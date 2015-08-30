@@ -166,7 +166,14 @@ _.each(['insert', 'update'], function(methodName) {
                 userId = Meteor.userId();
             } catch (err) {}
 
-            args = doValidate.call(self, methodName, args, false, userId, Meteor.isServer);
+            args = doValidate.call(
+              self,
+              methodName,
+              args,
+              true, // getAutoValues
+              userId,
+              Meteor.isServer // isFromTrustedCode
+            );
             if (!args) {
                 // doValidate already called the callback or threw the error
                 if (methodName === "insert") {
@@ -185,7 +192,7 @@ _.each(['insert', 'update'], function(methodName) {
  * Private
  */
 
-function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
+function doValidate(type, args, getAutoValues, userId, isFromTrustedCode) {
   var self = this, schema = self._c2._simpleSchema,
       doc, callback, error, options, isUpsert, selector, last, hasCallback,
       isLocalCollection = (self._connection === null);
@@ -232,6 +239,11 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
   // If update was called with upsert:true, flag as an upsert
   isUpsert = (type === "update" && options.upsert === true);
 
+  // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
+  if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
+    getAutoValues = false;
+  }
+
   // Add a default callback function if we're on the client and no callback was given
   if (Meteor.isClient && !callback) {
     // Client can't block, so it can't report errors by exception,
@@ -253,11 +265,19 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
     callback = args[last] = wrapCallbackForParsingServerErrors(self, options.validationContext, callback);
   }
 
+  // Get the docId for passing in the autoValue/custom context
+  var docId;
+  if (type === 'insert') {
+    docId = doc._id; // might be undefined
+  } else if (type === "update" && selector) {
+    docId = typeof selector === 'string' || selector instanceof Mongo.ObjectID ? selector : selector._id;
+  }
+
   // If _id has already been added, remove it temporarily if it's
   // not explicitly defined in the schema.
-  var id;
+  var cachedId;
   if (doc._id && !schema.allowsKey("_id")) {
-    id = doc._id;
+    cachedId = doc._id;
     delete doc._id;
   }
 
@@ -276,22 +296,17 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpsert: isUpsert,
         userId: userId,
         isFromTrustedCode: isFromTrustedCode,
-        docId: ((type === "update" || type === "upsert") && selector) ? selector._id || selector : void 0,
+        docId: docId,
         isLocalCollection: isLocalCollection
       }, options.extendAutoValueContext || {})
     });
-  }
-
-  // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
-  if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
-    skipAutoValue = true;
   }
 
   // Preliminary cleaning on both client and server. On the server and for local
   // collections, automatic values will also be set at this point.
   doClean(
     doc,
-    ((Meteor.isServer || isLocalCollection) && !skipAutoValue),
+    getAutoValues,
     options.filter !== false,
     options.autoConvert !== false,
     options.removeEmptyStrings !== false,
@@ -345,7 +360,7 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
         isUpsert: isUpsert,
         userId: userId,
         isFromTrustedCode: isFromTrustedCode,
-        docId: ((type === "update" || type === "upsert") && selector) ? selector._id || selector : void 0,
+        docId: docId,
         isLocalCollection: isLocalCollection
       }, options.extendedCustomContext || {})
     });
@@ -353,11 +368,12 @@ function doValidate(type, args, skipAutoValue, userId, isFromTrustedCode) {
 
   if (isValid) {
     // Add the ID back
-    if (id) {
-      doc._id = id;
+    if (cachedId) {
+      doc._id = cachedId;
     }
 
     // Update the args to reflect the cleaned doc
+    // XXX not sure this is necessary since we mutate
     if (type === "insert") {
       args[0] = doc;
     } else {
@@ -563,16 +579,21 @@ function defineDeny(c, options) {
           "insert",
           [
             doc,
-            {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false},
+            {
+              trimStrings: false,
+              removeEmptyStrings: false,
+              filter: false,
+              autoConvert: false
+            },
             function(error) {
               if (error) {
                 throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
               }
             }
           ],
-          true,
+          false, // getAutoValues
           userId,
-          false
+          false // isFromTrustedCode
         );
 
         return false;
@@ -587,16 +608,21 @@ function defineDeny(c, options) {
           [
             {_id: doc && doc._id},
             modifier,
-            {trimStrings: false, removeEmptyStrings: false, filter: false, autoConvert: false},
+            {
+              trimStrings: false,
+              removeEmptyStrings: false,
+              filter: false,
+              autoConvert: false
+            },
             function(error) {
               if (error) {
                 throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
               }
             }
           ],
-          true,
+          false, // getAutoValues
           userId,
-          false
+          false // isFromTrustedCode
         );
 
         return false;
