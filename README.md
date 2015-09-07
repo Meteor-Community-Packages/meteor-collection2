@@ -178,13 +178,21 @@ Schema.UserProfile = new SimpleSchema({
 Schema.User = new SimpleSchema({
     username: {
         type: String,
-        regEx: /^[a-z0-9A-Z_]{3,15}$/
+        regEx: /^[a-z0-9A-Z_]{3,15}$/,
+        // For accounts-password, either emails or username is required, but not both. It is OK to make this
+        // optional here because the accounts-password package does its own validation.
+        // Third-party login packages may not require either. Adjust this schema as necessary for your usage.
+        optional: true
     },
     emails: {
-        type: [Object],
-        // this must be optional if you also use other login services like facebook,
-        // but if you use only accounts-password, then it can be required
+        type: Array,
+        // For accounts-password, either emails or username is required, but not both. It is OK to make this
+        // optional here because the accounts-password package does its own validation.
+        // Third-party login packages may not require either. Adjust this schema as necessary for your usage.
         optional: true
+    },
+    "emails.$": {
+        type: Object
     },
     "emails.$.address": {
         type: String,
