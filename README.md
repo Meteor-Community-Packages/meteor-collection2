@@ -138,12 +138,10 @@ Schema.UserCountry = new SimpleSchema({
 Schema.UserProfile = new SimpleSchema({
     firstName: {
         type: String,
-        regEx: /^[a-zA-Z-]{2,25}$/,
         optional: true
     },
     lastName: {
         type: String,
-        regEx: /^[a-zA-Z]{2,25}$/,
         optional: true
     },
     birthday: {
@@ -157,7 +155,6 @@ Schema.UserProfile = new SimpleSchema({
     },
     organization : {
         type: String,
-        regEx: /^[a-z0-9A-z .]{3,30}$/,
         optional: true
     },
     website: {
@@ -178,7 +175,6 @@ Schema.UserProfile = new SimpleSchema({
 Schema.User = new SimpleSchema({
     username: {
         type: String,
-        regEx: /^[a-z0-9A-Z_]{3,15}$/,
         // For accounts-password, either emails or username is required, but not both. It is OK to make this
         // optional here because the accounts-password package does its own validation.
         // Third-party login packages may not require either. Adjust this schema as necessary for your usage.
