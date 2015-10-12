@@ -613,6 +613,31 @@ if (Meteor.isServer) {
     });
   });
 
+  Tinytest.addAsync('Collection2 - Upsert as update should update entity by _id - Valid', function (test, next) {
+    books.remove({});
+
+    var id = books.insert({title: 'new', author: 'author new', copies: 2});
+
+    books.upsert({
+      _id: id
+    }, {
+      $set: {
+        title: "Ulysses",
+        author: "James Joyce",
+        copies: 1
+      }
+    }, function (error, result) {
+
+      test.isFalse(!!error, 'We expected the upsert not to trigger an error since the doc is valid for an insert');
+      test.equal(result.numberAffected, 1, 'Upsert should update one record');
+
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+
+      next();
+    });
+  });
+
   Tinytest.addAsync('Collection2 - Upsert as Update - Valid', function (test, next) {
     books.remove({});
 
