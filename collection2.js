@@ -344,7 +344,7 @@ function doValidate(type, args, getAutoValues, userId, isFromTrustedCode) {
   // probably isn't any better way right now.
   if (Meteor.isServer && isUpsert && _.isObject(selector)) {
     var set = docToValidate.$set || {};
-    docToValidate.$set = _.clone(selector);
+    docToValidate.$set = _.omit(_.clone(selector), '_id');
     _.extend(docToValidate.$set, set);
   }
 
