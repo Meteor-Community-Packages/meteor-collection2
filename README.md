@@ -369,7 +369,7 @@ var PostSchema = new SimpleSchema({
 Posts = new Mongo.Collection('posts');
 Posts.attachSchema(PostSchema);
 
-var postId = Posts.insert({title: 'Hello', content: 'World', createdAt: new Date});
+var postId = Posts.insert({title: 'Hello', content: 'World', createdAt: new Date()});
 ```
 
 The `denyInsert` option works the same way, but for inserts. If you set
@@ -403,9 +403,9 @@ explain by way of several examples:
     type: Date,
     autoValue: function() {
       if (this.isInsert) {
-        return new Date;
+        return new Date();
       } else if (this.isUpsert) {
-        return {$setOnInsert: new Date};
+        return {$setOnInsert: new Date()};
       } else {
         this.unset();  // Prevent user from supplying their own value
       }
@@ -447,7 +447,7 @@ explain by way of several examples:
       if (content.isSet) {
         if (this.isInsert) {
           return [{
-              date: new Date,
+              date: new Date(),
               content: content.value
             }];
         } else {
