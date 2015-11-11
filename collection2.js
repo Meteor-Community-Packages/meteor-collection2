@@ -346,6 +346,15 @@ function doValidate(type, args, getAutoValues, userId, isFromTrustedCode) {
     var set = docToValidate.$set || {};
     docToValidate.$set = _.clone(selector);
     _.extend(docToValidate.$set, set);
+
+    var addToSet = docToValidate.$addToSet;
+    if (addToSet) {
+      var addToSetArrays = {};
+      for (var index in addToSet) {
+        addToSetArrays[index] = [addToSet[index]];
+      }
+      _.extend(docToValidate.$set, addToSetArrays);
+    }
   }
 
   // Set automatic values for validation on the client.
