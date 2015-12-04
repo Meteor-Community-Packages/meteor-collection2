@@ -28,8 +28,9 @@ if (typeof Mongo === "undefined") {
 
 /**
  * Mongo.Collection.prototype.attachSchema
- * @param {SimpleSchema|Object} ss - SimpleSchema instance or a schema definition object
- *    from which to create a new SimpleSchema instance
+ * @param {SimpleSchema|Object|Array} ss - SimpleSchema instance or a schema definition object
+ * from which to create a new SimpleSchema instance. Also it could be an array of
+ * schemas
  * @param {Object} [options]
  * @param {Boolean} [options.transform=false] Set to `true` if your document must be passed
  *    through the collection's transform to properly validate.
@@ -46,7 +47,21 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   options = options || {};
 
   if (!(ss instanceof SimpleSchema)) {
-    ss = new SimpleSchema(ss);
+    // on the first iteration we should recursively run through all attached schemas
+    if (Array.isArray(ss) && options.multiple) {
+      ss.map(function (schema) {
+        c2AttachSchema.call(self, schema, { multiple: true });
+      });
+
+      return;
+    } else if (typeof ss === "object" && ss.schema instanceof SimpleSchema && options.multiple) {
+      // Inside recursive function we are working with each schema individually.
+      // The idea here is not merge all schemas in one big schema, but work with
+      // each schema/doc individually.
+      ss = { schema: new SimpleSchema(ss.schema), selector: ss.selector };
+    } else {
+      ss = new SimpleSchema(ss);
+    }
   }
 
   self._c2 = self._c2 || {};
@@ -56,12 +71,28 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     ss = new SimpleSchema([self._c2._simpleSchema, ss]);
   }
 
-  // Track the schema in the collection
-  self._c2._simpleSchema = ss;
+  if (options.multiple) {
+    // we need an array to hold multiple schemas
+    if (!Array.isArray(self._c2._simpleSchemas)) {
+      self._c2._simpleSchemas = [];
+    }
+    self._c2._simpleSchemas.push(ss);
+  } else {
+    // Track the schema in the collection
+    self._c2._simpleSchema = ss;
+  }
 
   if (self._collection instanceof LocalCollection) {
     self._collection._c2 = self._collection._c2 || {};
-    self._collection._c2._simpleSchema = ss;
+
+    if (!options.multiple) {
+      self._collection._c2._simpleSchema = ss;
+    } else {
+      if (!Array.isArray(self._collection._c2._simpleSchemas)) {
+        self._collection._c2._simpleSchemas = [];
+      }
+      self._collection._c2._simpleSchemas.push(ss);
+    }
   }
 
   function ensureIndex(c, index, indexName, unique, sparse) {
@@ -85,9 +116,10 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     });
   }
 
+  var schema = ss instanceof SimpleSchema ? ss : ss.schema;
   // Loop over fields definitions and ensure collection indexes (server side only)
   if (Meteor.isServer) {
-    _.each(ss.schema(), function(definition, fieldName) {
+    _.each(schema.schema(), function(definition, fieldName) {
       if ('index' in definition || definition.unique === true) {
         var index = {}, indexValue;
         // If they specified `unique: true` but not `index`,
@@ -122,7 +154,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   }
 
   // Set up additional checks
-  ss.validator(function() {
+  schema.validator(function() {
     var def = this.definition;
     var val = this.value;
     var op = this.operator;
@@ -147,9 +179,29 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
 };
 
 _.each([Mongo.Collection, LocalCollection], function (obj) {
-  obj.prototype.simpleSchema = function () {
+  obj.prototype.simpleSchema = function (doc, options) {
     var self = this;
-    return self._c2 ? self._c2._simpleSchema : null;
+    if (self._c2 && self._c2._simpleSchema) {
+      return self._c2._simpleSchema;
+    }
+    // for cases where option "multiple" is true
+    if (self._c2 && self._c2._simpleSchemas && self._c2._simpleSchemas.length) {
+      var schemas = self._c2._simpleSchemas;
+      for (var i = 0; i < schemas.length; i++) {
+        var selector = Object.keys(schemas[i].selector)[0];
+        var target = null;
+        if (typeof doc[selector] !== 'undefined') {
+          target = doc[selector];
+        } else if (typeof options === 'object' && typeof options.selector === 'object') {
+          target = options.selector[selector];
+        }
+        // we need to compare given selector with doc property or option to
+        // find right schema
+        if (target !== null && target === schemas[i].selector[selector]) {
+          return schemas[i].schema;
+        }
+      }
+    }
   };
 });
 
@@ -195,9 +247,6 @@ _.each(['insert', 'update'], function(methodName) {
 function doValidate(type, args, getAutoValues, userId, isFromTrustedCode) {
   var self = this, doc, callback, error, options, isUpsert, selector, last, hasCallback;
 
-  var schema = self.simpleSchema();
-  var isLocalCollection = (self._connection === null);
-
   if (!args.length) {
     throw new Error(type + " requires an argument");
   }
@@ -239,6 +288,11 @@ function doValidate(type, args, getAutoValues, userId, isFromTrustedCode) {
 
   // If update was called with upsert:true, flag as an upsert
   isUpsert = (type === "update" && options.upsert === true);
+
+  // we need to pass `doc` and `options` to `simpleSchema` method, that's why
+  // schema declaration moved here
+  var schema = self.simpleSchema(doc, options);
+  var isLocalCollection = (self._connection === null);
 
   // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
   if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
