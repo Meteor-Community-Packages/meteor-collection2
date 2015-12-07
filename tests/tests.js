@@ -44,6 +44,87 @@ Tinytest.add('Collection2 - LocalCollection - simpleSchema', function (test) {
   test.instanceOf(lc._collection.simpleSchema(), SimpleSchema);
 });
 
+if (Meteor.isServer) {
+  // Insert to collection with multiple top-level schemas
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - insert selects the correct schema',
+    function (test) {
+      var productId = products.insert({
+        title: 'Product one'
+      }, { selector: { type: 'simple' } });
+
+      var productVariantId = products.insert({
+        title: 'Product variant one'
+      }, { selector: { type: 'variant' } });
+
+      var product = products.findOne(productId);
+      var productVariant = products.findOne(productVariantId);
+
+      // we should receive new docs with correct property set for each type of doc
+      test.equal(product.description, 'This is a simple product.');
+      test.equal(product.price, undefined);
+      test.equal(productVariant.description, undefined);
+      test.equal(productVariant.price, 5);
+    }
+  );
+
+  // Upsert docs with multiple top-level schemas collection
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - upsert selects the correct schema',
+    function (test) {
+      products.remove({});
+
+      products.insert({ title: 'Product one' }, { selector: { type: 'simple' } });
+
+      products.upsert({ title: 'Product one', type: 'simple' },
+        { $set: { description: 'This is a modified product one.' }},
+        { selector: { type: 'simple' } });
+
+      products.upsert({ title: 'Product two', type: 'simple' },
+        { $set: { description: 'This is a product two.' }},
+        { selector: { type: 'simple' } });
+
+      var productsList = products.find().fetch();
+      test.equal(productsList.length, 2);
+
+      test.equal(productsList[0].description, 'This is a modified product one.');
+      test.equal(productsList[0].price, undefined);
+      test.equal(productsList[1].description, 'This is a product two.');
+      test.equal(productsList[1].price, undefined);
+    }
+  );
+
+  // Update doc in collection with multiple top-level schemas
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - update selects the correct schema',
+    function (test) {
+      var productId = products.insert({
+        title: 'Product one'
+      }, { selector: { type: 'simple' } });
+
+      var productVariantId = products.insert({
+        title: 'Product variant one'
+      }, { selector: { type: 'variant' } });
+
+      products.update(productId, {
+        $set: { title: 'New product one' }
+      }, { selector: { type: 'simple' } });
+
+      products.update(productVariantId, {
+        $set: { title: 'New productVariant one' }
+      }, { selector: { type: 'simple' } });
+
+      var product = products.findOne(productId);
+      var productVariant = products.findOne(productVariantId);
+
+      // we should receive new docs with the same properties as before update
+      test.equal(product.description, 'This is a simple product.');
+      test.equal(product.price, undefined);
+      test.equal(productVariant.description, undefined);
+      test.equal(productVariant.price, 5);
+    }
+  );
+}
 // Attach more than one schema
 Tinytest.add('Collection2 - Attach Multiple Schemas', function (test) {
   var c = new Mongo.Collection("multiSchema");
