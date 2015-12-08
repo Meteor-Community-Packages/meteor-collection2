@@ -35,7 +35,7 @@ documentation for more information.
 
 ## Attaching a Schema to a Collection
 
-Let's say we have a normal "books" collection, defined in *common.js*:
+Let's say we have a normal "books" collection, defined in code that runs on both client and server (*common.js*):
 
 ```js
 Books = new Mongo.Collection("books");
