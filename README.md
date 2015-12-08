@@ -229,6 +229,11 @@ Schema.User = new SimpleSchema({
     roles: {
         type: [String],
         optional: true
+    },
+    // In order to avoid an 'Exception in setInterval callback' from Meteor
+    heartbeat: {
+        type: Date,
+        optional: true
     }
 });
 
