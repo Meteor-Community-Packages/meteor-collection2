@@ -788,6 +788,38 @@ if (Meteor.isServer) {
       next();
     });
   });
+
+  Tinytest.addAsync('Collection2 - Upsert - addToSet', function (test, next) {
+    var addToSetUpsert = new Mongo.Collection("addToSetUpsert");
+    addToSetUpsert.attachSchema(new SimpleSchema({
+      foo: {
+        type: String
+      },
+      values: {
+        type: [String]
+      }
+    }));
+
+    addToSetUpsert.remove({});
+
+    addToSetUpsert.upsert({
+      foo: 'bar'
+    }, {
+      $addToSet: {
+        values: 'asdf'
+      }
+    }, function (error, result) {
+      // can't do test.equal(error, null) because test.equal throws an error
+      test.equal(error === null, true, "Using $addToSet to specify required value failed");
+      var _id = result.insertedId;
+      test.equal(addToSetUpsert.findOne(_id), {
+        _id: _id,
+        foo: 'bar',
+        values: ['asdf']
+      });
+      next();
+    });
+  });
 }
 
 // Ensure that there are no errors when using a schemaless collection
