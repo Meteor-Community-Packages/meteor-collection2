@@ -2,6 +2,7 @@
 .build*
 .npm*
 .meteor*
+.idea
 smart.lock
 /nbproject/
 /packages/
