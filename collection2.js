@@ -155,37 +155,40 @@ _.each([Mongo.Collection, LocalCollection], function (obj) {
 
 // Wrap DB write operation methods
 _.each(['insert', 'update'], function(methodName) {
-    var _super = Mongo.Collection.prototype[methodName];
-    Mongo.Collection.prototype[methodName] = function() {
-        var self = this,
-            args = _.toArray(arguments);
-        if (self._c2) {
+  var _super = Mongo.Collection.prototype[methodName];
+  Mongo.Collection.prototype[methodName] = function() {
+    var self = this, options,
+        args = _.toArray(arguments);
 
-            var userId = null;
-            try { // https://github.com/aldeed/meteor-collection2/issues/175
-                userId = Meteor.userId();
-            } catch (err) {}
+    options = (methodName === "insert") ? args[1] : args[2];
 
-            args = doValidate.call(
-              self,
-              methodName,
-              args,
-              true, // getAutoValues
-              userId,
-              Meteor.isServer // isFromTrustedCode
-            );
-            if (!args) {
-                // doValidate already called the callback or threw the error
-                if (methodName === "insert") {
-                    // insert should always return an ID to match core behavior
-                    return self._makeNewID();
-                } else {
-                    return;
-                }
-            }
-        }
-        return _super.apply(self, args);
-    };
+    // Support missing options arg
+    if (!options || typeof options === "function") {
+      options = {};
+    }
+
+    if (self._c2 && options.bypassCollection2 !== true) {
+      var userId = null;
+      try { // https://github.com/aldeed/meteor-collection2/issues/175
+        userId = Meteor.userId();
+      } catch (err) {}
+
+      args = doValidate.call(
+        self,
+        methodName,
+        args,
+        true, // getAutoValues
+        userId,
+        Meteor.isServer // isFromTrustedCode
+      );
+      if (!args) {
+        // doValidate already called the callback or threw the error so we're done.
+        // But insert should always return an ID to match core behavior.
+        return methodName === "insert" ? self._makeNewID() : undefined;
+      }
+    }
+    return _super.apply(self, args);
+  };
 });
 
 /*

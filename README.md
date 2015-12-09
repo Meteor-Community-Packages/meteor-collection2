@@ -346,6 +346,10 @@ To skip removing empty strings, set the `removeEmptyStrings` option to `false` w
 
 To skip adding automatic values, set the `getAutoValues` option to `false` when you call `insert` or `update`. This works only in server code.
 
+## Inserting or Updating Bypassing Collection2 Entirely
+
+Even if you skip all validation and cleaning, Collection2 will still do some object parsing that can take a long time for a large document. To bypass this, set the `bypassCollection2` option to `true` when you call `insert` or `update`. This works only in server code.
+
 ## Additional SimpleSchema Options
 
 In addition to all the other schema validation options documented in the 
