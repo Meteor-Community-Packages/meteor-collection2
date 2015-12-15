@@ -186,7 +186,11 @@ _.each(['insert', 'update'], function(methodName) {
         // But insert should always return an ID to match core behavior.
         return methodName === "insert" ? self._makeNewID() : undefined;
       }
+    } else {
+      // We still need to adjust args because insert does not take options
+      if (methodName === "insert" && typeof args[1] !== 'function') args.splice(1, 1);
     }
+    
     return _super.apply(self, args);
   };
 });

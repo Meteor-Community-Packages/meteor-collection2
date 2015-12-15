@@ -1036,3 +1036,24 @@ if (Meteor.isClient) {
     });
   });
 }
+
+// bypassCollection2
+if (Meteor.isServer) {
+  Tinytest.add('Collection2 - bypassCollection2', function (test) {
+    var id;
+    
+    try {
+      id = books.insert({}, {bypassCollection2: true})
+      test.ok();
+    } catch (error) {
+      test.fail(error.message);
+    }
+    
+    try {
+      books.update(id, {$set: {copies: 2}}, {bypassCollection2: true})
+      test.ok();
+    } catch (error) {
+      test.fail(error.message);
+    }
+  });
+}
