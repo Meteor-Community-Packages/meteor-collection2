@@ -18,11 +18,18 @@ Package.onUse(function(api) {
   api.imply('mongo');
   api.use('minimongo@1.0.0');
   api.use('ejson@1.0.0');
+  api.use('raix:eventemitter@0.1.3');
 
   // Allow us to detect 'insecure'.
   api.use('insecure@1.0.0', {weak: true});
   
-  api.addFiles(['collection2.js']);
+  api.addFiles([
+    'lib/collection2.js',
+    'lib/deny.js',
+    'lib/indexing.js'
+  ]);
+  
+  api.export('Collection2');
 });
 
 Package.onTest(function(api) {
@@ -42,6 +49,8 @@ Package.onTest(function(api) {
     'tests/collections.js',
     'tests/pubsub.js',
     'tests/security.js',
-    'tests/tests.js'
+    'tests/tests.js',
+    'tests/tests-deny.js',
+    'tests/tests-indexing.js'
   ]);
 });
