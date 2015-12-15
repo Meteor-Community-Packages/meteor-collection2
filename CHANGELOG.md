@@ -5,6 +5,10 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.6.1
+
+Fixed `bypassCollection2` option
+
 ### 2.6.0
 
 Even if you skip all validation and cleaning, Collection2 will still do some object parsing that can take a long time for a large document. To bypass this, you can now set the `bypassCollection2` option to `true` when you call `insert` or `update`. This works only in server code.
