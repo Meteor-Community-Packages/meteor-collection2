@@ -5,6 +5,10 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.7.0
+
+In preparation for splitting some features into separate packages, a `Collection2` object is now exported and emits a 'schema.attached' event whenever a schema is attached to a collection.
+
 ### 2.6.1
 
 Fixed `bypassCollection2` option
