@@ -1,4 +1,3 @@
-
 Tinytest.addAsync("Collection2 - denyInsert", function (test, next) {
   books.insert({
     title: "Ulysses",
@@ -40,7 +39,7 @@ Tinytest.addAsync("Collection2 - denyUpdate", function (test, next) {
         createdAt: new Date()
       }
     }, function (error) {
-      test.isTrue(!!error, 'We expected the insert to trigger an error since createdAt has denyUpdate set to true');
+      test.isTrue(!!error, 'We expected the update to trigger an error since createdAt has denyUpdate set to true');
 
       var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
       test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');

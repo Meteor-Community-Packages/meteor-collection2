@@ -3,13 +3,13 @@
 Package.describe({
   name: "aldeed:collection2",
   summary: "Automatic validation of insert and update operations on the client and server.",
-  version: "2.7.0",
+  version: "2.7.1",
   git: "https://github.com/aldeed/meteor-collection2.git"
 });
 
 Package.onUse(function(api) {
 
-  api.use('aldeed:simple-schema@1.3.2');
+  api.use('aldeed:simple-schema@1.5.3');
   api.imply('aldeed:simple-schema');
 
   api.use('underscore@1.0.0');
