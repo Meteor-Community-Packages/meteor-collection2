@@ -5,6 +5,12 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.7.1
+
+* Fixed an issue where an accidental breaking change in SimpleSchema v1.4.0 caused `denyInsert` and `denyUpdate` to stop working. If using SimpleSchema v1.4.0 or higher, be sure to use Collection2 v2.7.1 or higher.
+* Fix upsert validation when `_id` is required in the schema
+* Throw a clearer error for when all keys are removed from the document or modifier during filter cleaning
+
 ### 2.7.0
 
 In preparation for splitting some features into separate packages, a `Collection2` object is now exported and emits a 'schema.attached' event whenever a schema is attached to a collection.
