@@ -661,3 +661,35 @@ if (Meteor.isServer) {
     }
   });
 }
+
+if (Meteor.isServer) {
+  var upsertTest = new Mongo.Collection('upsertTest');
+  upsertTest.attachSchema(new SimpleSchema({
+    _id: {type: String},
+    foo: {type: Number, decimal: true}
+  }));
+  var upsertTestId = upsertTest.insert({foo: 1});
+
+  Tinytest.add('Collection2 - upsert with schema that allows _id', function (test) {
+    var num = Math.random();
+    upsertTest.update({_id: upsertTestId}, {
+      $set: {
+        foo: num
+      }
+    }, {
+      upsert: true
+    });
+    var doc = upsertTest.findOne(upsertTestId);
+    test.equal(doc.foo, num);
+  });
+
+  Tinytest.add('Collection2 - everything filtered out', function (test) {
+    test.throws(function () {
+      upsertTest.update({_id: upsertTestId}, {
+        $set: {
+          boo: 1
+        }
+      });
+    }, 'After filtering out keys not in the schema, your modifier is now empty');
+  });
+}
