@@ -5,6 +5,10 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.8.0
+
+No changes, but `aldeed:collection2` is now a shell package that installs three component packages: `aldeed:collection2-core`, `aldeed:schema-index`, and `aldeed:schema-deny`
+
 ### 2.7.1
 
 * Fixed an issue where an accidental breaking change in SimpleSchema v1.4.0 caused `denyInsert` and `denyUpdate` to stop working. If using SimpleSchema v1.4.0 or higher, be sure to use Collection2 v2.7.1 or higher.
