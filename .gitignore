@@ -2,6 +2,3 @@
 .build*
 .npm*
 .meteor*
-smart.lock
-/nbproject/
-/packages/

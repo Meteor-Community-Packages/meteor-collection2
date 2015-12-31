@@ -1,21 +1,11 @@
-Tinytest.add('Collection2 - Test Environment', function (test) {
-  test.isTrue(typeof SimpleSchema !== 'undefined', 'test environment not initialized SimpleSchema');
-});
-
-if (Meteor.isServer) {
-  Tinytest.add('Collection2 - Ensure Index', function () {
-    // We need to have an access to the getIndexes method of the embedded
-    // collection in order to test this feature.
-    // var indexes = books._collection._getIndexes();
-  });
-}
-
 Tinytest.addAsync('Collection2 - Reset', function (test, next) {
   Meteor.call("removeAll", next);
 });
 
+var mc = new Mongo.Collection('mc');
 Tinytest.add('Collection2 - Mongo.Collection - simpleSchema', function (test) {
-  var mc = new Mongo.Collection('mc');
+  delete mc._c2;
+  delete mc._collection._c2;
 
   mc.attachSchema(new SimpleSchema({
     foo: {type: String}
@@ -126,8 +116,10 @@ if (Meteor.isServer) {
   );
 }
 // Attach more than one schema
+var c = new Mongo.Collection("multiSchema");
 Tinytest.add('Collection2 - Attach Multiple Schemas', function (test) {
-  var c = new Mongo.Collection("multiSchema");
+  delete c._c2;
+  delete c._collection._c2;
 
   // Attach two different schemas
   c.attachSchema(partOne);
@@ -178,253 +170,6 @@ Tinytest.addAsync('Collection2 - Insert Required', function (test, next) {
   maybeNext();
 });
 
-// When unique: true, inserts should fail if another document already has the same value
-var uniqueBookId, isbn;
-Tinytest.addAsync('Collection2 - Unique - Prep', function (test, next) {
-  isbn = Random.id();
-  // Insert isbn
-  uniqueBookId = books.insert({
-    title: "Ulysses",
-    author: "James Joyce",
-    copies: 1,
-    isbn: isbn
-  }, function (error, result) {
-    test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
-    test.isTrue(!!result, 'result should be defined');
-
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-    // Insert isbn+"A"
-    books.insert({
-      title: "Ulysses",
-      author: "James Joyce",
-      copies: 1,
-      isbn: isbn + "A"
-    }, function (error, result) {
-      test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
-      test.isTrue(!!result, 'result should be defined');
-
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-      next();
-    });
-  });
-});
-
-Tinytest.addAsync('Collection2 - Unique - Insert Duplicate', function (test, next) {
-  books.insert({
-    title: "Ulysses",
-    author: "James Joyce",
-    copies: 1,
-    isbn: isbn
-  }, function (error, result) {
-    test.isTrue(!!error, 'We expected the insert to trigger an error since isbn being inserted is already used');
-    test.equal(error.invalidKeys.length, 1, 'We should get one invalidKey back attached to the Error object');
-    test.isFalse(result, 'result should be false');
-
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-    var key = invalidKeys[0] || {};
-
-    test.equal(key.name, 'isbn', 'We expected the key "isbn"');
-    test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
-    next();
-  });
-});
-
-Tinytest.addAsync('Collection2 - Unique - Insert Duplicate Non-C2 Index', function (test, next) {
-  var val = Meteor.isServer ? 'foo' : 'bar';
-
-  // Good insert
-  books.insert({
-    title: "Ulysses",
-    author: "James Joyce",
-    copies: 1,
-    field1: val,
-    field2: val
-  }, function (error, result) {
-    test.isFalse(!!error, 'We expected the insert not to trigger an error since the fields are unique');
-    test.isTrue(!!result, 'result should be the new ID');
-
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-
-    // Bad insert
-    books.insert({
-      title: "Ulysses",
-      author: "James Joyce",
-      copies: 1,
-      field1: val,
-      field2: val
-    }, function (error, result) {
-      test.isTrue(!!error, 'We expected the insert to trigger an error since the fields are not unique');
-      test.isFalse(result, 'result should be false');
-
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back because this is a non-C2 unique index');
-
-      next();
-    });
-  });
-});
-
-Tinytest.addAsync('Collection2 - Unique - Validation Alone', function (test, next) {
-  //test validation without actual updating
-  var context = books.simpleSchema().namedContext();
-
-  //we don't know whether this would result in a non-unique value or not because
-  //we don't know which documents we'd be changing; therefore, no notUnique error
-  context.validate({
-    $set: {
-      isbn: isbn
-    }
-  }, {
-    modifier: true
-  });
-  var invalidKeys = context.invalidKeys();
-  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-
-  context.validateOne({
-    $set: {
-      isbn: isbn
-    }
-  }, "isbn", {
-    modifier: true
-  });
-  invalidKeys = context.invalidKeys();
-  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-  next();
-});
-
-Tinytest.addAsync('Collection2 - Unique - Update Self', function (test, next) {
-  // When unique: true, updates should not fail when the document being updated has the same value
-  books.update(uniqueBookId, {
-    $set: {
-      isbn: isbn
-    }
-  }, function (error) {
-    test.isFalse(!!error,
-      'We expected the update not to trigger an error since isbn is used only by the doc being updated');
-
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys, [], 'We should get no invalidKeys back');
-    next();
-  });
-});
-
-Tinytest.addAsync('Collection2 - Unique - Update Another', function (test, next) {
-  // When unique: true, updates should fail if another document already has the same value
-  books.update(uniqueBookId, {
-    $set: {
-      isbn: isbn + "A"
-    }
-  }, function (error) {
-    test.isTrue(!!error,
-      'We expected the update to trigger an error since isbn we want to change to is ' +
-      'already used by a different document');
-    test.equal(error.invalidKeys.length, 1, 'We should get one invalidKey back attached to the Error object');
-
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-    var key = invalidKeys[0] || {};
-
-    test.equal(key.name, 'isbn', 'We expected the key "isbn"');
-    test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
-    next();
-  });
-});
-
-var testCollection = new Mongo.Collection("testCollection");
-Tinytest.add('Collection2 - Unique - Object Array', function (test) {
-  // We need to handle arrays of objects specially because the
-  // index key must be "a.b" if, for example, the schema key is "a.$.b".
-  // Here we make sure that works.
-  var testSchema = new SimpleSchema({
-    'a.$.b': {
-      type: String,
-      unique: true
-    }
-  });
-
-  try {
-    testCollection.attachSchema(testSchema);
-  } catch (e) {
-    // If we error, that means collection2 tried to set up the index incorrectly,
-    // using the wrong index key
-  }
-
-  test.instanceOf(testCollection.simpleSchema(), SimpleSchema);
-});
-
-Tinytest.addAsync("Collection2 - denyInsert", function (test, next) {
-  books.insert({
-    title: "Ulysses",
-    author: "James Joyce",
-    copies: 1,
-    updatedAt: new Date()
-  }, function (error) {
-    test.isTrue(!!error, 'We expected the insert to trigger an error since updatedAt has denyInsert set to true');
-
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-    var key = invalidKeys[0] || {};
-
-    test.equal(key.name, 'updatedAt', 'We expected the key "updatedAt"');
-    test.equal(key.type, 'insertNotAllowed', 'We expected the type to be "insertNotAllowed"');
-
-    next();
-  });
-});
-
-Tinytest.addAsync("Collection2 - denyUpdate", function (test, next) {
-  // Test denyInsert valid case here so that we can use the inserted doc for the
-  // update tests.
-  books.insert({
-    title: "Ulysses",
-    author: "James Joyce",
-    copies: 1,
-    createdAt: new Date()
-  }, function (error, newId) {
-    test.isFalse(!!error,
-      'We expected the insert not to trigger an error since createdAt denies updates but not inserts');
-
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-    books.update({
-      _id: newId
-    }, {
-      $set: {
-        createdAt: new Date()
-      }
-    }, function (error) {
-      test.isTrue(!!error, 'We expected the insert to trigger an error since createdAt has denyUpdate set to true');
-
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-      var key = invalidKeys[0] || {};
-
-      test.equal(key.name, 'createdAt', 'We expected the key "createdAt"');
-      test.equal(key.type, 'updateNotAllowed', 'We expected the type to be "updateNotAllowed"');
-
-      //now test valid case
-      books.update({
-        _id: newId
-      }, {
-        $set: {
-          updatedAt: new Date()
-        }
-      }, function (error) {
-        test.isFalse(!!error,
-          'We expected the update not to trigger an error since updatedAt denies inserts but not updates');
-
-        var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-        test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
-        next();
-      });
-    });
-  });
-});
-
 if (Meteor.isServer) {
   //no validation when calling underlying _collection on the server
   Tinytest.addAsync("Collection2 - _collection on the server", function (test, next) {
@@ -439,149 +184,6 @@ if (Meteor.isServer) {
     });
   });
 }
-
-Tinytest.addAsync("Collection2 - Black Box", function (test, next) {
-
-  var now = new Date();
-
-  var boxData = {
-    name: "Test",
-    data: new Document({
-      one: 1,
-      two: "some string",
-      three: {
-        four: now
-      }
-    })
-  };
-
-  BlackBox.insert(boxData, function (error, newId) {
-    test.isFalse(!!error, 'We expected the insert not to trigger an error since all required fields are present');
-    test.isTrue(!!newId, 'We expected to get an ID back');
-
-    var doc = BlackBox.findOne({
-      _id: newId
-    });
-    test.isTrue(!!doc, 'There should be a document inserted');
-    doc && test.isTrue(doc.data instanceof Document, "we lost the custom type");
-    doc && test.equal(doc.name, "Test");
-    doc && test.equal(doc.data.one, 1);
-    doc && test.equal(doc.data.two, "some string");
-    doc && test.equal(doc.data.three.four, now);
-
-    // remove the EJSON prototype and try again; should still work
-    Document.prototype = {};
-
-    boxData = {
-      name: "Test",
-      data: new Document({
-        one: 1,
-        two: "some string",
-        three: {
-          four: now
-        }
-      })
-    };
-
-    BlackBox.insert(boxData, function (error, newId2) {
-      test.isFalse(!!error, 'We expected the insert not to trigger an error since all required fields are present');
-      test.isTrue(!!newId, 'We expected to get an ID back');
-
-      var doc = BlackBox.findOne({
-        _id: newId2
-      });
-      test.isTrue(!!doc, 'There should be a document inserted');
-      doc && test.isTrue(doc.data instanceof Document, "we lost the custom type");
-      doc && test.equal(doc.name, "Test");
-      doc && test.equal(doc.data.one, 1);
-      doc && test.equal(doc.data.two, "some string");
-      doc && test.equal(doc.data.three.four, now);
-
-      next();
-    });
-  });
-
-});
-
-Tinytest.addAsync("Collection2 - AutoValue Insert", function (test, next) {
-  autoValues.insert({
-    name: "Test",
-    firstWord: "Illegal to manually set value"
-  }, function (err, res) {
-    test.isFalse(!!err, 'We expected the insert not to trigger an error since all required fields are present');
-    var p = autoValues.findOne({
-      _id: res
-    });
-    var d = new Date("2013-01-01");
-
-    test.equal(p.dateDefault.getTime(), d.getTime(), 'expected the dateDefault to be correctly set after insert');
-    test.equal(p.dateForce.getTime(), d.getTime(), 'expected the dateForce to be correctly set after insert');
-    test.isUndefined(p.firstWord, 'expected firstWord to be undefined');
-    test.isUndefined(p.updatesHistory, 'expected updatesHistory to be undefined');
-
-    // Now test with dateDefault set and verify it is not overwritten
-    var myDate = new Date("2013-02-01");
-    autoValues.insert({
-      name: "Test",
-      dateDefault: myDate
-    }, function (err, res) {
-      var p = autoValues.findOne({
-        _id: res
-      });
-      var d = new Date("2013-01-01");
-
-      test.instanceOf(p.dateDefault, Date);
-      if (p.dateDefault instanceof Date) {
-        test.equal(p.dateDefault.getTime(), myDate.getTime(),
-          'expected the dateDefault to be correctly set after insert');
-      }
-
-      test.instanceOf(p.dateForce, Date);
-      if (p.dateForce instanceof Date) {
-        test.equal(p.dateForce.getTime(), d.getTime(), 'expected the dateForce to be correctly set after insert');
-      }
-
-      test.isUndefined(p.firstWord, 'expected firstWord to be undefined');
-      test.isUndefined(p.updatesHistory, 'expected updatesHistory to be undefined');
-
-      autoValues.insert({
-        name: "Test",
-        content: 'Hello world!'
-      }, function (err, res) {
-        var p = autoValues.findOne({
-          _id: res
-        });
-        test.equal(p.firstWord, 'Hello', 'expected firstWord to be "Hello"');
-        test.length(p.updatesHistory, 1);
-        test.equal(p.updatesHistory[0].content, 'Hello world!', 'expected updatesHistory.content to be "Hello world!"');
-        next();
-      });
-    });
-  });
-});
-
-Tinytest.addAsync("Collection2 - AutoValue Update", function (test, next) {
-  autoValues.insert({
-    name: "Update Test"
-  }, function (err, testId) {
-    autoValues.update({
-      _id: testId
-    }, {
-      $set: {
-        content: "Test Content"
-      }
-    }, function () {
-      var p = autoValues.findOne({
-        _id: testId
-      });
-      test.equal(p.firstWord, 'Test', 'expected firstWord to be "Test"');
-      test.length(p.updatesHistory, 1);
-      test.equal(p.updatesHistory[0].content, 'Test Content', 'expected updatesHistory.content to be "Test Content"');
-      test.equal(p.updateCount, 1, 'expected updateCount to be 1');
-      next();
-    });
-  });
-});
 
 Tinytest.addAsync("Collection2 - AutoValue Context", function (test, next) {
   contextCheck.insert({}, function (error, testId) {
@@ -676,6 +278,31 @@ if (Meteor.isServer) {
     books.upsert({
       title: "Ulysses",
       author: "James Joyce"
+    }, {
+      $set: {
+        title: "Ulysses",
+        author: "James Joyce",
+        copies: 1
+      }
+    }, function (error, result) {
+
+      test.isFalse(!!error, 'We expected the upsert not to trigger an error since the doc is valid for an insert');
+      test.equal(result.numberAffected, 1, 'Upsert should update one record');
+
+      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
+      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+
+      next();
+    });
+  });
+
+  Tinytest.addAsync('Collection2 - Upsert as update should update entity by _id - Valid', function (test, next) {
+    books.remove({});
+
+    var id = books.insert({title: 'new', author: 'author new', copies: 2});
+
+    books.upsert({
+      _id: id
     }, {
       $set: {
         title: "Ulysses",
@@ -814,10 +441,12 @@ if (Meteor.isServer) {
   });
 
   // https://github.com/aldeed/meteor-collection2/issues/243
+  var upsertAutoValueTest = new Mongo.Collection("upsertAutoValueTest");
   Tinytest.addAsync('Collection2 - Upsert - Runs autoValue only once', function (test, next) {
     var times = 0;
 
-    var upsertAutoValueTest = new Mongo.Collection("upsertAutoValueTest");
+    delete upsertAutoValueTest._c2;
+    delete upsertAutoValueTest._collection._c2;
     upsertAutoValueTest.attachSchema(new SimpleSchema({
       foo: {
         type: String
@@ -1090,5 +719,58 @@ if (Meteor.isClient) {
         });
       });
     });
+  });
+}
+
+// bypassCollection2
+if (Meteor.isServer) {
+  Tinytest.add('Collection2 - bypassCollection2', function (test) {
+    var id;
+    
+    try {
+      id = books.insert({}, {bypassCollection2: true})
+      test.ok();
+    } catch (error) {
+      test.fail(error.message);
+    }
+    
+    try {
+      books.update(id, {$set: {copies: 2}}, {bypassCollection2: true})
+      test.ok();
+    } catch (error) {
+      test.fail(error.message);
+    }
+  });
+}
+
+if (Meteor.isServer) {
+  var upsertTest = new Mongo.Collection('upsertTest');
+  upsertTest.attachSchema(new SimpleSchema({
+    _id: {type: String},
+    foo: {type: Number, decimal: true}
+  }));
+  var upsertTestId = upsertTest.insert({foo: 1});
+
+  Tinytest.add('Collection2 - upsert with schema that allows _id', function (test) {
+    var num = Math.random();
+    upsertTest.update({_id: upsertTestId}, {
+      $set: {
+        foo: num
+      }
+    }, {
+      upsert: true
+    });
+    var doc = upsertTest.findOne(upsertTestId);
+    test.equal(doc.foo, num);
+  });
+
+  Tinytest.add('Collection2 - everything filtered out', function (test) {
+    test.throws(function () {
+      upsertTest.update({_id: upsertTestId}, {
+        $set: {
+          boo: 1
+        }
+      });
+    }, 'After filtering out keys not in the schema, your modifier is now empty');
   });
 }

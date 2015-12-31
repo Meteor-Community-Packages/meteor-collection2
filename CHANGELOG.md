@@ -5,6 +5,28 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.8.0
+
+No changes, but `aldeed:collection2` is now a shell package that installs three component packages: `aldeed:collection2-core`, `aldeed:schema-index`, and `aldeed:schema-deny`
+
+### 2.7.1
+
+* Fixed an issue where an accidental breaking change in SimpleSchema v1.4.0 caused `denyInsert` and `denyUpdate` to stop working. If using SimpleSchema v1.4.0 or higher, be sure to use Collection2 v2.7.1 or higher.
+* Fix upsert validation when `_id` is required in the schema
+* Throw a clearer error for when all keys are removed from the document or modifier during filter cleaning
+
+### 2.7.0
+
+In preparation for splitting some features into separate packages, a `Collection2` object is now exported and emits a 'schema.attached' event whenever a schema is attached to a collection.
+
+### 2.6.1
+
+Fixed `bypassCollection2` option
+
+### 2.6.0
+
+Even if you skip all validation and cleaning, Collection2 will still do some object parsing that can take a long time for a large document. To bypass this, you can now set the `bypassCollection2` option to `true` when you call `insert` or `update`. This works only in server code.
+
 ### 2.5.0
 
 * `docId` is now set in the autoValue and custom contexts for inserts, too, if possible
