@@ -89,9 +89,5 @@ RES.attachSchema(RESSchema);
 /* Products */
 
 products = new Mongo.Collection("Products");
-
-products.attachSchema([
-    { schema: Product, selector: { type: 'simple' }},
-    { schema: ProductVariant, selector: { type: 'variant' }}
-  ], { multiple: true }
-);
+products.attachSchema(Product, { selector: { type: 'simple' } });
+products.attachSchema(ProductVariant, { selector: { type: 'variant' } });
