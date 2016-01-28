@@ -88,6 +88,6 @@ RES.attachSchema(RESSchema);
 
 /* Products */
 
-products = new Mongo.Collection("Products");
+products = new Mongo.Collection("TestProducts");
 products.attachSchema(Product, { selector: { type: 'simple' } });
 products.attachSchema(ProductVariant, { selector: { type: 'variant' } });
