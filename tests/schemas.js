@@ -242,5 +242,9 @@ ProductVariant = new SimpleSchema({
     min: 0,
     optional: true,
     defaultValue: 5
+  },
+  createdAt: {
+    type: Date,
+    denyUpdate: true
   }
 });
