@@ -5,6 +5,10 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.9.0
+
+Multiple schema support. See "Attaching Multiple Schemas to the Same Collection" in the readme.
+
 ### 2.8.0
 
 No changes, but `aldeed:collection2` is now a shell package that installs three component packages: `aldeed:collection2-core`, `aldeed:schema-index`, and `aldeed:schema-deny`
