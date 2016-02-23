@@ -103,6 +103,27 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
 });
 ```
 
+### Attaching Multiple Schemas to the Same Collection
+
+Normally, if call `attachSchema` multiple times, the schemas are merged. If you use the `replace: true` option, then it will replace the previously attached schema. However, in some cases you might actually want both schemas attached, with different documents validated against different schemas.
+
+Here is an example:
+
+```js
+Products.attachSchema(SimpleProductSchema, {selector: {type: 'simple'}});
+Products.attachSchema(VariantProductSchema, {selector: {type: 'variant'}});
+```
+
+Now both schemas are attached. When you insert a document where `type: 'simple'` in the document, it will validate against only the `SimpleProductSchema`. When you insert a document where `type: 'variant'` in the document, it will validate against only the `VariantProductSchema`.
+
+Alternatively, you can pass a `selector` option when inserting to choose which schema to use:
+
+```js
+Products.insert({ title: 'This is a product' }, { selector: { type: 'simple' } });
+```
+
+For an update or upsert, the matching selector can be in the query, the modifier `$set` object, or the `selector` option.
+
 ### attachSchema options
 
 #### transform
@@ -198,10 +219,10 @@ Schema.User = new SimpleSchema({
         type: Boolean
     },
     // Use this registered_emails field if you are using splendido:meteor-accounts-emails-field / splendido:meteor-accounts-meld
-    registered_emails: { 
-        type: [Object], 
+    registered_emails: {
+        type: [Object],
         optional: true,
-        blackbox: true 
+        blackbox: true
     },
     createdAt: {
         type: Date
@@ -358,7 +379,7 @@ Even if you skip all validation and cleaning, Collection2 will still do some obj
 
 ## Additional SimpleSchema Options
 
-In addition to all the other schema validation options documented in the 
+In addition to all the other schema validation options documented in the
 [simple-schema](https://github.com/aldeed/meteor-simple-schema) package, the
 collection2 package adds additional options explained in this section.
 

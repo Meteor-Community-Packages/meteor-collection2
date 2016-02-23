@@ -69,17 +69,26 @@ if (Meteor.isServer) {
       });
 
       var productId2 = products.insert({
-        title: 'Product one'
+        title: 'Product two'
       }, { selector: { type: 'simple' } }); // selector in option
+
+      var productId3 = products.insert({
+        title: 'Product three',
+        createdAt: new Date(),
+        type: 'variant' // other selector in doc
+      });
 
       var product = products.findOne(productId);
       var product2 = products.findOne(productId2);
+      var product3 = products.findOne(productId3);
 
       // we should receive new docs with correct property set for each type of doc
       test.equal(product.description, 'This is a simple product.');
       test.equal(product.price, undefined);
       test.equal(product2.description, 'This is a simple product.');
       test.equal(product2.price, undefined);
+      test.equal(product3.description, undefined);
+      test.equal(product3.price, 5);
     }
   );
 
