@@ -34,6 +34,259 @@ Tinytest.add('Collection2 - LocalCollection - simpleSchema', function (test) {
   test.instanceOf(lc._collection.simpleSchema(), SimpleSchema);
 });
 
+if (Meteor.isServer) {
+  // Insert to collection with multiple top-level schemas
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - insert selects the correct schema',
+    function (test) {
+      var productId = products.insert({
+        title: 'Product one'
+      }, { selector: { type: 'simple' } });
+
+      var productVariantId = products.insert({
+        title: 'Product variant one',
+        createdAt: new Date()
+      }, { selector: { type: 'variant' } });
+
+      var product = products.findOne(productId);
+      var productVariant = products.findOne(productVariantId);
+
+      // we should receive new docs with correct property set for each type of doc
+      test.equal(product.description, 'This is a simple product.');
+      test.equal(product.price, undefined);
+      test.equal(productVariant.description, undefined);
+      test.equal(productVariant.price, 5);
+    }
+  );
+
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - should insert doc correctly' +
+    ' with selector passed via doc and via <option>',
+    function (test) {
+      var productId = products.insert({
+        title: 'Product one',
+        type: 'simple' // selector in doc
+      });
+
+      var productId2 = products.insert({
+        title: 'Product one'
+      }, { selector: { type: 'simple' } }); // selector in option
+
+      var product = products.findOne(productId);
+      var product2 = products.findOne(productId2);
+
+      // we should receive new docs with correct property set for each type of doc
+      test.equal(product.description, 'This is a simple product.');
+      test.equal(product.price, undefined);
+      test.equal(product2.description, 'This is a simple product.');
+      test.equal(product2.price, undefined);
+    }
+  );
+
+  // Upsert docs with multiple top-level schemas collection
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - upsert selects the correct schema',
+    function (test) {
+      products.remove({});
+
+      products.insert({ title: 'Product one' }, { selector: { type: 'simple' } });
+
+      products.upsert({ title: 'Product one', type: 'simple' },
+        { $set: { description: 'This is a modified product one.' }},
+        { selector: { type: 'simple' } });
+
+      products.upsert({ title: 'Product two', type: 'simple' },
+        { $set: { description: 'This is a product two.' }},
+        { selector: { type: 'simple' } });
+
+      var productsList = products.find().fetch();
+      test.equal(productsList.length, 2);
+
+      test.equal(productsList[0].description, 'This is a modified product one.');
+      test.equal(productsList[0].price, undefined);
+      test.equal(productsList[1].description, 'This is a product two.');
+      test.equal(productsList[1].price, undefined);
+    }
+  );
+
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - should upsert doc correctly' +
+    ' with selector passed via <query>, via <update> and via <option>',
+    function (test) {
+      products.remove({});
+      var product;
+      var productId = products.insert({
+        title: 'Product one'
+      }, { selector: { type: 'simple' } });
+
+      products.upsert(
+        { title: 'Product one', type: 'simple' }, // selector in <query>
+        { $set: { description: 'This is a modified product one.' }}
+      );
+      product = products.findOne(productId);
+      test.equal(product.description, 'This is a modified product one.');
+      test.equal(product.price, undefined);
+
+      products.upsert(
+        { title: 'Product one' },
+        { $set: {
+          description: 'This is a modified product two.',
+          type: 'simple' // selector in <update>
+        }}
+      );
+      product = products.findOne(productId);
+      test.equal(product.description, 'This is a modified product two.');
+      test.equal(product.price, undefined);
+
+      // we have to pass selector directly because it is required field
+      products.upsert(
+        { title: 'Product one', type: 'simple' },
+        { $set: {
+          description: 'This is a modified product three.'
+        } },
+        { selector: { type: 'simple' } }
+      );
+      product = products.findOne(productId);
+      test.equal(product.description, 'This is a modified product three.');
+      test.equal(product.price, undefined);
+    }
+  );
+
+  // Update doc in collection with multiple top-level schemas
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - update selects the correct schema',
+    function (test) {
+      var productId = products.insert({
+        title: 'Product one'
+      }, { selector: { type: 'simple' } });
+
+      var productVariantId = products.insert({
+        title: 'Product variant one',
+        createdAt: new Date()
+      }, { selector: { type: 'variant' } });
+
+      products.update(productId, {
+        $set: { title: 'New product one' }
+      }, { selector: { type: 'simple' } });
+
+      products.update(productVariantId, {
+        $set: { title: 'New productVariant one' }
+      }, { selector: { type: 'simple' } });
+
+      var product = products.findOne(productId);
+      var productVariant = products.findOne(productVariantId);
+
+      // we should receive new docs with the same properties as before update
+      test.equal(product.description, 'This is a simple product.');
+      test.equal(product.price, undefined);
+      test.equal(productVariant.description, undefined);
+      test.equal(productVariant.price, 5);
+    }
+  );
+
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - should update doc correctly' +
+    ' with selector passed via <query>, via <update> and via <option>',
+    function (test) {
+      products.remove({});
+      var product;
+      var productId = products.insert({
+        title: 'Product one'
+      }, { selector: { type: 'simple' } });
+
+      products.update(
+        { title: 'Product one', type: 'simple' }, // selector in <query>
+        { $set: { description: 'This is a modified product one.' }}
+      );
+      product = products.findOne(productId);
+      test.equal(product.description, 'This is a modified product one.');
+      test.equal(product.price, undefined);
+
+      products.update(
+        { title: 'Product one' },
+        { $set: {
+          description: 'This is a modified product two.',
+          type: 'simple' // selector in <update>
+        }}
+      );
+      product = products.findOne(productId);
+      test.equal(product.description, 'This is a modified product two.');
+      test.equal(product.price, undefined);
+
+      // we have to pass selector directly because it is required field
+      products.update(
+        { title: 'Product one', type: 'simple' },
+        { $set: {
+          description: 'This is a modified product three.'
+        } },
+        { selector: { type: 'simple' } }
+      );
+      product = products.findOne(productId);
+      test.equal(product.description, 'This is a modified product three.');
+      test.equal(product.price, undefined);
+    }
+  );
+
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - should allow to change schema' +
+    ' on update operation',
+    function (test) {
+      var productId = products.insert({
+        title: 'Product one'
+      }, { selector: { type: 'simple' } });
+      var product = products.findOne(productId);
+      products.update(product, {
+        $set: {
+          price: 10, // validating against new schema
+          type: 'variant'
+        }
+      });
+
+      products.update({ _id: product._id }, {
+        $unset: { description: '' }
+      }, { selector: { type: 'variant' }, validate: false });
+      product = products.findOne(productId);
+
+      test.equal(product.description, undefined);
+      test.equal(product.price, 10);
+      test.equal(product.type, 'variant');
+    }
+  );
+
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - should return the correct' +
+    ' schema on `MyCollection.simpleSchema(object)`',
+    function (test) {
+      var schema = products.simpleSchema({
+        title: 'Product one',
+        type: 'variant'
+      });
+      test.equal(schema._schema.type.defaultValue, 'variant');
+    }
+  );
+
+  Tinytest.add(
+    'Collection2 - Multiple Top-Level Schemas - denyUpdate should work correctly',
+    function (test) {
+      var variantId = products.insert({
+        title: 'Product one',
+        createdAt: new Date()
+      }, { selector: { type: 'variant' } });
+      var variant = products.findOne(variantId);
+      var timeOne = variant.createdAt;
+      products.update({
+        title: 'Product one'
+      }, {
+        $set: {
+          createdAt: new Date()
+        }
+      }, { selector: { type: 'variant' } });
+      variant = products.findOne(variantId);
+      // createdAt converted to the number should be the same
+      test.isFalse(+timeOne !== +variant.createdAt);
+    }
+  );
+}
 // Attach more than one schema
 var c = new Mongo.Collection("multiSchema");
 Tinytest.add('Collection2 - Attach Multiple Schemas', function (test) {
@@ -645,14 +898,14 @@ if (Meteor.isClient) {
 if (Meteor.isServer) {
   Tinytest.add('Collection2 - bypassCollection2', function (test) {
     var id;
-    
+
     try {
       id = books.insert({}, {bypassCollection2: true})
       test.ok();
     } catch (error) {
       test.fail(error.message);
     }
-    
+
     try {
       books.update(id, {$set: {copies: 2}}, {bypassCollection2: true})
       test.ok();

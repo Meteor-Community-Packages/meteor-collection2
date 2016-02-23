@@ -19,6 +19,7 @@ if (Meteor.isServer) {
   BlackBox.allow(allTrue);
   contextCheck.allow(allTrue);
   RES.allow(allTrue);
+  products.allow(allTrue);
 
   var shouldDeny = false;
   books.deny({
@@ -48,6 +49,7 @@ if (Meteor.isServer) {
       noSchemaCollection.remove({});
       BlackBox.remove({});
       contextCheck.remove({});
+      products.remove({});
     }
   });
 }

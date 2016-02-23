@@ -195,3 +195,56 @@ partTwo = new SimpleSchema({
 partThree = new SimpleSchema({
   two: { type: Number }
 });
+
+Product = new SimpleSchema({
+  _id: {
+    type: String,
+    optional: true
+  },
+  title: {
+    type: String,
+    defaultValue: ""
+  },
+  type: {
+    label: "Type",
+    type: String,
+    defaultValue: "simple"
+  },
+  description: {
+    type: String,
+    defaultValue: "This is a simple product."
+  }
+});
+
+ProductVariant = new SimpleSchema({
+  _id: {
+    type: String,
+    optional: true
+  },
+  title: {
+    type: String,
+    defaultValue: ""
+  },
+  optionTitle: {
+    label: "Option",
+    type: String,
+    optional: true
+  },
+  type: {
+    label: "Type",
+    type: String,
+    defaultValue: "variant"
+  },
+  price: {
+    label: "Price",
+    type: Number,
+    decimal: true,
+    min: 0,
+    optional: true,
+    defaultValue: 5
+  },
+  createdAt: {
+    type: Date,
+    denyUpdate: true
+  }
+});

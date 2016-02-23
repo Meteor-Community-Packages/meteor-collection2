@@ -11,7 +11,8 @@ if (Meteor.isServer) {
     return books.find();
   });
 
-  pub([autoValues, defaultValues, noSchemaCollection, BlackBox, contextCheck, RES]);
+  pub([autoValues, defaultValues, noSchemaCollection, BlackBox, contextCheck,
+    RES, products]);
 } else {
   booksSubscription = Meteor.subscribe("books");
 }
