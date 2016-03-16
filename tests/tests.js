@@ -295,6 +295,108 @@ if (Meteor.isServer) {
       test.isFalse(+timeOne !== +variant.createdAt);
     }
   );
+  
+  // Insert to collection with extended multiple top-level schemas
+  Tinytest.add(
+    'Collection2 - Extended Multiple Top-Level Schemas - Insert selects the correct extended schema',
+    function (test) {
+      extendedProducts.remove({});
+      var productId = extendedProducts.insert({
+        title: 'Extended Product one'
+      }, { selector: { type: 'simple' } });
+
+      var productVariantId = extendedProducts.insert({
+        title: 'Product variant one',
+        createdAt: new Date()
+      }, { selector: { type: 'variant' } });
+
+      var extendedProduct = extendedProducts.findOne(productId);
+      var extendedProductVariant = extendedProducts.findOne(productVariantId);
+
+      // we should receive new docs with correct property set for each type of doc
+      test.equal(extendedProduct.description, 'This is a simple product.');
+      test.equal(extendedProduct.title, 'Extended Product one');
+      test.equal(extendedProduct.barcode, 'ABC123');
+      test.equal(extendedProduct.price, undefined);
+      test.equal(extendedProductVariant.description, undefined);
+      test.equal(extendedProductVariant.price, 5);
+      test.equal(extendedProductVariant.barcode, undefined);
+    }
+  );
+  
+  // Update doc in collection with multiple top-level schemas
+  Tinytest.add(
+    'Collection2 - Extended Multiple Top-Level Schemas - update selects the correct extended schema',
+    function (test) {
+      var productId = extendedProducts.insert({
+        title: 'Product one'
+      }, { selector: { type: 'simple' } });
+
+      var productVariantId = extendedProducts.insert({
+        title: 'Product variant one',
+        createdAt: new Date()
+      }, { selector: { type: 'variant' } });
+
+      extendedProducts.update(productId, {
+        $set: { barcode: 'XYZ456' }
+      }, { selector: { type: 'simple' } });
+
+      extendedProducts.update(productVariantId, {
+        $set: { title: 'New productVariant one' }
+      }, { selector: { type: 'simple' } });
+
+      var product = extendedProducts.findOne(productId);
+      var productVariant = extendedProducts.findOne(productVariantId);
+
+      // we should receive new docs with the same properties as before update
+      test.equal(product.description, 'This is a simple product.');
+      test.equal(product.barcode, 'XYZ456')
+      test.equal(product.price, undefined);
+      test.equal(productVariant.description, undefined);
+      test.equal(productVariant.price, 5);
+      test.equal(productVariant.barcode, undefined);
+    }
+  );
+  
+  // Update doc in collection with multiple top-level schemas
+  Tinytest.add(
+    'Collection2 - Extended Multiple Top-Level Schemas - deny update to sibling selector schema',
+    function (test) {
+      var productId = extendedProducts.insert({
+        title: 'Product one'
+      }, { selector: { type: 'simple' } });
+
+      var productVariantId = extendedProducts.insert({
+        title: 'Product variant one',
+        createdAt: new Date()
+      }, { selector: { type: 'variant' } });
+
+      extendedProducts.update(productId, {
+        $set: { barcode: 'XYZ456' }
+      }, { selector: { type: 'simple' } });
+
+      // Barcode key should not be in schema with type: 'variant'
+      test.throws(function () {
+        extendedProducts.update(productVariantId, {
+          $set: {barcode: 'XYZ456'}
+        }, {
+          selector: {type: 'variant'}
+        });
+      }, 'After filtering out keys not in the schema, your modifier is now empty');
+
+      var product = extendedProducts.findOne(productId);
+      var productVariant = extendedProducts.findOne(productVariantId);
+
+      // we should receive new docs with the same properties as before update
+      test.equal(product.description, 'This is a simple product.');
+      test.equal(product.barcode, 'XYZ456')
+      test.equal(product.price, undefined);
+      test.equal(productVariant.description, undefined);
+      test.equal(productVariant.price, 5);
+      test.equal(productVariant.barcode, undefined);
+    }
+  );
+  
 }
 // Attach more than one schema
 var c = new Mongo.Collection("multiSchema");

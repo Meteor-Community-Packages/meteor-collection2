@@ -68,7 +68,7 @@ BlackBox.attachSchema(new SimpleSchema({
   data: {
     type: Document,
     blackbox: true
-  }  
+  }
 }), {transform: true});
 
 /* defaultValues */
@@ -91,3 +91,9 @@ RES.attachSchema(RESSchema);
 products = new Mongo.Collection("TestProducts");
 products.attachSchema(Product, { selector: { type: 'simple' } });
 products.attachSchema(ProductVariant, { selector: { type: 'variant' } });
+
+/* Extended Products */
+extendedProducts = new Mongo.Collection("ExtendedProducts");
+extendedProducts.attachSchema(Product, {selector: {type: 'simple'}});
+extendedProducts.attachSchema(ProductVariant, {selector: {type: 'variant'}});
+extendedProducts.attachSchema(ExtendedProduct, {selector: {type: 'simple'}});
