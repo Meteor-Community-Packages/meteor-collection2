@@ -5,6 +5,12 @@ A smart package for Meteor that extends Mongo.Collection to provide support for 
 
 ## Change Log
 
+### 2.9.1
+
+- Fix merging of identical selector schemas (thanks @spencern)
+- Fix attaching w/ "replace" option when switching between a selector and non-selector schema (thanks @paulbalomiri)
+- Fix choosing of correct selector schema for cleaning inserts or updates that originate on the client (thanks @paulbalomiri)
+
 ### 2.9.0
 
 Multiple schema support. See "Attaching Multiple Schemas to the Same Collection" in the readme.
