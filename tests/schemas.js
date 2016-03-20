@@ -248,3 +248,12 @@ ProductVariant = new SimpleSchema({
     denyUpdate: true
   }
 });
+
+ExtendedProduct = new SimpleSchema([
+  Product, {
+    barcode: {
+      type: String,
+      defaultValue: "ABC123"
+    }
+  }
+]);
