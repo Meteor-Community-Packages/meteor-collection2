@@ -20,8 +20,8 @@ Tinytest.addAsync('Collection2 - Unique - Prep', function (test, next) {
     test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
     test.isTrue(!!result, 'result should be defined');
 
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+    var validationErrors = books.simpleSchema().namedContext().validationErrors();
+    test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
     // Insert isbn+"A"
     books.insert({
       title: "Ulysses",
@@ -32,8 +32,8 @@ Tinytest.addAsync('Collection2 - Unique - Prep', function (test, next) {
       test.isFalse(!!error, 'We expected the insert not to trigger an error since isbn is unique');
       test.isTrue(!!result, 'result should be defined');
 
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+      var validationErrors = books.simpleSchema().namedContext().validationErrors();
+      test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
       next();
     });
   });
@@ -50,9 +50,9 @@ Tinytest.addAsync('Collection2 - Unique - Insert Duplicate', function (test, nex
     test.equal(error.invalidKeys.length, 1, 'We should get one invalidKey back attached to the Error object');
     test.isFalse(result, 'result should be false');
 
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-    var key = invalidKeys[0] || {};
+    var validationErrors = books.simpleSchema().namedContext().validationErrors();
+    test.equal(validationErrors.length, 1, 'We should get one invalidKey back');
+    var key = validationErrors[0] || {};
 
     test.equal(key.name, 'isbn', 'We expected the key "isbn"');
     test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');
@@ -74,8 +74,8 @@ Tinytest.addAsync('Collection2 - Unique - Insert Duplicate Non-C2 Index', functi
     test.isFalse(!!error, 'We expected the insert not to trigger an error since the fields are unique');
     test.isTrue(!!result, 'result should be the new ID');
 
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+    var validationErrors = books.simpleSchema().namedContext().validationErrors();
+    test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
 
     // Bad insert
     books.insert({
@@ -88,8 +88,8 @@ Tinytest.addAsync('Collection2 - Unique - Insert Duplicate Non-C2 Index', functi
       test.isTrue(!!error, 'We expected the insert to trigger an error since the fields are not unique');
       test.isFalse(result, 'result should be false');
 
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back because this is a non-C2 unique index');
+      var validationErrors = books.simpleSchema().namedContext().validationErrors();
+      test.equal(validationErrors.length, 0, 'We should get no validationErrors back because this is a non-C2 unique index');
 
       next();
     });
@@ -109,18 +109,19 @@ Tinytest.addAsync('Collection2 - Unique - Validation Alone', function (test, nex
   }, {
     modifier: true
   });
-  var invalidKeys = context.invalidKeys();
-  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+  var validationErrors = context.validationErrors();
+  test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
 
-  context.validateOne({
+  context.validate({
     $set: {
       isbn: isbn
     }
-  }, "isbn", {
-    modifier: true
+  }, {
+    modifier: true,
+    keys: ['isbn']
   });
-  invalidKeys = context.invalidKeys();
-  test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+  validationErrors = context.validationErrors();
+  test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
   next();
 });
 
@@ -134,8 +135,8 @@ Tinytest.addAsync('Collection2 - Unique - Update Self', function (test, next) {
     test.isFalse(!!error,
       'We expected the update not to trigger an error since isbn is used only by the doc being updated');
 
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys, [], 'We should get no invalidKeys back');
+    var validationErrors = books.simpleSchema().namedContext().validationErrors();
+    test.equal(validationErrors, [], 'We should get no validationErrors back');
     next();
   });
 });
@@ -152,9 +153,9 @@ Tinytest.addAsync('Collection2 - Unique - Update Another', function (test, next)
       'already used by a different document');
     test.equal(error.invalidKeys.length, 1, 'We should get one invalidKey back attached to the Error object');
 
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-    var key = invalidKeys[0] || {};
+    var validationErrors = books.simpleSchema().namedContext().validationErrors();
+    test.equal(validationErrors.length, 1, 'We should get one invalidKey back');
+    var key = validationErrors[0] || {};
 
     test.equal(key.name, 'isbn', 'We expected the key "isbn"');
     test.equal(key.type, 'notUnique', 'We expected the type to be "notUnique"');

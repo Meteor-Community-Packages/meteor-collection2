@@ -7,9 +7,9 @@ Tinytest.addAsync("Collection2 - denyInsert", function (test, next) {
   }, function (error) {
     test.isTrue(!!error, 'We expected the insert to trigger an error since updatedAt has denyInsert set to true');
 
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-    var key = invalidKeys[0] || {};
+    var validationErrors = books.simpleSchema().namedContext().validationErrors();
+    test.equal(validationErrors.length, 1, 'We should get one validationError back');
+    var key = validationErrors[0] || {};
 
     test.equal(key.name, 'updatedAt', 'We expected the key "updatedAt"');
     test.equal(key.type, 'insertNotAllowed', 'We expected the type to be "insertNotAllowed"');
@@ -30,8 +30,8 @@ Tinytest.addAsync("Collection2 - denyUpdate", function (test, next) {
     test.isFalse(!!error,
       'We expected the insert not to trigger an error since createdAt denies updates but not inserts');
 
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+    var validationErrors = books.simpleSchema().namedContext().validationErrors();
+    test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
     books.update({
       _id: newId
     }, {
@@ -41,9 +41,9 @@ Tinytest.addAsync("Collection2 - denyUpdate", function (test, next) {
     }, function (error) {
       test.isTrue(!!error, 'We expected the update to trigger an error since createdAt has denyUpdate set to true');
 
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
-      var key = invalidKeys[0] || {};
+      var validationErrors = books.simpleSchema().namedContext().validationErrors();
+      test.equal(validationErrors.length, 1, 'We should get one invalidKey back');
+      var key = validationErrors[0] || {};
 
       test.equal(key.name, 'createdAt', 'We expected the key "createdAt"');
       test.equal(key.type, 'updateNotAllowed', 'We expected the type to be "updateNotAllowed"');
@@ -59,8 +59,8 @@ Tinytest.addAsync("Collection2 - denyUpdate", function (test, next) {
         test.isFalse(!!error,
           'We expected the update not to trigger an error since updatedAt denies inserts but not updates');
 
-        var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-        test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+        var validationErrors = books.simpleSchema().namedContext().validationErrors();
+        test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
         next();
       });
     });

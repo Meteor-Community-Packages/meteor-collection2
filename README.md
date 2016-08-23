@@ -57,7 +57,7 @@ Schemas.Book = new SimpleSchema({
         label: "Author"
     },
     copies: {
-        type: Number,
+        type: SimpleSchema.Integer,
         label: "Number of copies",
         min: 0
     },
@@ -88,7 +88,7 @@ Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) 
   //The insert will fail, error will be set,
   //and result will be undefined or false because "copies" is required.
   //
-  //The list of errors is available on `error.invalidKeys` or by calling Books.simpleSchema().namedContext().invalidKeys()
+  //The list of errors is available on `error.invalidKeys` or by calling Books.simpleSchema().namedContext().validationErrors()
 });
 ```
 
@@ -99,7 +99,7 @@ Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
   //The update will fail, error will be set,
   //and result will be undefined or false because "copies" is required.
   //
-  //The list of errors is available on `error.invalidKeys` or by calling Books.simpleSchema().namedContext().invalidKeys()
+  //The list of errors is available on `error.invalidKeys` or by calling Books.simpleSchema().namedContext().validationErrors()
 });
 ```
 
@@ -220,8 +220,11 @@ Schema.User = new SimpleSchema({
     },
     // Use this registered_emails field if you are using splendido:meteor-accounts-emails-field / splendido:meteor-accounts-meld
     registered_emails: {
-        type: [Object],
-        optional: true,
+        type: Array,
+        optional: true
+    },
+    'registered_emails.$': {
+        type: Object,
         blackbox: true
     },
     createdAt: {
@@ -254,8 +257,11 @@ Schema.User = new SimpleSchema({
     // If you are sure you will never need to use role groups, then
     // you can specify [String] as the type
     roles: {
-        type: [String],
+        type: Array,
         optional: true
+    },
+    'roles.$': {
+        type: String
     },
     // In order to avoid an 'Exception in setInterval callback' from Meteor
     heartbeat: {
@@ -316,11 +322,11 @@ when calling `insert` or `update`:
 
 ```js
 Books.insert({title: "Ulysses", author: "James Joyce"}, { validationContext: "insertForm" }, function(error, result) {
-  //The list of errors is available by calling Books.simpleSchema().namedContext("insertForm").invalidKeys()
+  //The list of errors is available by calling Books.simpleSchema().namedContext("insertForm").validationErrors()
 });
 
 Books.update(book._id, {$unset: {copies: 1}}, { validationContext: "updateForm" }, function(error, result) {
-  //The list of errors is available by calling Books.simpleSchema().namedContext("updateForm").invalidKeys()
+  //The list of errors is available by calling Books.simpleSchema().namedContext("updateForm").validationErrors()
 });
 ```
 
@@ -337,14 +343,14 @@ Set the modifier option to true if the document is a mongo modifier object.
 You can also validate just one key in the document:
 
 ```js
-Books.simpleSchema().namedContext().validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false});
+Books.simpleSchema().namedContext().validate({title: "Ulysses", author: "James Joyce"}, {modifier: false, keys: ['title']});
 ```
 
 Or you can specify a certain validation context when calling either method:
 
 ```js
 Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", author: "James Joyce"}, {modifier: false});
-Books.simpleSchema().namedContext("insertForm").validateOne({title: "Ulysses", author: "James Joyce"}, "title", {modifier: false});
+Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", author: "James Joyce"}, {modifier: false, keys: ['title']});
 ```
 
 Refer to the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package documentation for more information about these methods.
@@ -380,7 +386,7 @@ Even if you skip all validation and cleaning, Collection2 will still do some obj
 ## Additional SimpleSchema Options
 
 In addition to all the other schema validation options documented in the
-[simple-schema](https://github.com/aldeed/meteor-simple-schema) package, the
+[simpl-schema](https://github.com/aldeed/node-simple-schema) package, the
 collection2 package adds additional options explained in this section.
 
 ### index and unique
@@ -460,7 +466,7 @@ explain by way of several examples:
   // Whenever the "content" field is updated, automatically
   // update a history array.
   updatesHistory: {
-    type: [Object],
+    type: Array,
     optional: true,
     autoValue: function() {
       var content = this.field("content");
@@ -482,6 +488,9 @@ explain by way of several examples:
         this.unset();
       }
     }
+  },
+  'updatesHistory.$': {
+    type: Object,
   },
   'updatesHistory.$.date': {
     type: Date,
@@ -521,7 +530,7 @@ function that is called as part of a C2 database operation:
 
 ## What Happens When The Document Is Invalid?
 
-The callback you specify as the last argument of your `insert()` or `update()` call will have the first argument (`error`) set to an `Error` instance. The error message for the first invalid key is set in the `error.message`, and the full `invalidKeys` array is available on `error.invalidKeys`. This is true on both client and server, even if validation for a client-initiated operation does not fail until checked on the server.
+The callback you specify as the last argument of your `insert()` or `update()` call will have the first argument (`error`) set to an `Error` instance. The error message for the first invalid key is set in the `error.message`, and the full `validationErrors` array is available on `error.invalidKeys`. This is true on both client and server, even if validation for a client-initiated operation does not fail until checked on the server.
 
 If you attempt a synchronous operation in server code, the same validation error is thrown since there is no callback to pass it to. If this happens in a server method (defined with `Meteor.methods`), a more generic `Meteor.Error` is passed to your callback back on the client. This error does not have an `invalidKeys` property, but it does have the error message for the first invalid key set in `error.reason`.
 
@@ -560,7 +569,10 @@ For example, say we add the following keys to our "books" schema:
 ```js
 {
     borrowedBy: {
-        type: [Object]
+        type: Array
+    },
+    'borrowedBy.$': {
+        type: Object
     },
     "borrowedBy.$.name": {
         type: String

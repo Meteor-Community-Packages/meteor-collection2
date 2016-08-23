@@ -270,7 +270,7 @@ if (Meteor.isServer) {
         title: 'Product one',
         type: 'variant'
       });
-      test.equal(schema._schema.type.defaultValue, 'variant');
+      test.equal(schema._schema.type.label, 'Product Variant Type');
     }
   );
 
@@ -295,7 +295,7 @@ if (Meteor.isServer) {
       test.isFalse(+timeOne !== +variant.createdAt);
     }
   );
-  
+
   // Insert to collection with extended multiple top-level schemas
   Tinytest.add(
     'Collection2 - Extended Multiple Top-Level Schemas - Insert selects the correct extended schema',
@@ -323,7 +323,7 @@ if (Meteor.isServer) {
       test.equal(extendedProductVariant.barcode, undefined);
     }
   );
-  
+
   // Update doc in collection with multiple top-level schemas
   Tinytest.add(
     'Collection2 - Extended Multiple Top-Level Schemas - update selects the correct extended schema',
@@ -357,7 +357,7 @@ if (Meteor.isServer) {
       test.equal(productVariant.barcode, undefined);
     }
   );
-  
+
   // Update doc in collection with multiple top-level schemas
   Tinytest.add(
     'Collection2 - Extended Multiple Top-Level Schemas - deny update to sibling selector schema',
@@ -380,9 +380,10 @@ if (Meteor.isServer) {
         extendedProducts.update(productVariantId, {
           $set: {barcode: 'XYZ456'}
         }, {
-          selector: {type: 'variant'}
+          selector: {type: 'variant'},
+          filter: false,
         });
-      }, 'After filtering out keys not in the schema, your modifier is now empty');
+      });
 
       var product = extendedProducts.findOne(productId);
       var productVariant = extendedProducts.findOne(productVariantId);
@@ -396,7 +397,7 @@ if (Meteor.isServer) {
       test.equal(productVariant.barcode, undefined);
     }
   );
-  
+
 }
 // Attach more than one schema
 var c = new Mongo.Collection("multiSchema");
@@ -412,14 +413,14 @@ Tinytest.add('Collection2 - Attach Multiple Schemas', function (test) {
   var combinedSchema = c.simpleSchema();
   test.isTrue(_.contains(combinedSchema._schemaKeys, 'one'));
   test.isTrue(_.contains(combinedSchema._schemaKeys, 'two'));
-  test.equal(combinedSchema.schema('two').type, String);
+  test.equal(combinedSchema.schema('two').type, SimpleSchema.oneOf(String));
 
   // Attach a third schema and make sure that it extends/overwrites the others
   c.attachSchema(partThree);
   combinedSchema = c.simpleSchema();
   test.isTrue(_.contains(combinedSchema._schemaKeys, 'one'));
   test.isTrue(_.contains(combinedSchema._schemaKeys, 'two'));
-  test.equal(combinedSchema.schema('two').type, Number);
+  test.equal(combinedSchema.schema('two').type, SimpleSchema.oneOf(SimpleSchema.Integer));
 
   // Ensure that we've only attached two deny functions
   test.length(c._validators.insert.deny, 2);
@@ -438,11 +439,11 @@ Tinytest.addAsync('Collection2 - Insert Required', function (test, next) {
     test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
     //and result will be false because "copies" is required.
     test.isFalse(result, 'result should be false because "copies" is required');
-    //The list of errors is available by calling books.simpleSchema().namedContext().invalidKeys()
-    var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-    test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+    //The list of errors is available by calling books.simpleSchema().namedContext().validationErrors()
+    var validationErrors = books.simpleSchema().namedContext().validationErrors();
+    test.equal(validationErrors.length, 1, 'We should get one invalidKey back');
 
-    var key = invalidKeys[0] || {};
+    var key = validationErrors[0] || {};
 
     test.equal(key.name, 'copies', 'We expected the key "copies"');
     test.equal(key.type, 'required', 'We expected the type to be required');
@@ -572,8 +573,8 @@ if (Meteor.isServer) {
       test.isFalse(!!error, 'We expected the upsert not to trigger an error since the doc is valid for an insert');
       test.equal(result.numberAffected, 1, 'Upsert should update one record');
 
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+      var validationErrors = books.simpleSchema().namedContext().validationErrors();
+      test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
 
       next();
     });
@@ -597,8 +598,8 @@ if (Meteor.isServer) {
       test.isFalse(!!error, 'We expected the upsert not to trigger an error since the doc is valid for an insert');
       test.equal(result.numberAffected, 1, 'Upsert should update one record');
 
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+      var validationErrors = books.simpleSchema().namedContext().validationErrors();
+      test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
 
       next();
     });
@@ -623,8 +624,8 @@ if (Meteor.isServer) {
       test.isFalse(!!error, 'We expected the upsert not to trigger an error since the doc is valid for an insert');
       test.equal(result, 1, 'Upsert should update one record');
 
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+      var validationErrors = books.simpleSchema().namedContext().validationErrors();
+      test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
 
       next();
     });
@@ -646,8 +647,8 @@ if (Meteor.isServer) {
       test.isTrue(!!error, 'We expected the upsert to trigger an error since the doc is invalid for an insert');
       test.isFalse(result, 'Upsert should update no records');
 
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+      var validationErrors = books.simpleSchema().namedContext().validationErrors();
+      test.equal(validationErrors.length, 1, 'We should get one invalidKey back');
 
       next();
     });
@@ -670,8 +671,8 @@ if (Meteor.isServer) {
       test.isTrue(!!error, 'We expected the upsert to trigger an error since the doc is invalid for an insert');
       test.isFalse(result, 'Upsert should update no records');
 
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 1, 'We should get one invalidKey back');
+      var validationErrors = books.simpleSchema().namedContext().validationErrors();
+      test.equal(validationErrors.length, 1, 'We should get one invalidKey back');
 
       next();
     });
@@ -692,8 +693,8 @@ if (Meteor.isServer) {
         'We expected the upsert to trigger an error since the doc is valid for an insert with selector');
       test.equal(result.numberAffected, 1, 'Upsert should update one record');
 
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+      var validationErrors = books.simpleSchema().namedContext().validationErrors();
+      test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
 
       next();
     });
@@ -716,8 +717,8 @@ if (Meteor.isServer) {
         'We expected the upsert to trigger an error since the doc is valid for an insert with selector');
       test.equal(result, 1, 'Upsert should update one record');
 
-      var invalidKeys = books.simpleSchema().namedContext().invalidKeys();
-      test.equal(invalidKeys.length, 0, 'We should get no invalidKeys back');
+      var validationErrors = books.simpleSchema().namedContext().validationErrors();
+      test.equal(validationErrors.length, 0, 'We should get no validationErrors back');
 
       next();
     });
@@ -862,15 +863,15 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
     validationContext: "validateFalse"
   }, function (error, result) {
     var insertedBook;
-    var invalidKeys = books.simpleSchema().namedContext("validateFalse").invalidKeys();
+    var validationErrors = books.simpleSchema().namedContext("validateFalse").validationErrors();
 
     if (Meteor.isClient) {
-      // When validate: false on the client, we should still get a validation error and invalidKeys back from the server
+      // When validate: false on the client, we should still get a validation error and validationErrors back from the server
       test.isTrue(!!error, 'We expected the insert to trigger an error since field "copies" are required');
       // There should be an `invalidKeys` property on the error, too
       test.equal(error.invalidKeys.length, 1, 'There should be 1 invalidKey on the Error object');
       test.isFalse(!!result, 'result should be falsy because "copies" is required');
-      test.equal(invalidKeys.length, 1,
+      test.equal(validationErrors.length, 1,
         'There should be 1 invalidKey since validation happened on the server and errors were sent back');
 
       insertedBook = books.findOne({
@@ -881,7 +882,7 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
       // When validate: false on the server, validation should be skipped
       test.isFalse(!!error, 'We expected no error because we skipped validation');
       test.isTrue(!!result, 'result should be set because we skipped validation');
-      test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
+      test.equal(validationErrors.length, 0, 'There should be no validationErrors');
 
       insertedBook = books.findOne({
         title: title
@@ -898,11 +899,11 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
       validate: false,
       validationContext: "validateFalse2"
     }, function (error, newId) {
-      var invalidKeys = books.simpleSchema().namedContext("validateFalse2").invalidKeys();
+      var validationErrors = books.simpleSchema().namedContext("validateFalse2").validationErrors();
 
       test.isFalse(!!error, "We expected no error because it's valid");
       test.isTrue(!!newId, "result should be set because it's valid");
-      test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
+      test.equal(validationErrors.length, 0, 'There should be no validationErrors');
 
       var insertedBook = books.findOne({
         title: title + " 2"
@@ -920,7 +921,7 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
         validationContext: "validateFalse3"
       }, function (error, result) {
         var updatedBook;
-        var invalidKeys = books.simpleSchema().namedContext("validateFalse3").invalidKeys();
+        var validationErrors = books.simpleSchema().namedContext("validateFalse3").validationErrors();
 
         if (Meteor.isClient) {
           // When validate: false on the client, we should still get a validation error and invalidKeys from the server
@@ -928,8 +929,8 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
           // There should be an `invalidKeys` property on the error, too
           test.equal(error.invalidKeys.length, 1, 'There should be 1 invalidKey on the Error object');
           test.isFalse(!!result, 'result should be falsy because "copies" is required');
-          test.equal(invalidKeys.length, 1,
-            'There should be 1 invalidKey since validation happened on the server and invalidKeys were sent back');
+          test.equal(validationErrors.length, 1,
+            'There should be 1 invalidKey since validation happened on the server and validationErrors were sent back');
 
           updatedBook = books.findOne({
             _id: newId
@@ -941,7 +942,7 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
           // When validate: false on the server, validation should be skipped
           test.isFalse(!!error, 'We expected no error because we skipped validation');
           test.isTrue(!!result, 'result should be set because we skipped validation');
-          test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
+          test.equal(validationErrors.length, 0, 'There should be no validationErrors');
 
           updatedBook = books.findOne({
             _id: newId
@@ -962,10 +963,10 @@ Tinytest.addAsync('Collection2 - Validate False', function (test, next) {
           validate: false,
           validationContext: "validateFalse4"
         }, function (error, result) {
-          var invalidKeys = books.simpleSchema().namedContext("validateFalse4").invalidKeys();
+          var validationErrors = books.simpleSchema().namedContext("validateFalse4").validationErrors();
           test.isFalse(!!error, "We expected no error because it's valid");
           test.equal(result, 1, "result should be set because it's valid");
-          test.equal(invalidKeys.length, 0, 'There should be no invalidKeys');
+          test.equal(validationErrors.length, 0, 'There should be no validationErrors');
 
           var updatedBook = books.findOne({
             _id: newId
@@ -1030,7 +1031,7 @@ if (Meteor.isServer) {
   var upsertTest = new Mongo.Collection('upsertTest');
   upsertTest.attachSchema(new SimpleSchema({
     _id: {type: String},
-    foo: {type: Number, decimal: true}
+    foo: {type: Number}
   }));
   var upsertTestId = upsertTest.insert({foo: 1});
 

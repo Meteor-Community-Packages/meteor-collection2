@@ -10,7 +10,7 @@ booksSchema = new SimpleSchema({
     label: "Author"
   },
   copies: {
-    type: Number,
+    type: SimpleSchema.Integer,
     label: "Number of copies",
     min: 0
   },
@@ -73,7 +73,7 @@ avSchema = new SimpleSchema({
     }
   },
   updateCount: {
-    type: Number,
+    type: SimpleSchema.Integer,
     autoValue: function() {
       if (this.isInsert) {
         return 0;
@@ -99,7 +99,7 @@ avSchema = new SimpleSchema({
     }
   },
   updatesHistory: {
-    type: [Object],
+    type: Array,
     optional: true,
     autoValue: function() {
       var content = this.field("content");
@@ -112,13 +112,18 @@ avSchema = new SimpleSchema({
         } else {
           return {
             $push: {
-              date: new Date(),
+              date: new Date,
               content: content.value
             }
           };
         }
+      } else {
+        this.unset();
       }
     }
+  },
+  'updatesHistory.$': {
+    type: Object,
   },
   'updatesHistory.$.date': {
     type: Date,
@@ -141,6 +146,10 @@ contextCheckSchema = new SimpleSchema({
   foo: {
     type: String,
     optional: true
+  },
+  context: {
+    type: Object,
+    optional: true,
   },
   'context.userId': {
     type: String,
@@ -193,7 +202,7 @@ partTwo = new SimpleSchema({
 });
 
 partThree = new SimpleSchema({
-  two: { type: Number }
+  two: { type: SimpleSchema.Integer }
 });
 
 Product = new SimpleSchema({
@@ -206,7 +215,7 @@ Product = new SimpleSchema({
     defaultValue: ""
   },
   type: {
-    label: "Type",
+    label: "Product Type",
     type: String,
     defaultValue: "simple"
   },
@@ -231,14 +240,13 @@ ProductVariant = new SimpleSchema({
     optional: true
   },
   type: {
-    label: "Type",
+    label: "Product Variant Type",
     type: String,
     defaultValue: "variant"
   },
   price: {
     label: "Price",
     type: Number,
-    decimal: true,
     min: 0,
     optional: true,
     defaultValue: 5
@@ -249,11 +257,10 @@ ProductVariant = new SimpleSchema({
   }
 });
 
-ExtendedProduct = new SimpleSchema([
-  Product, {
-    barcode: {
-      type: String,
-      defaultValue: "ABC123"
-    }
+ExtendedProduct = new SimpleSchema(Product);
+ExtendedProduct.extend({
+  barcode: {
+    type: String,
+    defaultValue: "ABC123"
   }
-]);
+});
