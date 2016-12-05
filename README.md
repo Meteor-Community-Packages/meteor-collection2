@@ -19,6 +19,8 @@ meteor add aldeed:collection2-core@2.0.0
 meteor npm install --save simpl-schema
 ```
 
+Verify that `aldeed:simple-schema` is not listed in your `.meteor/.versions` file. If it is, you likely depend on some other package that has an explicit dependency on the Meteor aldeed:simple-schema package. This could cause problems or unexpected behavior. Work with that package author to get an updated version that does not explicitly depend on the `aldeed:simple-schema` package.
+
 Then add `import SimpleSchema from 'simpl-schema';` at the top of all files in your app that reference the `SimpleSchema` object. (It is no longer an automatic global.)
 
 - `aldeed:collection2-core` does not include `denyInsert` or `denyUpdate` options. If any of your schemas use those options, `meteor add aldeed:schema-deny`
