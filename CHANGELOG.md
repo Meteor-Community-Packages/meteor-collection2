@@ -3,6 +3,72 @@ Collection2
 
 A smart package for Meteor that extends Mongo.Collection to provide support for specifying a schema and then validating against that schema when inserting and updating.
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Collection2](#collection2)
+  - [Change Log](#change-log)
+    - [2.9.1](#291)
+    - [2.9.0](#290)
+    - [2.8.0](#280)
+    - [2.7.1](#271)
+    - [2.7.0](#270)
+    - [2.6.1](#261)
+    - [2.6.0](#260)
+    - [2.5.0](#250)
+    - [2.4.0](#240)
+    - [2.3.3](#233)
+    - [2.3.2](#232)
+    - [2.3.1](#231)
+    - [2.3.0](#230)
+    - [2.2.0](#220)
+    - [2.1.0](#210)
+    - [2.0.1](#201)
+    - [2.0.0](#200)
+    - [1.0.0](#100)
+    - [0.4.6](#046)
+    - [0.4.5](#045)
+    - [0.4.4](#044)
+    - [0.4.3](#043)
+    - [0.4.2](#042)
+    - [0.4.1](#041)
+    - [0.4.0](#040)
+    - [0.3.11](#0311)
+    - [0.3.10](#0310)
+    - [0.3.9](#039)
+    - [0.3.8](#038)
+    - [0.3.7](#037)
+    - [0.3.6](#036)
+    - [0.3.5](#035)
+    - [0.3.4](#034)
+    - [0.3.3](#033)
+    - [0.3.2](#032)
+    - [0.3.1](#031)
+    - [0.3.0](#030)
+    - [0.2.17](#0217)
+    - [0.2.16](#0216)
+    - [0.2.15](#0215)
+    - [0.2.14](#0214)
+    - [0.2.13](#0213)
+    - [0.2.12](#0212)
+    - [0.2.11](#0211)
+    - [0.2.10](#0210)
+    - [0.2.9](#029)
+    - [0.2.8](#028)
+    - [0.2.7](#027)
+    - [0.2.6](#026)
+    - [0.2.5](#025)
+    - [0.2.4](#024)
+    - [0.2.3](#023)
+    - [0.2.2](#022)
+    - [0.2.1](#021)
+    - [0.2.0](#020)
+    - [0.1.7](#017)
+    - [0.1.6](#016)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Change Log
 
 ### 2.9.1

@@ -7,6 +7,64 @@ A Meteor package that allows you to attach a schema to a Mongo.Collection. Autom
 
 This package requires and automatically installs the [aldeed:simple-schema](https://github.com/aldeed/meteor-simple-schema) package, which defines the schema syntax and provides the validation logic.
 
+## IMPORTANT NOTE! THE VERSION IN THIS REPO IS DEPRECATED
+
+`aldeed:collection2` package is no longer supported. Please update to [aldeed:collection2-core@2.x.x](https://github.com/aldeed/meteor-collection2-core), which has an implicit dependency on the SimpleSchema NPM package rather than an explicit dependency on the SimpleSchema Meteor package. When doing this, be aware of the breaking changes in [SimpleSchema 2.0](https://github.com/aldeed/meteor-simple-schema/blob/v2/CHANGELOG.md#200).
+
+This is how to update an app from Collection2 1.x.x to 2.x.x, not including any schema changes you need to make due to the SimpleSchema update:
+
+```
+meteor remove aldeed:simple-schema aldeed:collection2
+meteor add aldeed:collection2-core@2.0.0
+meteor npm install --save simpl-schema
+```
+
+Then add `import SimpleSchema from 'simpl-schema';` at the top of all files in your app that reference the `SimpleSchema` object. (It is no longer an automatic global.)
+
+- `aldeed:collection2-core` does not include `denyInsert` or `denyUpdate` options. If any of your schemas use those options, `meteor add aldeed:schema-deny`
+- `aldeed:collection2-core` does not include `index` or `unique` options. If any of your schemas use those options, `meteor add aldeed:schema-index`
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Collection2](#collection2)
+  - [IMPORTANT NOTE! THE VERSION IN THIS REPO IS DEPRECATED](#important-note-the-version-in-this-repo-is-deprecated)
+  - [Installation](#installation)
+  - [Why Use Collection2?](#why-use-collection2)
+  - [Attaching a Schema to a Collection](#attaching-a-schema-to-a-collection)
+    - [Attaching Multiple Schemas to the Same Collection](#attaching-multiple-schemas-to-the-same-collection)
+    - [attachSchema options](#attachschema-options)
+      - [transform](#transform)
+      - [replace](#replace)
+    - [Attach a Schema to Meteor.users](#attach-a-schema-to-meteorusers)
+  - [Schema Format](#schema-format)
+  - [Passing Options](#passing-options)
+  - [Validation Contexts](#validation-contexts)
+  - [Validating Without Inserting or Updating](#validating-without-inserting-or-updating)
+  - [Inserting or Updating Without Validating](#inserting-or-updating-without-validating)
+  - [Inserting or Updating Without Cleaning](#inserting-or-updating-without-cleaning)
+    - [Skip removing properties that are not in the schema](#skip-removing-properties-that-are-not-in-the-schema)
+    - [Skip conversion of values to match what schema expects](#skip-conversion-of-values-to-match-what-schema-expects)
+    - [Skip removing empty strings](#skip-removing-empty-strings)
+    - [Skip generating automatic values](#skip-generating-automatic-values)
+  - [Inserting or Updating Bypassing Collection2 Entirely](#inserting-or-updating-bypassing-collection2-entirely)
+  - [Additional SimpleSchema Options](#additional-simpleschema-options)
+    - [index and unique](#index-and-unique)
+    - [denyInsert and denyUpdate](#denyinsert-and-denyupdate)
+    - [autoValue](#autovalue)
+    - [custom](#custom)
+  - [What Happens When The Document Is Invalid?](#what-happens-when-the-document-is-invalid)
+  - [More Details](#more-details)
+  - [Community Add-On Packages](#community-add-on-packages)
+    - [Automatic Migrations](#automatic-migrations)
+  - [Problems?](#problems)
+    - [SubObjects and Arrays of Objects](#subobjects-and-arrays-of-objects)
+  - [Contributing](#contributing)
+    - [Major Contributors](#major-contributors)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Installation
 
 In your Meteor app directory, enter:
