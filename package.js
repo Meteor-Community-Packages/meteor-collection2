@@ -21,26 +21,3 @@ Package.onUse(function(api) {
     'aldeed:schema-deny',
   ]);
 });
-
-Package.onTest(function(api) {
-  api.use('aldeed:collection2');
-  api.use('aldeed:simple-schema@2.0.0-rc.1');
-  api.use('tinytest@1.0.0');
-  api.use('test-helpers@1.0.0');
-  api.use('underscore@1.0.0');
-  api.use('ejson@1.0.0');
-  api.use('ordered-dict@1.0.0');
-  api.use('random@1.0.0');
-  api.use('deps@1.0.0');
-  api.use('minimongo@1.0.0');
-
-  api.addFiles([
-    'tests/schemas.js',
-    'tests/collections.js',
-    'tests/pubsub.js',
-    'tests/security.js',
-    'tests/tests.js',
-    'tests/tests-deny.js',
-    'tests/tests-indexing.js'
-  ]);
-});

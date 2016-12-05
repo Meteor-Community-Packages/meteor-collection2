@@ -146,21 +146,6 @@
     "SimpleSchema": false,
     "books": true,
     "booksSchema": true,
-    "autoValues": true,
-    "avSchema": true,
-    "noSchemaCollection": true,
-    "Document": true,
-    "defaultValues": true,
-    "BlackBox": true,
-    "defaultValuesSchema": true,
-    "contextCheck": true,
-    "contextCheckSchema": true,
-    "RES": true,
-    "RESSchema": true,
-    "booksSubscription": true,
-    "partOne": true,
-    "partTwo": true,
-    "partThree": true,
     "LocalCollection": false
   }
 }
