@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/aldeed/meteor-collection2.png?branch=master)](https://travis-ci.org/aldeed/meteor-collection2)
-
 Collection2
 =========================
 
