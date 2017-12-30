@@ -202,9 +202,9 @@ Obviously, when you attach a schema, you must know what the schema should be. Fo
 here is an example schema, which you might have to adjust for your own needs:
 
 ```js
-Schema = {};
+var Schemas = {};
 
-Schema.UserCountry = new SimpleSchema({
+Schemas.UserCountry = new SimpleSchema({
     name: {
         type: String
     },
@@ -214,7 +214,7 @@ Schema.UserCountry = new SimpleSchema({
     }
 });
 
-Schema.UserProfile = new SimpleSchema({
+Schemas.UserProfile = new SimpleSchema({
     firstName: {
         type: String,
         optional: true
@@ -246,12 +246,12 @@ Schema.UserProfile = new SimpleSchema({
         optional: true
     },
     country: {
-        type: Schema.UserCountry,
+        type: Schemas.UserCountry,
         optional: true
     }
 });
 
-Schema.User = new SimpleSchema({
+Schemas.User = new SimpleSchema({
     username: {
         type: String,
         // For accounts-password, either emails or username is required, but not both. It is OK to make this
@@ -289,7 +289,7 @@ Schema.User = new SimpleSchema({
         type: Date
     },
     profile: {
-        type: Schema.UserProfile,
+        type: Schemas.UserProfile,
         optional: true
     },
     // Make sure this services field is in your schema if you're using any of the accounts packages
@@ -328,7 +328,7 @@ Schema.User = new SimpleSchema({
     }
 });
 
-Meteor.users.attachSchema(Schema.User);
+Meteor.users.attachSchema(Schemas.User);
 ```
 
 This schema has not been thoroughly vetted to ensure
