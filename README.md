@@ -7,7 +7,7 @@ This package requires and automatically installs the [aldeed:simple-schema](http
 
 ## IMPORTANT NOTE! THE VERSION IN THIS REPO IS DEPRECATED
 
-`aldeed:collection2` package is no longer supported. Please update to [aldeed:collection2-core@2.x.x](https://github.com/aldeed/meteor-collection2-core), which has an implicit dependency on the SimpleSchema NPM package rather than an explicit dependency on the SimpleSchema Meteor package. When doing this, be aware of the breaking changes in [SimpleSchema 2.0](https://github.com/aldeed/meteor-simple-schema/blob/v2/CHANGELOG.md#200).
+`aldeed:collection2` package is no longer supported. Please update to [aldeed:collection2-core@2.x.x](https://github.com/aldeed/meteor-collection2-core), which has an implicit dependency on the SimpleSchema NPM package rather than an explicit dependency on the SimpleSchema Meteor package. When doing this, be aware of the breaking changes in [SimpleSchema 2.0](https://github.com/aldeed/meteor-simple-schema/blob/master/CHANGELOG.md#200).
 
 This is how to update an app from Collection2 1.x.x to 2.x.x, not including any schema changes you need to make due to the SimpleSchema update:
 
