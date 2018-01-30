@@ -1,67 +1,49 @@
-Collection2
-=========================
+[![CircleCI](https://circleci.com/gh/aldeed/meteor-collection2/tree/master.svg?style=svg)](https://circleci.com/gh/aldeed/meteor-collection2/tree/master)
+
+# aldeed:collection2
 
 A Meteor package that allows you to attach a schema to a Mongo.Collection. Automatically validates against that schema when inserting and updating from client or server code.
 
-This package requires and automatically installs the [aldeed:simple-schema](https://github.com/aldeed/meteor-simple-schema) package, which defines the schema syntax and provides the validation logic.
-
-## IMPORTANT NOTE! THE VERSION IN THIS REPO IS DEPRECATED
-
-`aldeed:collection2` package is no longer supported. Please update to [aldeed:collection2-core@2.x.x](https://github.com/aldeed/meteor-collection2-core), which has an implicit dependency on the SimpleSchema NPM package rather than an explicit dependency on the SimpleSchema Meteor package. When doing this, be aware of the breaking changes in [SimpleSchema 2.0](https://github.com/aldeed/meteor-simple-schema/blob/master/CHANGELOG.md#200).
-
-This is how to update an app from Collection2 1.x.x to 2.x.x, not including any schema changes you need to make due to the SimpleSchema update:
-
-```
-meteor remove aldeed:simple-schema aldeed:collection2
-meteor add aldeed:collection2-core@2.0.0
-meteor npm install --save simpl-schema
-```
-
-Verify that `aldeed:simple-schema` is not listed in your `.meteor/.versions` file. If it is, you likely depend on some other package that has an explicit dependency on the Meteor aldeed:simple-schema package. This could cause problems or unexpected behavior. Work with that package author to get an updated version that does not explicitly depend on the `aldeed:simple-schema` package.
-
-Then add `import SimpleSchema from 'simpl-schema';` at the top of all files in your app that reference the `SimpleSchema` object. (It is no longer an automatic global.)
-
-- `aldeed:collection2-core` does not include `denyInsert` or `denyUpdate` options. If any of your schemas use those options, `meteor add aldeed:schema-deny`
-- `aldeed:collection2-core` does not include `index` or `unique` options. If any of your schemas use those options, `meteor add aldeed:schema-index`
+This package requires the [simpl-schema](https://github.com/aldeed/node-simple-schema) NPM package, which defines the schema syntax and provides the validation logic.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [Collection2](#collection2)
-  - [IMPORTANT NOTE! THE VERSION IN THIS REPO IS DEPRECATED](#important-note-the-version-in-this-repo-is-deprecated)
-  - [Installation](#installation)
-  - [Why Use Collection2?](#why-use-collection2)
-  - [Attaching a Schema to a Collection](#attaching-a-schema-to-a-collection)
-    - [Attaching Multiple Schemas to the Same Collection](#attaching-multiple-schemas-to-the-same-collection)
-    - [attachSchema options](#attachschema-options)
-      - [transform](#transform)
-      - [replace](#replace)
-    - [Attach a Schema to Meteor.users](#attach-a-schema-to-meteorusers)
-  - [Schema Format](#schema-format)
-  - [Passing Options](#passing-options)
-  - [Validation Contexts](#validation-contexts)
-  - [Validating Without Inserting or Updating](#validating-without-inserting-or-updating)
-  - [Inserting or Updating Without Validating](#inserting-or-updating-without-validating)
-  - [Inserting or Updating Without Cleaning](#inserting-or-updating-without-cleaning)
-    - [Skip removing properties that are not in the schema](#skip-removing-properties-that-are-not-in-the-schema)
-    - [Skip conversion of values to match what schema expects](#skip-conversion-of-values-to-match-what-schema-expects)
-    - [Skip removing empty strings](#skip-removing-empty-strings)
-    - [Skip generating automatic values](#skip-generating-automatic-values)
-  - [Inserting or Updating Bypassing Collection2 Entirely](#inserting-or-updating-bypassing-collection2-entirely)
-  - [Additional SimpleSchema Options](#additional-simpleschema-options)
-    - [index and unique](#index-and-unique)
-    - [denyInsert and denyUpdate](#denyinsert-and-denyupdate)
-    - [autoValue](#autovalue)
-    - [custom](#custom)
-  - [What Happens When The Document Is Invalid?](#what-happens-when-the-document-is-invalid)
-  - [More Details](#more-details)
-  - [Community Add-On Packages](#community-add-on-packages)
-    - [Automatic Migrations](#automatic-migrations)
-  - [Problems?](#problems)
-    - [SubObjects and Arrays of Objects](#subobjects-and-arrays-of-objects)
-  - [Contributing](#contributing)
-    - [Major Contributors](#major-contributors)
+- [Installation](#installation)
+- [Why Use Collection2](#why-use-collection2)
+- [Attaching a Schema to a Collection](#attaching-a-schema-to-a-collection)
+  - [Attaching Multiple Schemas to the Same Collection](#attaching-multiple-schemas-to-the-same-collection)
+  - [attachSchema options](#attachschema-options)
+    - [transform](#transform)
+    - [replace](#replace)
+  - [Attach a Schema to Meteor.users](#attach-a-schema-to-meteorusers)
+- [Schema Format](#schema-format)
+- [Passing Options](#passing-options)
+- [Validation Contexts](#validation-contexts)
+- [Validating Without Inserting or Updating](#validating-without-inserting-or-updating)
+- [Inserting or Updating Without Validating](#inserting-or-updating-without-validating)
+- [Inserting or Updating Without Cleaning](#inserting-or-updating-without-cleaning)
+  - [Skip removing properties that are not in the schema](#skip-removing-properties-that-are-not-in-the-schema)
+  - [Skip conversion of values to match what schema expects](#skip-conversion-of-values-to-match-what-schema-expects)
+  - [Skip removing empty strings](#skip-removing-empty-strings)
+  - [Skip generating automatic values](#skip-generating-automatic-values)
+- [Inserting or Updating Bypassing Collection2 Entirely](#inserting-or-updating-bypassing-collection2-entirely)
+- [Additional SimpleSchema Options](#additional-simpleschema-options)
+  - [index and unique](#index-and-unique)
+  - [denyInsert and denyUpdate](#denyinsert-and-denyupdate)
+  - [autoValue](#autovalue)
+  - [custom](#custom)
+- [What Happens When The Document Is Invalid?](#what-happens-when-the-document-is-invalid)
+- [More Details](#more-details)
+- [Community Add-On Packages](#community-add-on-packages)
+  - [Automatic Migrations](#automatic-migrations)
+- [Problems](#problems)
+  - [SubObjects and Arrays of Objects](#subobjects-and-arrays-of-objects)
+- [Contributing](#contributing)
+  - [Running Tests](#running-tests)
+  - [Running Tests in Watch Mode](#running-tests-in-watch-mode)
+  - [Major Contributors](#major-contributors)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -69,40 +51,30 @@ Then add `import SimpleSchema from 'simpl-schema';` at the top of all files in y
 
 In your Meteor app directory, enter:
 
-```
-$ meteor add aldeed:collection2
+```bash
+meteor add aldeed:collection2@3.0.0
+meteor npm install --save simpl-schema
 ```
 
-## Why Use Collection2?
+## Why Use Collection2
 
-* While adding allow/deny rules ensures that only authorized users can edit a
-document from the client, adding a schema ensures that only acceptable properties
-and values can be set within that document from the client. Thus, client side
-inserts and updates can be allowed without compromising security or data integrity.
-* Schema validation for all inserts and updates is reactive, allowing you to
-easily display customizable validation error messages to the user without any
-event handling.
-* Schema validation for all inserts and updates is automatic on both the client
-and the server, providing both speed and security.
-* The [aldeed:autoform](https://github.com/aldeed/meteor-autoform) package can
-take your collection's schema and automatically create HTML5 forms based on it.
-AutoForm provides automatic database operations, method calls, validation, and
-user interface reactivity. You have to write very little markup and no event
-handling. Refer to the [AutoForm](https://github.com/aldeed/meteor-autoform)
-documentation for more information.
+- While adding allow/deny rules ensures that only authorized users can edit a document from the client, adding a schema ensures that only acceptable properties and values can be set within that document from the client. Thus, client side inserts and updates can be allowed without compromising security or data integrity.
+- Schema validation for all inserts and updates is reactive, allowing you to easily display customizable validation error messages to the user without any event handling.
+- Schema validation for all inserts and updates is automatic on both the client and the server, providing both speed and security.
+- The [aldeed:autoform](https://github.com/aldeed/meteor-autoform) package can take your collection's schema and automatically create HTML5 forms based on it. AutoForm provides automatic database operations, method calls, validation, and user interface reactivity. You have to write very little markup and no event handling. Refer to the [AutoForm](https://github.com/aldeed/meteor-autoform) documentation for more information.
 
 ## Attaching a Schema to a Collection
 
 Let's say we have a normal "books" collection, defined in code that runs on both client and server (*common.js*):
 
 ```js
-Books = new Mongo.Collection("books");
+const Books = new Mongo.Collection("books");
 ```
 
 Let's create a `SimpleSchema` schema for this collection. We'll do this in *common.js*, too:
 
 ```js
-var Schemas = {};
+const Schemas = {};
 
 Schemas.Book = new SimpleSchema({
     title: {
@@ -142,7 +114,7 @@ Books.attachSchema(Schemas.Book);
 Now that our collection has a schema, we can do a validated insert on either the client or the server:
 
 ```js
-Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) {
+Books.insert({title: "Ulysses", author: "James Joyce"}, (error, result) => {
   //The insert will fail, error will be set,
   //and result will be undefined or false because "copies" is required.
   //
@@ -153,7 +125,7 @@ Books.insert({title: "Ulysses", author: "James Joyce"}, function(error, result) 
 Or we can do a validated update:
 
 ```js
-Books.update(book._id, {$unset: {copies: 1}}, function(error, result) {
+Books.update(book._id, {$unset: {copies: 1}}, (error, result) => {
   //The update will fail, error will be set,
   //and result will be undefined or false because "copies" is required.
   //
@@ -202,9 +174,9 @@ Obviously, when you attach a schema, you must know what the schema should be. Fo
 here is an example schema, which you might have to adjust for your own needs:
 
 ```js
-var Schemas = {};
+const Schema = {};
 
-Schemas.UserCountry = new SimpleSchema({
+Schema.UserCountry = new SimpleSchema({
     name: {
         type: String
     },
@@ -214,7 +186,7 @@ Schemas.UserCountry = new SimpleSchema({
     }
 });
 
-Schemas.UserProfile = new SimpleSchema({
+Schema.UserProfile = new SimpleSchema({
     firstName: {
         type: String,
         optional: true
@@ -246,12 +218,12 @@ Schemas.UserProfile = new SimpleSchema({
         optional: true
     },
     country: {
-        type: Schemas.UserCountry,
+        type: Schema.UserCountry,
         optional: true
     }
 });
 
-Schemas.User = new SimpleSchema({
+Schema.User = new SimpleSchema({
     username: {
         type: String,
         // For accounts-password, either emails or username is required, but not both. It is OK to make this
@@ -289,7 +261,7 @@ Schemas.User = new SimpleSchema({
         type: Date
     },
     profile: {
-        type: Schemas.UserProfile,
+        type: Schema.UserProfile,
         optional: true
     },
     // Make sure this services field is in your schema if you're using any of the accounts packages
@@ -328,7 +300,7 @@ Schemas.User = new SimpleSchema({
     }
 });
 
-Meteor.users.attachSchema(Schemas.User);
+Meteor.users.attachSchema(Schema.User);
 ```
 
 This schema has not been thoroughly vetted to ensure
@@ -345,7 +317,7 @@ to figure out a more specific schema.
 ## Schema Format
 
 Refer to the
-[simple-schema](https://github.com/aldeed/meteor-simple-schema) package
+[simpl-schema](https://github.com/aldeed/node-simple-schema) package
 documentation for a list of all the available schema rules and validation
 methods.
 
@@ -353,7 +325,7 @@ Use the `MyCollection.simpleSchema()` method to access the attached `SimpleSchem
 instance for a Mongo.Collection instance. For example:
 
 ```js
-check(doc, MyCollection.simpleSchema());
+MyCollection.simpleSchema().validate(doc);
 ```
 
 ## Passing Options
@@ -379,11 +351,11 @@ To use a specific named validation context, use the `validationContext` option
 when calling `insert` or `update`:
 
 ```js
-Books.insert({title: "Ulysses", author: "James Joyce"}, { validationContext: "insertForm" }, function(error, result) {
+Books.insert({title: "Ulysses", author: "James Joyce"}, { validationContext: "insertForm" }, (error, result) => {
   //The list of errors is available by calling Books.simpleSchema().namedContext("insertForm").validationErrors()
 });
 
-Books.update(book._id, {$unset: {copies: 1}}, { validationContext: "updateForm" }, function(error, result) {
+Books.update(book._id, {$unset: {copies: 1}}, { validationContext: "updateForm" }, (error, result) => {
   //The list of errors is available by calling Books.simpleSchema().namedContext("updateForm").validationErrors()
 });
 ```
@@ -411,7 +383,7 @@ Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", auth
 Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", author: "James Joyce"}, {modifier: false, keys: ['title']});
 ```
 
-Refer to the [simple-schema](https://github.com/aldeed/meteor-simple-schema) package documentation for more information about these methods.
+Refer to the [simpl-schema](https://github.com/aldeed/node-simple-schema) package documentation for more information about these methods.
 
 ## Inserting or Updating Without Validating
 
@@ -451,13 +423,9 @@ collection2 package adds additional options explained in this section.
 
 See https://github.com/aldeed/meteor-schema-index
 
-This package is currently included automatically.
-
 ### denyInsert and denyUpdate
 
 See https://github.com/aldeed/meteor-schema-deny
-
-This package is currently included automatically.
 
 ### autoValue
 
@@ -598,13 +566,12 @@ Generally speaking, you would probably not use the `Error` for displaying to the
 
 For the curious, this is exactly what Collection2 does before every insert or update:
 
-1. Removes properties from your document or mongo modifier object if they are
-not explicitly listed in the schema. (To skip this, set the `filter` option to `false` when you call `insert` or `update`.)
-2. Automatically converts some properties to match what the schema expects, if possible. (To skip this, set the `autoConvert` option to `false` when you call `insert` or `update`.)
-3. Optimizes your operation so that empty string values will not be stored. (To skip this, set the `removeEmptyStrings` option to `false` when you call `insert` or `update`.)
-3. Adds automatic (forced or default) values based on your schema. Values are added only on the server and will make their way back to your client when your subscription is updated. (To skip this in server code, set the `getAutoValues` option to `false` when you call `insert` or `update`.)
-4. Validates your document or mongo modifier object. (To skip this, set the `validate` option to `false` when you call `insert` or `update`.)
-5. Performs the insert or update like normal, only if it was valid.
+1. Removes properties from your document or mongo modifier object if they are not explicitly listed in the schema. (To skip this, set the `filter` option to `false` when you call `insert` or `update`.)
+1. Automatically converts some properties to match what the schema expects, if possible. (To skip this, set the `autoConvert` option to `false` when you call `insert` or `update`.)
+1. Optimizes your operation so that empty string values will not be stored. (To skip this, set the `removeEmptyStrings` option to `false` when you call `insert` or `update`.)
+1. Adds automatic (forced or default) values based on your schema. Values are added only on the server and will make their way back to your client when your subscription is updated. (To skip this in server code, set the `getAutoValues` option to `false` when you call `insert` or `update`.)
+1. Validates your document or mongo modifier object. (To skip this, set the `validate` option to `false` when you call `insert` or `update`.)
+1. Performs the insert or update like normal, only if it was valid.
 
 Collection2 is simply calling SimpleSchema methods to do these things. The validation happens on both the client and the server for client-initiated actions, giving you the speed of client-side validation along with the security of server-side validation.
 
@@ -614,7 +581,7 @@ Collection2 is simply calling SimpleSchema methods to do these things. The valid
 
 The [davidyaha:collection2-migrations](https://atmospherejs.com/davidyaha/collection2-migrations) package can watch for schema changes between server restarts and perform some automatic data migration and cleanup.
 
-## Problems?
+## Problems
 
 You might find yourself in a situation where it seems as though validation is not working correctly. First, you should enable SimpleSchema debug mode by setting `SimpleSchema.debug = true`, which may log some additional information. If you're still confused, read through the following tricky, confusing situations.
 
@@ -667,10 +634,22 @@ Although these examples focused on an array of objects, sub-objects are treated 
 Anyone is welcome to contribute. Fork, make and test your changes (`meteor test-packages ./`),
 and then submit a pull request.
 
+### Running Tests
+
+```bash
+cd tests
+meteor npm i && npm test
+```
+
+### Running Tests in Watch Mode
+
+```bash
+cd tests
+meteor npm i && npm run test:watch
+```
+
 ### Major Contributors
 
 @mquandalle
 
 (Add yourself if you should be listed here.)
-
-[![Support via Gittip](https://rawgithub.com/twolfson/gittip-badge/0.2.0/dist/gittip.png)](https://www.gittip.com/aldeed/)

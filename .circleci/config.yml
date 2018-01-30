@@ -1,0 +1,43 @@
+# Javascript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/node:8.9.1-browsers
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      # Install Meteor
+      - run: curl https://install.meteor.com | sh
+
+      # https://github.com/meteor/meteor/issues/4019
+      - run: sudo apt-get update
+      - run: DEBIAN_FRONTEND=noninteractive sudo apt-get install -y locales
+      - run: sudo sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+      - run: sudo dpkg-reconfigure --frontend=noninteractive locales
+      - run: sudo update-locale LANG=en_US.UTF-8
+      - run: export LANG=en_US.UTF-8
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "tests/package.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      # Install dependencies
+      - run: cd tests && meteor npm install
+
+      - save_cache:
+          paths:
+            - tests/node_modules
+          key: v1-dependencies-{{ checksum "tests/package.json" }}
+
+      # run tests!
+      - run: cd tests && npm test
