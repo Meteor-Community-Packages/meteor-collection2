@@ -1,10 +1,10 @@
-[![CircleCI](https://circleci.com/gh/aldeed/meteor-collection2/tree/master.svg?style=svg)](https://circleci.com/gh/aldeed/meteor-collection2/tree/master)
+# Collection2 (aldeed:collection2 Meteor package)
 
-# aldeed:collection2
+[![Backers on Open Collective](https://opencollective.com/meteor-collection2/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/meteor-collection2/sponsors/badge.svg)](#sponsors) [![CircleCI](https://circleci.com/gh/aldeed/meteor-collection2/tree/master.svg?style=svg)](https://circleci.com/gh/aldeed/meteor-collection2/tree/master)
 
 A Meteor package that allows you to attach a schema to a Mongo.Collection. Automatically validates against that schema when inserting and updating from client or server code.
 
-This package requires the [simpl-schema](https://github.com/aldeed/node-simple-schema) NPM package, which defines the schema syntax and provides the validation logic.
+This package requires the [simpl-schema](https://github.com/aldeed/simple-schema-js) NPM package, which defines the schema syntax and provides the validation logic.
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -317,7 +317,7 @@ to figure out a more specific schema.
 ## Schema Format
 
 Refer to the
-[simpl-schema](https://github.com/aldeed/node-simple-schema) package
+[simpl-schema](https://github.com/aldeed/simple-schema-js) package
 documentation for a list of all the available schema rules and validation
 methods.
 
@@ -383,7 +383,7 @@ Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", auth
 Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", author: "James Joyce"}, {modifier: false, keys: ['title']});
 ```
 
-Refer to the [simpl-schema](https://github.com/aldeed/node-simple-schema) package documentation for more information about these methods.
+Refer to the [simpl-schema](https://github.com/aldeed/simple-schema-js) package documentation for more information about these methods.
 
 ## Inserting or Updating Without Validating
 
@@ -416,7 +416,7 @@ Even if you skip all validation and cleaning, Collection2 will still do some obj
 ## Additional SimpleSchema Options
 
 In addition to all the other schema validation options documented in the
-[simpl-schema](https://github.com/aldeed/node-simple-schema) package, the
+[simpl-schema](https://github.com/aldeed/simple-schema-js) package, the
 collection2 package adds additional options explained in this section.
 
 ### index and unique
@@ -648,8 +648,34 @@ cd tests
 meteor npm i && npm run test:watch
 ```
 
-### Major Contributors
+### Major Code Contributors
 
 @mquandalle
 
 (Add yourself if you should be listed here.)
+
+## Contributors
+
+This project exists thanks to all the people who contribute. [[Contribute]](CONTRIBUTING.md).
+<a href="graphs/contributors"><img src="https://opencollective.com/meteor-collection2/contributors.svg?width=890" /></a>
+
+## Backers
+
+Thank you to all our backers! 🙏 [[Become a backer](https://opencollective.com/meteor-collection2#backer)]
+
+<a href="https://opencollective.com/meteor-collection2#backers" target="_blank"><img src="https://opencollective.com/meteor-collection2/backers.svg?width=890"></a>
+
+## Sponsors
+
+Support this project by becoming a sponsor. Your logo will show up here with a link to your website. [[Become a sponsor](https://opencollective.com/meteor-collection2#sponsor)]
+
+<a href="https://opencollective.com/meteor-collection2/sponsor/0/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/0/avatar.svg"></a>
+<a href="https://opencollective.com/meteor-collection2/sponsor/1/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/1/avatar.svg"></a>
+<a href="https://opencollective.com/meteor-collection2/sponsor/2/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/2/avatar.svg"></a>
+<a href="https://opencollective.com/meteor-collection2/sponsor/3/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/3/avatar.svg"></a>
+<a href="https://opencollective.com/meteor-collection2/sponsor/4/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/4/avatar.svg"></a>
+<a href="https://opencollective.com/meteor-collection2/sponsor/5/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/5/avatar.svg"></a>
+<a href="https://opencollective.com/meteor-collection2/sponsor/6/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/6/avatar.svg"></a>
+<a href="https://opencollective.com/meteor-collection2/sponsor/7/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/7/avatar.svg"></a>
+<a href="https://opencollective.com/meteor-collection2/sponsor/8/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/8/avatar.svg"></a>
+<a href="https://opencollective.com/meteor-collection2/sponsor/9/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/9/avatar.svg"></a>
