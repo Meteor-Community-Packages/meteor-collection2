@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [3.0.1](#301)
 - [3.0.0](#300)
 - [2.8.0](#280)
 - [2.7.1](#271)
@@ -62,6 +63,10 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 3.0.1
+
+It now works to extend a schema after you attach it to a collection with the `selector` option. (Without the `selector` option, it already worked.) All extended fields will be respected during validation. If you were relying on the previous behavior of being able to extend a schema without it affecting the collections it has been attached to, this may be a breaking change. You can maintain the old behavior by changing `MyCollection.attachSchema(MySchema, { selector })` to `MyCollection.attachSchema(MySchema.clone(), { selector })`.
 
 ## 3.0.0
 

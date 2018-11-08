@@ -6,6 +6,8 @@ A Meteor package that allows you to attach a schema to a Mongo.Collection. Autom
 
 This package requires the [simpl-schema](https://github.com/aldeed/simple-schema-js) NPM package, which defines the schema syntax and provides the validation logic.
 
+## TOC
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
@@ -43,7 +45,10 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 - [Contributing](#contributing)
   - [Running Tests](#running-tests)
   - [Running Tests in Watch Mode](#running-tests-in-watch-mode)
-  - [Major Contributors](#major-contributors)
+  - [Major Code Contributors](#major-code-contributors)
+- [Contributors](#contributors)
+- [Backers](#backers)
+- [Sponsors](#sponsors)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
