@@ -42,7 +42,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   options = options || {};
 
   // Allow passing just the schema object
-  if (!(ss instanceof SimpleSchema)) {
+  if (!SimpleSchema.isSimpleSchema(ss)) {
     ss = new SimpleSchema(ss);
   }
 
@@ -79,7 +79,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       if (schemaIndex === -1) {
         // We didn't find the schema in our array - push it into the array
         obj._c2._simpleSchemas.push({
-          schema: new SimpleSchema(ss),
+          schema: SimpleSchema.isSimpleSchema(ss) ? ss : new SimpleSchema(ss),
           selector: selector,
         });
       } else {
@@ -92,7 +92,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
             obj._c2._simpleSchemas[schemaIndex].schema = new SimpleSchema([obj._c2._simpleSchemas[schemaIndex].schema, ss]);
           }
         } else {
-          // If options.repalce is `true` replace existing schema with new schema
+          // If options.replace is `true` replace existing schema with new schema
           obj._c2._simpleSchemas[schemaIndex].schema = ss;
         }
 
@@ -358,7 +358,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
     ...defaultCleanOptions,
     // The extend with the schema-level defaults (from SimpleSchema constructor options)
     ...(schema._cleanOptions || {}),
-    // Finally, options for this specific operation should take precedance
+    // Finally, options for this specific operation should take precedence
     ...cleanOptionsForThisOperation,
     extendAutoValueContext, // This was extended separately above
     getAutoValues, // Force this override
@@ -557,11 +557,11 @@ function wrapCallbackForParsingServerErrors(validationContext, cb) {
   };
 }
 
-var alreadyInsecured = {};
+var alreadyInsecure = {};
 function keepInsecure(c) {
   // If insecure package is in use, we need to add allow rules that return
   // true. Otherwise, it would seemingly turn off insecure mode.
-  if (Package && Package.insecure && !alreadyInsecured[c._name]) {
+  if (Package && Package.insecure && !alreadyInsecure[c._name]) {
     c.allow({
       insert: function() {
         return true;
@@ -575,7 +575,7 @@ function keepInsecure(c) {
       fetch: [],
       transform: null
     });
-    alreadyInsecured[c._name] = true;
+    alreadyInsecure[c._name] = true;
   }
   // If insecure package is NOT in use, then adding the two deny functions
   // does not have any effect on the main app's security paradigm. The
@@ -591,7 +591,7 @@ function defineDeny(c, options) {
     var isLocalCollection = (c._connection === null);
 
     // First define deny functions to extend doc with the results of clean
-    // and autovalues. This must be done with "transform: null" or we would be
+    // and auto-values. This must be done with "transform: null" or we would be
     // extending a clone of doc and therefore have no effect.
     c.deny({
       insert: function(userId, doc) {
@@ -646,7 +646,7 @@ function defineDeny(c, options) {
 
     // Second define deny functions to validate again on the server
     // for client-initiated inserts and updates. These should be
-    // called after the clean/autovalue functions since we're adding
+    // called after the clean/auto-value functions since we're adding
     // them after. These must *not* have "transform: null" if options.transform is true because
     // we need to pass the doc through any transforms to be sure
     // that custom types are properly recognized for type validation.

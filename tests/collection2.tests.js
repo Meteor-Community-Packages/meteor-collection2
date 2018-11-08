@@ -171,6 +171,72 @@ describe('collection2', function () {
     });
   });
 
+  it('extending a schema after attaching it, collection2 validation respects the extension', (done) => {
+    const schema = new SimpleSchema({
+      foo: String
+    });
+
+    const collection = new Mongo.Collection('ExtendAfterAttach');
+    collection.attachSchema(schema);
+
+    collection.insert({
+      foo: "foo",
+      bar: "bar"
+    }, {
+      filter: false
+    }, (error) => {
+      expect(error.invalidKeys[0].name).toBe('bar');
+
+      schema.extend({
+        bar: String
+      });
+
+      collection.insert({
+        foo: "foo",
+        bar: "bar"
+      }, {
+        filter: false
+      }, (error2) => {
+        expect(!!error2).toBe(false);
+
+        done();
+      });
+    });
+  });
+
+  it('extending a schema with a selector after attaching it, collection2 validation respects the extension', (done) => {
+    const schema = new SimpleSchema({
+      foo: String
+    });
+
+    const collection = new Mongo.Collection('ExtendAfterAttach2');
+    collection.attachSchema(schema, { selector: { foo: "foo" } });
+
+    collection.insert({
+      foo: "foo",
+      bar: "bar"
+    }, {
+      filter: false
+    }, (error) => {
+      expect(error.invalidKeys[0].name).toBe('bar');
+
+      schema.extend({
+        bar: String
+      });
+
+      collection.insert({
+        foo: "foo",
+        bar: "bar"
+      }, {
+        filter: false
+      }, (error2) => {
+        expect(!!error2).toBe(false);
+
+        done();
+      });
+    });
+  });
+
   addBooksTests();
   addContextTests();
   addDefaultValuesTests();
