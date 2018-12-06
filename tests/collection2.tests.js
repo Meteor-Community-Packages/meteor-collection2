@@ -237,6 +237,56 @@ describe('collection2', function () {
     });
   });
 
+  it('pick or omit schema fields when options are provided', function (done) {
+    const collectionSchema = new SimpleSchema({
+      foo: { type: String },
+      bar: { type: String, optional: true }
+    });
+
+    const collection = new Mongo.Collection('pickOrOmit');
+    collection.attachSchema(collectionSchema);
+
+    // Test error from including both pick and omit
+    let errorThrown = false;
+
+    try {
+      collection.insert({ foo: 'foo', bar: '' }, { pick: ['foo'], omit: ['foo'] });
+    } catch (error) {
+      expect(error.message).toBe('pick and omit options are mutually exclusive');
+      errorThrown = true;
+    }
+
+    expect(errorThrown).toBe(true);
+
+    // Omit required field 'foo'
+    collection.insert({ bar: 'test' }, { omit: ['foo'] }, (error, newId2) => {
+      expect(!!error).toBe(false);
+      expect(typeof newId2).toBe('string');
+
+      const doc = collection.findOne(newId2);
+      expect(doc instanceof Object).toBe(true);
+      expect(doc.foo).toBe(undefined)
+      expect(doc.bar).toBe('test');
+
+      // Pick only 'foo'
+      collection.update(
+        { _id: newId2 },
+        { $set: { foo: 'test', bar: 'changed' } },
+        { pick: ['foo'] }, 
+        (error, result) => {  
+          expect(!!error).toBe(false);
+          expect(result).toBe(1);
+
+          const doc = collection.findOne(newId2);
+          expect(doc instanceof Object).toBe(true);
+          expect(doc.foo).toBe('test')
+          expect(doc.bar).toBe('test');
+          done();
+        }
+      );
+    });
+  });
+
   addBooksTests();
   addContextTests();
   addDefaultValuesTests();
