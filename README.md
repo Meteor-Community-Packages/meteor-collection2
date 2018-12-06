@@ -414,6 +414,10 @@ To skip removing empty strings, set the `removeEmptyStrings` option to `false` w
 
 To skip adding automatic values, set the `getAutoValues` option to `false` when you call `insert` or `update`. This works only in server code.
 
+### Pick or omit from the attached schema
+
+To pick or omit fields from the schema for the operation, set the 'pick' or 'omit' option respectively to an array of schema field names. These options are mutually exclusive, so you cannot have both present in the options object at the same time.
+
 ## Inserting or Updating Bypassing Collection2 Entirely
 
 Even if you skip all validation and cleaning, Collection2 will still do some object parsing that can take a long time for a large document. To bypass this, set the `bypassCollection2` option to `true` when you call `insert` or `update`. This works only in server code.
