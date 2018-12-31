@@ -140,7 +140,7 @@ Books.update(book._id, {$unset: {copies: 1}}, (error, result) => {
 
 ### Attaching Multiple Schemas to the Same Collection
 
-Normally, if call `attachSchema` multiple times, the schemas are merged. If you use the `replace: true` option, then it will replace the previously attached schema. However, in some cases you might actually want both schemas attached, with different documents validated against different schemas.
+Normally, if `attachSchema` is called multiple times, the schemas are merged. If you use the `replace: true` option, then it will replace the previously attached schema. However, in some cases you might actually want both schemas attached, with different documents validated against different schemas.
 
 Here is an example:
 
@@ -158,6 +158,16 @@ Products.insert({ title: 'This is a product' }, { selector: { type: 'simple' } }
 ```
 
 For an update or upsert, the matching selector can be in the query, the modifier `$set` object, or the `selector` option.
+
+Note that you are not required to use the `selector` option on all of your attached schemas. For example:
+
+```js
+Products.attachSchema(BaseProductSchema);
+Products.attachSchema(SimpleProductSchema, {selector: {type: 'simple'}});
+Products.attachSchema(VariantProductSchema, {selector: {type: 'variant'}});
+```
+
+This will validate against the `BaseProductSchema`, merged with either `SimpleProductSchema` or `VariantProductSchema` depending on the matching selector.
 
 ### attachSchema options
 
