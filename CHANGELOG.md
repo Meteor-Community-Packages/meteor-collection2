@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [3.0.2](#302)
 - [3.0.1](#301)
 - [3.0.0](#300)
 - [2.8.0](#280)
@@ -63,6 +64,10 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 3.0.2
+
+You can now update to `raix:eventemitter@1.0.0` to potentially eliminate your app's dependency on the `underscore` package. `meteor add raix:eventemitter@1.0.0`
 
 ## 3.0.1
 
