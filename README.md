@@ -142,7 +142,25 @@ Books.update(book._id, {$unset: {copies: 1}}, (error, result) => {
 
 Normally, if call `attachSchema` multiple times, the schemas are merged. If you use the `replace: true` option, then it will replace the previously attached schema. However, in some cases you might actually want both schemas attached, with different documents validated against different schemas.
 
+
 Here is an example:
+
+```js
+Products.attachSchema(BaseProductSchema);
+Products.attachSchema(ExtendedProductSchema, {selector: {type: 'extended'}});
+```
+
+This adds support for having a base (default) schema while also using multiple selector schemas.
+
+There are four behaviors for attaching schemas:
+- **Attach schema without selector.** This will extend the base schema and any attached selector schemas.
+- **Attach schema with selector.** If the given selector schema exists, extends the found schema with any new fields. Or add an additional schema that matches the selector only. The new selector schema will first be extended by the base schema, if the base schema is already specified.
+- **Replace schema without selector.** This replaces the base schema and removes any attached selector schemas. If you want to continue to use the original selector schemas on the collection they must be reattached.
+- **Replace schema with selector.** This replaces the schema with the same selector with the new schema fields extended by the base schema, if the base schema is already specified. Othewise adds the new selector schema if it was not found.
+
+It is possible to use schemas on collections with or without the base schema specified, and with or without selector schemas specified. The selector schemas will always inherit the base schema. Replacing the base schema effectively serves as deleting all schemas off the collection.
+
+Here is another example:
 
 ```js
 Products.attachSchema(SimpleProductSchema, {selector: {type: 'simple'}});

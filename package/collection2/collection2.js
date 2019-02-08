@@ -46,66 +46,66 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     ss = new SimpleSchema(ss);
   }
 
-  this._c2 = this._c2 || {};
-
-  // If we've already attached one schema, we combine both into a new schema unless options.replace is `true`
-  if (this._c2._simpleSchema && options.replace !== true) {
-    if (ss.version >= 2) {
-      var newSS = new SimpleSchema(this._c2._simpleSchema);
-      newSS.extend(ss);
-      ss = newSS;
-    } else {
-      ss = new SimpleSchema([this._c2._simpleSchema, ss]);
-    }
-  }
-
-  var selector = options.selector;
-
   function attachTo(obj) {
-    if (typeof selector === "object") {
+    // we need an array to hold multiple schemas
+    // position 0 is reserved for the "base" schema
+    obj._c2 = obj._c2 || {};
+    obj._c2._simpleSchemas = obj._c2._simpleSchemas || [ null ];
+
+    if (typeof options.selector === "object") {
+      // Selector Schemas
+
+      // Extend selector schema with base schema
+      var baseSchema = obj._c2._simpleSchemas[0];
+      if (baseSchema) {
+        ss = extendSchema(baseSchema.schema, ss);
+      }
+
       // Index of existing schema with identical selector
-      var schemaIndex = -1;
+      var schemaIndex;
 
-      // we need an array to hold multiple schemas
-      obj._c2._simpleSchemas = obj._c2._simpleSchemas || [];
+      // Loop through existing schemas with selectors,
+      for (schemaIndex = obj._c2._simpleSchemas.length - 1; 0 < schemaIndex; schemaIndex--) {
+        var schema = obj._c2._simpleSchemas[schemaIndex];
+        if (schema && isEqual(schema.selector, options.selector)) break;
+      }
 
-      // Loop through existing schemas with selectors
-      obj._c2._simpleSchemas.forEach((schema, index) => {
-        // if we find a schema with an identical selector, save it's index
-        if(isEqual(schema.selector, selector)) {
-          schemaIndex = index;
-        }
-      });
-      if (schemaIndex === -1) {
+      if (schemaIndex <= 0) {
         // We didn't find the schema in our array - push it into the array
         obj._c2._simpleSchemas.push({
-          schema: SimpleSchema.isSimpleSchema(ss) ? ss : new SimpleSchema(ss),
-          selector: selector,
+          schema: ss,
+          selector: options.selector,
         });
       } else {
         // We found a schema with an identical selector in our array,
-        if (options.replace !== true) {
-          // Merge with existing schema unless options.replace is `true`
-          if (obj._c2._simpleSchemas[schemaIndex].schema.version >= 2) {
-            obj._c2._simpleSchemas[schemaIndex].schema.extend(ss);
-          } else {
-            obj._c2._simpleSchemas[schemaIndex].schema = new SimpleSchema([obj._c2._simpleSchemas[schemaIndex].schema, ss]);
-          }
-        } else {
-          // If options.replace is `true` replace existing schema with new schema
+        if (options.replace === true) {
+          // Replace existing selector schema with new selector schema
           obj._c2._simpleSchemas[schemaIndex].schema = ss;
+        } else {
+          // Extend existing selector schema with new selector schema.
+          obj._c2._simpleSchemas[schemaIndex].schema = extendSchema(obj._c2._simpleSchemas[schemaIndex].schema, ss);
         }
-
       }
-
-      // Remove existing schemas without selector
-      delete obj._c2._simpleSchema;
     } else {
-      // Track the schema in the collection
-      obj._c2._simpleSchema = ss;
-
-      // Remove existing schemas with selector
-      delete obj._c2._simpleSchemas;
+      // Base Schema
+      if (options.replace === true) {
+        // Replace base schema and delete all other schemas
+        obj._c2._simpleSchemas = [{
+          schema: ss,
+          selector: options.selector,
+        }];
+      } else {
+        // Set base schema if not yet set
+        if (!obj._c2._simpleSchemas[0]) {
+          obj._c2._simpleSchemas[0] = { schema: ss, selector: undefined };
+        }
+        // Extend base schema and therefore extend all schemas
+        obj._c2._simpleSchemas.forEach((schema, index) => {
+          if (obj._c2._simpleSchemas[index]) {
+            obj._c2._simpleSchemas[index].schema = extendSchema(obj._c2._simpleSchemas[index].schema, ss);
+          }
+        });
+      }
     }
   }
 
@@ -143,7 +143,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       if (!doc) throw new Error('collection.simpleSchema() requires doc argument when there are multiple schemas');
 
       var schema, selector, target;
-      for (var i = 0; i < schemas.length; i++) {
+      // Position 0 reserved for base schema
+      for (var i = 1; i < schemas.length; i++) {
         schema = schemas[i];
         selector = Object.keys(schema.selector)[0];
 
@@ -168,6 +169,11 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         if (target !== undefined && target === schema.selector[selector]) {
           return schema.schema;
         }
+      }
+      if (schemas[0]) {
+        return schemas[0].schema;
+      } else {
+        throw new Error("No default schema");
       }
     }
 
@@ -713,6 +719,16 @@ function defineDeny(c, options) {
     // note that we've already done this collection so that we don't do it again
     // if attachSchema is called again
     alreadyDefined[c._name] = true;
+  }
+}
+
+function extendSchema(s1, s2) {
+  if (s2.version >= 2) {
+    const ss = new SimpleSchema(s1);
+    ss.extend(s2);
+    return ss;
+  } else {
+    return new SimpleSchema([ s1, s2 ]);
   }
 }
 
