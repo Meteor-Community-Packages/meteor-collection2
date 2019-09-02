@@ -2,9 +2,9 @@
   "name": "tests",
   "private": true,
   "scripts": {
-    "test": "METEOR_PACKAGE_DIRS=../package TEST_BROWSER_DRIVER=nightmare meteor test --once --driver-package meteortesting:mocha",
-    "test:watch": "METEOR_PACKAGE_DIRS=../package TEST_BROWSER_DRIVER=nightmare TEST_WATCH=1 meteor test --driver-package meteortesting:mocha",
-    "test:watch:browser": "METEOR_PACKAGE_DIRS=../package TEST_WATCH=1 meteor test --driver-package meteortesting:mocha"
+    "test": "cross-env METEOR_PACKAGE_DIRS=../package TEST_BROWSER_DRIVER=nightmare meteor test --once --driver-package meteortesting:mocha",
+    "test:watch": "cross-env METEOR_PACKAGE_DIRS=../package TEST_BROWSER_DRIVER=nightmare TEST_WATCH=1 meteor test --driver-package meteortesting:mocha",
+    "test:watch:browser": "cross-env METEOR_PACKAGE_DIRS=../package TEST_WATCH=1 meteor test --driver-package meteortesting:mocha"
   },
   "dependencies": {
     "@babel/runtime": "^7.3.1",
@@ -14,6 +14,7 @@
   },
   "devDependencies": {
     "chromedriver": "^2.35.0",
+    "cross-env": "^5.2.1",
     "expect": "^1.20.2",
     "istanbul-lib-coverage": "^1.1.1",
     "nightmare": "^3.0.1",
