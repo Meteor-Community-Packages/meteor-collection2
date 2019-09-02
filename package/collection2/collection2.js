@@ -3,7 +3,7 @@ import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 import { checkNpmVersions } from 'meteor/tmeasday:check-npm-versions';
 import clone from 'clone';
-import EJSON from 'ejson';
+import { EJSON } from 'meteor/ejson';
 import isEmpty from 'lodash.isempty';
 import isEqual from 'lodash.isequal';
 import isObject from 'lodash.isobject';
