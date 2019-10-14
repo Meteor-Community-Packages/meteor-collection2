@@ -79,6 +79,43 @@ describe('collection2', function () {
         done();
       });
     });
+
+    // https://forums.meteor.com/t/simpl-schema-update-error-while-using-lte-operator-when-calling-update-by-the-field-of-type-date/50414/3
+    it('upsert can handle query operators in the selector', function () {
+      const upsertQueryOperatorsTest = new Mongo.Collection('upsertQueryOperatorsTest');
+
+      upsertQueryOperatorsTest.attachSchema(new SimpleSchema({
+        foo: {
+          type: Date,
+          optional: true
+        },
+        bar: Number,
+        baz: Number
+      }));
+
+      upsertQueryOperatorsTest.remove({});
+      const oneDayInMs = 1000 * 60 * 60 * 24;
+      const yesterday = new Date(Date.now() - oneDayInMs);
+      const tomorrow = new Date(Date.now() + oneDayInMs);
+      
+      const { numberAffected, insertedId } = upsertQueryOperatorsTest.upsert({
+        foo: { $gte: yesterday, $lte: tomorrow }
+      }, {
+        $set: {
+          bar: 2
+        },
+        $inc: {
+          baz: 4
+        }
+      })
+
+      expect(numberAffected).toBe(1);
+      const doc = upsertQueryOperatorsTest.findOne();
+      expect(insertedId).toBe(doc._id);
+      expect(doc.bar).toBe(2);
+      expect(doc.baz).toBe(4);
+
+    })
   }
 
   it('no errors when using a schemaless collection', function (done) {
