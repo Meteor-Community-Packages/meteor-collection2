@@ -45,8 +45,9 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 - [Contributing](#contributing)
   - [Running Tests](#running-tests)
   - [Running Tests in Watch Mode](#running-tests-in-watch-mode)
-  - [Major Code Contributors](#major-code-contributors)
+- [Publishing a New Release to Atmosphere](#publishing-a-new-release-to-atmosphere)
 - [Contributors](#contributors)
+  - [Major Code Contributors](#major-code-contributors)
 - [Backers](#backers)
 - [Sponsors](#sponsors)
 
@@ -653,16 +654,43 @@ cd tests
 meteor npm i && npm run test:watch
 ```
 
-### Major Code Contributors
+## Publishing a New Release to Atmosphere
 
-@mquandalle
+Check out `master` branch.
 
-(Add yourself if you should be listed here.)
+In `/package/collection2/package.js`, increment the version according to semantic versioning rules.
+
+In `CHANGELOG.md`, add a heading for this version and a description of changes committed since the previous version.
+
+Verify that docs in `README.md` are updated for these changes.
+
+In root of project, run `doctoc .`. This updates both TOCs in the markdown files.
+
+Run tests (see "Running Tests" section above).
+
+`cd` to `package/collection2` directory and run `meteor publish`. (You must have permission.)
+
+Commit all version and docs changes, tag, and push:
+
+```sh
+git add .
+git commit -m "publish 1.2.3"
+git push origin master
+git tag 1.2.3 && git push --tags
+```
+
+(substitute actual version number)
 
 ## Contributors
 
 This project exists thanks to all the people who contribute. [[Contribute]](CONTRIBUTING.md).
 <a href="graphs/contributors"><img src="https://opencollective.com/meteor-collection2/contributors.svg?width=890" /></a>
+
+### Major Code Contributors
+
+@mquandalle
+
+(Add yourself if you should be listed here.)
 
 ## Backers
 
