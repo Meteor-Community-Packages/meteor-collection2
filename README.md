@@ -276,6 +276,8 @@ Schema.User = new SimpleSchema({
         optional: true,
         blackbox: true
     },
+    // DISCLAIMER: This only applies to the first and second version of meteor-roles package.
+    // https://github.com/Meteor-Community-Packages/meteor-collection2/issues/399 
     // Add `roles` to your schema if you use the meteor-roles package.
     // Option 1: Object type
     // If you specify that type as Object, you must also specify the
