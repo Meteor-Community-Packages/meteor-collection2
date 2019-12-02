@@ -18,10 +18,10 @@ Npm.depends({
 Package.onUse(function(api) {
   api.use('mongo@1.0.4');
   api.imply('mongo');
-  api.use('minimongo');
+  api.use('minimongo@1.0.0');
   api.use('ejson');
   api.use('raix:eventemitter@0.1.3 || 1.0.0');
-  api.use('ecmascript');
+  api.use('ecmascript@0.6.1');
   api.use('tmeasday:check-npm-versions@0.3.1');
 
   // Allow us to detect 'insecure'.
