@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [3.0.4](#304)
 - [3.0.3](#303)
 - [3.0.2](#302)
 - [3.0.1](#301)
@@ -65,6 +66,11 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 3.0.4
+
+Use meteor/ejson instead of npm version. (thanks @CaptainN)
+
 
 ## 3.0.3
 
