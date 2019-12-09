@@ -7,7 +7,7 @@ export function removeQueryOperators(selector) {
     Object.entries(selector).filter(([key, value]) => {
       return !(
         key.startsWith("$") ||
-        Object.keys(value).some(subKey => subKey.startsWith("$"))
+        (value && Object.keys(value).some(subKey => subKey.startsWith("$")))
       );
     })
   );
