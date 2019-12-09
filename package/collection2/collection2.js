@@ -7,7 +7,7 @@ import { EJSON } from 'meteor/ejson';
 import isEmpty from 'lodash.isempty';
 import isEqual from 'lodash.isequal';
 import isObject from 'lodash.isobject';
-import { removeQueryOperators } from './lib';
+import { flattenSelector } from './lib';
 
 checkNpmVersions({ 'simpl-schema': '>=0.0.0' }, 'aldeed:collection2');
 
@@ -388,16 +388,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   if (Meteor.isServer && isUpsert && isObject(selector)) {
     var set = docToValidate.$set || {};
 
-    // If selector uses $and format, convert to plain object selector
-    if (Array.isArray(selector.$and)) {
-      const plainSelector = {};
-      selector.$and.forEach(sel => {
-        Object.assign(plainSelector, removeQueryOperators(sel));
-      });
-      docToValidate.$set = plainSelector;
-    } else {
-      docToValidate.$set = removeQueryOperators(selector)
-    }
+    docToValidate.$set = flattenSelector(selector)
 
     if (!schemaAllowsId) delete docToValidate.$set._id;
     Object.assign(docToValidate.$set, set);

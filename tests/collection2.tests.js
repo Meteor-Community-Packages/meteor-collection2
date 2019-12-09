@@ -116,6 +116,216 @@ describe('collection2', function () {
       expect(doc.baz).toBe(4);
 
     })
+
+    it('upsert with schema can handle query operator which contains undefined or null', function (done) {
+      const upsertQueryOperatorUndefinedTest = new Mongo.Collection('upsertQueryOperatorUndefinedTest');
+
+      upsertQueryOperatorUndefinedTest.attachSchema(new SimpleSchema({
+        foo: {
+          type: String,
+          optional: true,
+        },
+        bar: Number,
+        baz: Number
+      }));
+
+        // Let's try for undefined.
+        upsertQueryOperatorUndefinedTest.remove({});
+
+      upsertQueryOperatorUndefinedTest.upsert({
+        foo: undefined
+      }, {
+        $set: {
+          bar: 2
+        },
+        $inc: {
+          baz: 4
+        }
+      }, (error, result) => {
+        expect(error).toBe(null);
+
+        expect(result.numberAffected).toBe(1);
+        const doc = upsertQueryOperatorUndefinedTest.findOne();
+        expect(result.insertedId).toBe(doc._id);
+        expect(doc.foo).toBe(undefined);
+        expect(doc.bar).toBe(2);
+        expect(doc.baz).toBe(4);
+
+        // Let's try for null.
+        upsertQueryOperatorUndefinedTest.remove({});
+
+        upsertQueryOperatorUndefinedTest.upsert({
+          foo: null
+        }, {
+          $set: {
+            bar: 2
+          },
+          $inc: {
+            baz: 4
+          }
+        }, (error2, result2) => {
+          expect(error2).toBe(null);
+  
+          expect(result2.numberAffected).toBe(1);
+          const doc = upsertQueryOperatorUndefinedTest.findOne();
+          expect(result2.insertedId).toBe(doc._id);
+          expect(doc.foo).toBe(null);
+          expect(doc.bar).toBe(2);
+          expect(doc.baz).toBe(4);
+  
+          done();
+        })
+      })
+    })
+
+    it('upsert with schema can handle query operator "eq" correctly in the selector when property is left out in $set or $setOnInsert', function (done) {
+      const upsertQueryOperatorEqTest = new Mongo.Collection('upsertQueryOperatorEqTest');
+
+      upsertQueryOperatorEqTest.attachSchema(new SimpleSchema({
+        foo: String,
+        bar: Number,
+        baz: Number
+      }));
+
+      upsertQueryOperatorEqTest.remove({});
+
+      upsertQueryOperatorEqTest.upsert({
+        foo: { $eq: "test" }
+      }, {
+        $set: {
+          bar: 2
+        },
+        $inc: {
+          baz: 4
+        }
+      }, (error, result) => {
+        expect(error).toBe(null);
+
+        expect(result.numberAffected).toBe(1);
+        const doc = upsertQueryOperatorEqTest.findOne();
+        expect(result.insertedId).toBe(doc._id);
+        expect(doc.foo).toBe("test");
+        expect(doc.bar).toBe(2);
+        expect(doc.baz).toBe(4);
+
+        done();
+      })
+    })
+
+    it('upsert with schema can handle query operator "in" with one element correctly in the selector when property is left out in $set or $setOnInsert', function (done) {
+      const upsertQueryOperatorInSingleTest = new Mongo.Collection('upsertQueryOperatorInSingleTest');
+
+      upsertQueryOperatorInSingleTest.attachSchema(new SimpleSchema({
+        foo: String,
+        bar: Number,
+        baz: Number
+      }));
+
+      upsertQueryOperatorInSingleTest.remove({});
+
+      upsertQueryOperatorInSingleTest.upsert({
+        foo: { $in: ["test"] }
+      }, {
+        $set: {
+          bar: 2
+        },
+        $inc: {
+          baz: 4
+        }
+      }, (error, result) => {
+        expect(error).toBe(null);
+
+        expect(result.numberAffected).toBe(1);
+        const doc = upsertQueryOperatorInSingleTest.findOne();
+        expect(result.insertedId).toBe(doc._id);
+        expect(doc.foo).toBe("test");
+        expect(doc.bar).toBe(2);
+        expect(doc.baz).toBe(4);
+
+        done();
+      })
+    })
+
+    it('upsert with schema can handle query operator "in" with multiple elements correctly in the selector when property is left out in $set or $setOnInsert', function (done) {
+      const upsertQueryOperatorInMultiTest = new Mongo.Collection('upsertQueryOperatorInMultiTest');
+
+      upsertQueryOperatorInMultiTest.attachSchema(new SimpleSchema({
+        foo: {
+          type: String,
+          optional: true
+        },
+        bar: Number,
+        baz: Number
+      }));
+
+      upsertQueryOperatorInMultiTest.remove({});
+
+      upsertQueryOperatorInMultiTest.upsert({
+        foo: { $in: ["test", "test2"] }
+      }, {
+        $set: {
+          bar: 2
+        },
+        $inc: {
+          baz: 4
+        }
+      }, (error, result) => {
+        expect(error).toBe(null);
+
+        expect(result.numberAffected).toBe(1);
+        const doc = upsertQueryOperatorInMultiTest.findOne();
+        expect(result.insertedId).toBe(doc._id);
+        expect(doc.foo).toBe(undefined);
+        expect(doc.bar).toBe(2);
+        expect(doc.baz).toBe(4);
+
+        done();
+      })
+    })
+
+    it('upsert with schema can handle query operator "$and" including inner nested selectors correctly when properties is left out in $set or $setOnInsert', function (done) {
+      const upsertQueryOperatorAndTest = new Mongo.Collection('upsertQueryOperatorAndTest');
+
+      upsertQueryOperatorAndTest.attachSchema(new SimpleSchema({
+        foo: String,
+        test1: String,
+        test2: String,
+        bar: Number,
+        baz: Number
+      }));
+
+      upsertQueryOperatorAndTest.remove({});
+
+      upsertQueryOperatorAndTest.upsert({
+        foo: "test",
+        $and: [
+          { test1: "abc" },
+          { $and: [
+            { test2: { $in: ["abc"] } },
+          ]},
+        ]
+      }, {
+        $set: {
+          bar: 2
+        },
+        $inc: {
+          baz: 4
+        }
+      }, (error, result) => {
+        expect(error).toBe(null);
+
+        expect(result.numberAffected).toBe(1);
+        const doc = upsertQueryOperatorAndTest.findOne();
+        expect(result.insertedId).toBe(doc._id);
+        expect(doc.foo).toBe("test");
+        expect(doc.test1).toBe("abc");
+        expect(doc.test2).toBe("abc");
+        expect(doc.bar).toBe(2);
+        expect(doc.baz).toBe(4);
+
+        done();
+      })
+    })
   }
 
   it('no errors when using a schemaless collection', function (done) {

@@ -1,14 +1,29 @@
-export function fromEntries(entries) {
-  return entries.reduce((obj, [key, value]) => ((obj[key] = value), obj), {});
-}
+export function flattenSelector(selector) {
+  // If selector uses $and format, convert to plain object selector
+  if (Array.isArray(selector.$and)) {
+    selector.$and.forEach(sel => {
+      Object.assign(selector, flattenSelector(sel));
+    });
 
-export function removeQueryOperators(selector) {
-  return fromEntries(
-    Object.entries(selector).filter(([key, value]) => {
-      return !(
-        key.startsWith("$") ||
-        (value && Object.keys(value).some(subKey => subKey.startsWith("$")))
-      );
-    })
-  );
+    delete selector.$and
+  }
+
+  const obj = {}
+
+  Object.entries(selector).forEach(([key, value]) => {
+    // Ignoring logical selectors (https://docs.mongodb.com/manual/reference/operator/query/#logical)
+    if (!key.startsWith("$")) {
+      if (typeof value === 'object' && value !== null) {
+        if (value.$eq !== undefined) {
+          obj[key] = value.$eq
+        } else if (Array.isArray(value.$in) && value.$in.length === 1) {
+          obj[key] = value.$in[0]
+        }
+      } else {
+        obj[key] = value
+      }
+    }
+  })
+
+  return obj
 }
