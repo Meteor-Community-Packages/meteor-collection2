@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [3.0.6](#306)
 - [3.0.5](#305)
 - [3.0.4](#304)
 - [3.0.3](#303)
@@ -67,6 +68,11 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 3.0.6
+
+Fix upsert error when supplying a nested object which was caused by previous change. 
+
 
 ## 3.0.5
 
