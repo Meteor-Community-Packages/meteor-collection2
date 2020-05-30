@@ -1,6 +1,6 @@
 # Collection2 (aldeed:collection2 Meteor package)
 
-[![Backers on Open Collective](https://opencollective.com/meteor-collection2/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/meteor-collection2/sponsors/badge.svg)](#sponsors) [![CircleCI](https://circleci.com/gh/aldeed/meteor-collection2/tree/master.svg?style=svg)](https://circleci.com/gh/aldeed/meteor-collection2/tree/master)
+[![Backers on Open Collective](https://opencollective.com/meteor-collection2/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/meteor-collection2/sponsors/badge.svg)](#sponsors) [![CircleCI](https://circleci.com/gh/Meteor-Community-Packages/meteor-collection2/tree/master.svg?style=svg)](https://circleci.com/gh/Meteor-Community-Packages/meteor-collection2/tree/master)
 
 A Meteor package that allows you to attach a schema to a Mongo.Collection. Automatically validates against that schema when inserting and updating from client or server code.
 
@@ -30,6 +30,7 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
   - [Skip conversion of values to match what schema expects](#skip-conversion-of-values-to-match-what-schema-expects)
   - [Skip removing empty strings](#skip-removing-empty-strings)
   - [Skip generating automatic values](#skip-generating-automatic-values)
+- [Pick or omit from the attached schema](#pick-or-omit-from-the-attached-schema)
 - [Inserting or Updating Bypassing Collection2 Entirely](#inserting-or-updating-bypassing-collection2-entirely)
 - [Additional SimpleSchema Options](#additional-simpleschema-options)
   - [index and unique](#index-and-unique)
@@ -420,6 +421,22 @@ To skip adding automatic values, set the `getAutoValues` option to `false` when 
 ### Pick or omit from the attached schema
 
 To pick or omit fields from the schema for the operation, set the 'pick' or 'omit' option respectively to an array of schema field names. These options are mutually exclusive, so you cannot have both present in the options object at the same time.
+
+This is the implementation of [pick and omit functionality from simple-schema](https://github.com/aldeed/simpl-schema#extracting-schemas), but on your DB calls like this:
+
+```js
+// Will insert everything except 'noop'
+collection.insert(
+        { foo: 'foo', noop: 'nooooo', bar: 'whiskey' },
+        { omit: ['noop'] });
+```
+```js
+// Pick only 'foo'
+collection.update(
+        { _id: 'myid' },
+        { $set: { foo: 'test', bar: 'changed' } },
+        { pick: ['foo'] });
+```
 
 ## Inserting or Updating Bypassing Collection2 Entirely
 

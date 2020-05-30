@@ -274,10 +274,10 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
     getAutoValues = false;
   }
-  
+
   // Process pick/omit options if they are present
-  var picks = Array.isArray(options.pick) ? options.pick : null,
-    omits = Array.isArray(options.omit) ? options.omit : null;
+  var picks = Array.isArray(options.pick) ? options.pick : null;
+  var omits = Array.isArray(options.omit) ? options.omit : null;
 
   if (picks && omits) {
     // Pick and omit cannot both be present in the options

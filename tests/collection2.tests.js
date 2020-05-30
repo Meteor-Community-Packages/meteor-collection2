@@ -328,60 +328,63 @@ describe('collection2', function () {
     })
   }
 
-      // https://github.com/Meteor-Community-Packages/meteor-collection2/issues/408
-      it("upsert vanilla nested objects which doesn't logical operators value", function(done) {
-        const upsertQueryOperatorNestedObject = new Mongo.Collection(
-          'upsertQueryOperatorNestedObject'
-        );
-  
-        upsertQueryOperatorNestedObject.attachSchema(
-          new SimpleSchema({
-            foo: {
-              type: new SimpleSchema({
-                bar: {
-                  type: String
-                },
-                baz: {
-                  type: String
-                }
-              })
+  // https://github.com/Meteor-Community-Packages/meteor-collection2/issues/408
+  it("upsert vanilla nested objects which doesn't logical operators value", function(done) {
+    const upsertQueryOperatorNestedObject = new Mongo.Collection(
+      'upsertQueryOperatorNestedObject'
+    );
+
+    upsertQueryOperatorNestedObject.attachSchema(
+      new SimpleSchema({
+        foo: {
+          type: new SimpleSchema({
+            bar: {
+              type: String
             },
-            test: {
-              type: Date
+            baz: {
+              type: String
             }
           })
-        );
-  
-        upsertQueryOperatorNestedObject.remove({});
-  
-        const testDateValue = new Date();
-        upsertQueryOperatorNestedObject.upsert(
-          {
-            foo: {
-              bar: '1',
-              baz: '2'
-            }
-          },
-          {
-            $set: {
-              test: testDateValue
-            }
-          },
-          (error, result) => {
-            expect(error).toBe(null);
-  
-            expect(result.numberAffected).toBe(1);
-            const doc = upsertQueryOperatorNestedObject.findOne();
-            expect(result.insertedId).toBe(doc._id);
-  
-            expect(doc.foo.bar).toBe('1');
-            expect(doc.foo.baz).toBe('2');
-            expect(doc.test).toEqual(testDateValue);
-  
-            done();
-          }
-        );
-      });
+        },
+        test: {
+          type: Date
+        }
+      })
+    );
+
+    const existing = upsertQueryOperatorNestedObject.find().fetch() || []
+    existing.forEach(obj => {
+      upsertQueryOperatorNestedObject.remove({ _id: obj._id });
+    })
+
+    const testDateValue = new Date();
+    upsertQueryOperatorNestedObject.upsert(
+      {
+        foo: {
+          bar: '1',
+          baz: '2'
+        }
+      },
+      {
+        $set: {
+          test: testDateValue
+        }
+      },
+      (error, result) => {
+        expect(error).toBe(null);
+
+        expect(result.numberAffected).toBe(1);
+        const doc = upsertQueryOperatorNestedObject.findOne();
+        expect(result.insertedId).toBe(doc._id);
+
+        expect(doc.foo.bar).toBe('1');
+        expect(doc.foo.baz).toBe('2');
+        expect(doc.test).toEqual(testDateValue);
+
+        done();
+      }
+    );
+  });
 
   it('no errors when using a schemaless collection', function (done) {
     const noSchemaCollection = new Mongo.Collection('noSchema', {
@@ -581,8 +584,9 @@ describe('collection2', function () {
 
           const doc = collection.findOne(newId2);
           expect(doc instanceof Object).toBe(true);
-          expect(doc.foo).toBe('test')
+          expect(doc.foo).toBe('test');
           expect(doc.bar).toBe('test');
+
           done();
         }
       );
