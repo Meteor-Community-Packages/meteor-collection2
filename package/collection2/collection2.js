@@ -197,9 +197,10 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         this,
         methodName,
         args,
-        Meteor.isServer || this._connection === null, // getAutoValues
+        true, // getAutoValues
         userId,
-        Meteor.isServer // isFromTrustedCode
+        Meteor.isServer, // isFromTrustedCode
+        Meteor.isServer || this._connection === null // allowMutate
       );
       if (!args) {
         // doValidate already called the callback or threw the error so we're done.
@@ -219,7 +220,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
  * Private
  */
 
-function doValidate(collection, type, args, getAutoValues, userId, isFromTrustedCode) {
+function doValidate(collection, type, args, getAutoValues, userId, isFromTrustedCode, allowMutate) {
   var doc, callback, error, options, isUpsert, selector, last, hasCallback;
 
   if (!args.length) {
@@ -249,6 +250,12 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
     throw new Error("invalid type argument");
   }
 
+  // In some cases (ex. isSimulation), avoid mutating the original data,
+  // while allowing optimistic insert/update with autoValues.
+  if (!allowMutate) {
+    doc = Object.assign({}, doc);
+  }
+
   var validatedObjectWasInitiallyEmpty = isEmpty(doc);
 
   // Support missing options arg
@@ -270,8 +277,8 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   var schema = collection.simpleSchema(doc, options, selector);
   var isLocalCollection = (collection._connection === null);
 
-  // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
-  if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
+  // we allow passing `getAutoValues: false` to disable autoValue functions
+  if (options.getAutoValues === false) {
     getAutoValues = false;
   }
 
@@ -350,8 +357,8 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
     }
   });
 
-  // Preliminary cleaning on both client and server. On the server and for local
-  // collections, automatic values will also be set at this point.
+  // Preliminary cleaning on both client and server. Aautomatic
+  // values will also be set at this point.
   schema.clean(doc, {
     mutate: true, // Clean the doc/modifier in place
     isModifier: (type !== "insert"),
@@ -382,7 +389,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   // which are also stored in the database if an insert is performed. So we
   // will allow these fields to be considered for validation by adding them
   // to the $set in the modifier, while stripping out query selectors as these
-  // don't make it into the upserted document and break validation. 
+  // don't make it into the upserted document and break validation.
   // This is no doubt prone to errors, but there probably isn't any better way
   // right now.
   if (Meteor.isServer && isUpsert && isObject(selector)) {
