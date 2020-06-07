@@ -76,6 +76,8 @@ Added pick and omit feature
 
 Updated dependencies
 
+Updated tests
+
 ## 3.0.6
 
 Fix upsert error when supplying a nested object which was caused by previous change. 
