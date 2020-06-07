@@ -386,8 +386,8 @@ describe('collection2', function () {
           });
 
           expect(result.insertedId).toBe(doc._id);
-          // expect(doc.foo.bar).toBe("1");
-          // expect(doc.foo.baz).toBe("2");
+          expect(doc.foo.bar).toBe("1");
+          expect(doc.foo.baz).toBe("2");
           expect(doc.test).toEqual(testDateValue);
 
           done();
