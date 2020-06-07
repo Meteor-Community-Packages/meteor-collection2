@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [3.1.0](#310)
 - [3.0.6](#306)
 - [3.0.5](#305)
 - [3.0.4](#304)

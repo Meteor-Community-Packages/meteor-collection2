@@ -30,7 +30,7 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
   - [Skip conversion of values to match what schema expects](#skip-conversion-of-values-to-match-what-schema-expects)
   - [Skip removing empty strings](#skip-removing-empty-strings)
   - [Skip generating automatic values](#skip-generating-automatic-values)
-- [Pick or omit from the attached schema](#pick-or-omit-from-the-attached-schema)
+  - [Pick or omit from the attached schema](#pick-or-omit-from-the-attached-schema)
 - [Inserting or Updating Bypassing Collection2 Entirely](#inserting-or-updating-bypassing-collection2-entirely)
 - [Additional SimpleSchema Options](#additional-simpleschema-options)
   - [index and unique](#index-and-unique)
