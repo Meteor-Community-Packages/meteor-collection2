@@ -1,16 +1,16 @@
-import expect from "expect";
-import { Mongo } from "meteor/mongo";
-import SimpleSchema from "simpl-schema";
-import { _ } from "meteor/underscore";
+import expect from 'expect';
+import { Mongo } from 'meteor/mongo';
+import SimpleSchema from 'simpl-schema';
+import { _ } from 'meteor/underscore';
 
-import addMultiTests from "./multi.tests.js";
-import addBooksTests from "./books.tests.js";
-import addContextTests from "./context.tests.js";
-import addDefaultValuesTests from "./default.tests.js";
+import addMultiTests from './multi.tests.js';
+import addBooksTests from './books.tests.js';
+import addContextTests from './context.tests.js';
+import addDefaultValuesTests from './default.tests.js';
 
-describe("collection2", function () {
-  it("attach and get simpleSchema for normal collection", function () {
-    var mc = new Mongo.Collection("mc");
+describe('collection2', function () {
+  it('attach and get simpleSchema for normal collection', function () {
+    var mc = new Mongo.Collection('mc');
 
     mc.attachSchema(
       new SimpleSchema({
@@ -21,7 +21,7 @@ describe("collection2", function () {
     expect(mc.simpleSchema() instanceof SimpleSchema).toBe(true);
   });
 
-  it("attach and get simpleSchema for local collection", function () {
+  it('attach and get simpleSchema for local collection', function () {
     var mc = new Mongo.Collection(null);
 
     mc.attachSchema(
@@ -33,8 +33,8 @@ describe("collection2", function () {
     expect(mc.simpleSchema() instanceof SimpleSchema).toBe(true);
   });
 
-  it("handles prototype-less objects", function (done) {
-    const prototypelessTest = new Mongo.Collection("prototypelessTest");
+  it('handles prototype-less objects', function (done) {
+    const prototypelessTest = new Mongo.Collection('prototypelessTest');
 
     prototypelessTest.attachSchema(
       new SimpleSchema({
@@ -45,7 +45,7 @@ describe("collection2", function () {
     );
 
     const prototypelessObject = Object.create(null);
-    prototypelessObject.foo = "bar";
+    prototypelessObject.foo = 'bar';
 
     prototypelessTest.insert(prototypelessObject, (error, newId) => {
       expect(!!error).toBe(false);
@@ -55,8 +55,8 @@ describe("collection2", function () {
 
   if (Meteor.isServer) {
     // https://github.com/aldeed/meteor-collection2/issues/243
-    it("upsert runs autoValue only once", function (done) {
-      const upsertAutoValueTest = new Mongo.Collection("upsertAutoValueTest");
+    it('upsert runs autoValue only once', function (done) {
+      const upsertAutoValueTest = new Mongo.Collection('upsertAutoValueTest');
       let times = 0;
 
       upsertAutoValueTest.attachSchema(
@@ -68,7 +68,7 @@ describe("collection2", function () {
             type: String,
             autoValue() {
               times++;
-              return "test";
+              return 'test';
             },
           },
         })
@@ -78,11 +78,11 @@ describe("collection2", function () {
 
       upsertAutoValueTest.upsert(
         {
-          foo: "bar",
+          foo: 'bar',
         },
         {
           $set: {
-            av: "abc",
+            av: 'abc',
           },
         },
         (error, result) => {
@@ -93,9 +93,9 @@ describe("collection2", function () {
     });
 
     // https://forums.meteor.com/t/simpl-schema-update-error-while-using-lte-operator-when-calling-update-by-the-field-of-type-date/50414/3
-    it("upsert can handle query operators in the selector", function () {
+    it('upsert can handle query operators in the selector', function () {
       const upsertQueryOperatorsTest = new Mongo.Collection(
-        "upsertQueryOperatorsTest"
+        'upsertQueryOperatorsTest'
       );
 
       upsertQueryOperatorsTest.attachSchema(
@@ -135,9 +135,9 @@ describe("collection2", function () {
       expect(doc.baz).toBe(4);
     });
 
-    it("upsert with schema can handle query operator which contains undefined or null", function (done) {
+    it('upsert with schema can handle query operator which contains undefined or null', function (done) {
       const upsertQueryOperatorUndefinedTest = new Mongo.Collection(
-        "upsertQueryOperatorUndefinedTest"
+        'upsertQueryOperatorUndefinedTest'
       );
 
       upsertQueryOperatorUndefinedTest.attachSchema(
@@ -210,7 +210,7 @@ describe("collection2", function () {
 
     it('upsert with schema can handle query operator "eq" correctly in the selector when property is left out in $set or $setOnInsert', function (done) {
       const upsertQueryOperatorEqTest = new Mongo.Collection(
-        "upsertQueryOperatorEqTest"
+        'upsertQueryOperatorEqTest'
       );
 
       upsertQueryOperatorEqTest.attachSchema(
@@ -225,7 +225,7 @@ describe("collection2", function () {
 
       upsertQueryOperatorEqTest.upsert(
         {
-          foo: { $eq: "test" },
+          foo: { $eq: 'test' },
         },
         {
           $set: {
@@ -241,7 +241,7 @@ describe("collection2", function () {
           expect(result.numberAffected).toBe(1);
           const doc = upsertQueryOperatorEqTest.findOne();
           expect(result.insertedId).toBe(doc._id);
-          expect(doc.foo).toBe("test");
+          expect(doc.foo).toBe('test');
           expect(doc.bar).toBe(2);
           expect(doc.baz).toBe(4);
 
@@ -252,7 +252,7 @@ describe("collection2", function () {
 
     it('upsert with schema can handle query operator "in" with one element correctly in the selector when property is left out in $set or $setOnInsert', function (done) {
       const upsertQueryOperatorInSingleTest = new Mongo.Collection(
-        "upsertQueryOperatorInSingleTest"
+        'upsertQueryOperatorInSingleTest'
       );
 
       upsertQueryOperatorInSingleTest.attachSchema(
@@ -267,7 +267,7 @@ describe("collection2", function () {
 
       upsertQueryOperatorInSingleTest.upsert(
         {
-          foo: { $in: ["test"] },
+          foo: { $in: ['test'] },
         },
         {
           $set: {
@@ -283,7 +283,7 @@ describe("collection2", function () {
           expect(result.numberAffected).toBe(1);
           const doc = upsertQueryOperatorInSingleTest.findOne();
           expect(result.insertedId).toBe(doc._id);
-          expect(doc.foo).toBe("test");
+          expect(doc.foo).toBe('test');
           expect(doc.bar).toBe(2);
           expect(doc.baz).toBe(4);
 
@@ -294,7 +294,7 @@ describe("collection2", function () {
 
     it('upsert with schema can handle query operator "in" with multiple elements correctly in the selector when property is left out in $set or $setOnInsert', function (done) {
       const upsertQueryOperatorInMultiTest = new Mongo.Collection(
-        "upsertQueryOperatorInMultiTest"
+        'upsertQueryOperatorInMultiTest'
       );
 
       upsertQueryOperatorInMultiTest.attachSchema(
@@ -312,7 +312,7 @@ describe("collection2", function () {
 
       upsertQueryOperatorInMultiTest.upsert(
         {
-          foo: { $in: ["test", "test2"] },
+          foo: { $in: ['test', 'test2'] },
         },
         {
           $set: {
@@ -338,9 +338,9 @@ describe("collection2", function () {
     });
 
     // https://github.com/Meteor-Community-Packages/meteor-collection2/issues/408
-    it("upsert with schema can handle nested objects correctly", function (done) {
+    it('upsert with schema can handle nested objects correctly', function (done) {
       const upsertQueryOperatorNestedObject = new Mongo.Collection(
-        "upsertQueryOperatorNestedObject"
+        'upsertQueryOperatorNestedObject'
       );
 
       upsertQueryOperatorNestedObject.attachSchema(
@@ -366,13 +366,13 @@ describe("collection2", function () {
       const testDateValue = new Date();
       upsertQueryOperatorNestedObject.upsert(
         {
-          test: "1",
+          test: '1',
         },
         {
           $set: {
             foo: {
-              bar: "1",
-              baz: "2",
+              bar: '1',
+              baz: '2',
             },
             test: testDateValue,
           },
@@ -397,7 +397,7 @@ describe("collection2", function () {
 
     it('upsert with schema can handle query operator "$and" including inner nested selectors correctly when properties is left out in $set or $setOnInsert', function (done) {
       const upsertQueryOperatorAndTest = new Mongo.Collection(
-        "upsertQueryOperatorAndTest"
+        'upsertQueryOperatorAndTest'
       );
 
       upsertQueryOperatorAndTest.attachSchema(
@@ -414,8 +414,8 @@ describe("collection2", function () {
 
       upsertQueryOperatorAndTest.upsert(
         {
-          foo: "test",
-          $and: [{ test1: "abc" }, { $and: [{ test2: { $in: ["abc"] } }] }],
+          foo: 'test',
+          $and: [{ test1: 'abc' }, { $and: [{ test2: { $in: ['abc'] } }] }],
         },
         {
           $set: {
@@ -431,9 +431,9 @@ describe("collection2", function () {
           expect(result.numberAffected).toBe(1);
           const doc = upsertQueryOperatorAndTest.findOne();
           expect(result.insertedId).toBe(doc._id);
-          expect(doc.foo).toBe("test");
-          expect(doc.test1).toBe("abc");
-          expect(doc.test2).toBe("abc");
+          expect(doc.foo).toBe('test');
+          expect(doc.test1).toBe('abc');
+          expect(doc.test2).toBe('abc');
           expect(doc.bar).toBe(2);
           expect(doc.baz).toBe(4);
 
@@ -443,10 +443,10 @@ describe("collection2", function () {
     });
   }
 
-  it("no errors when using a schemaless collection", function (done) {
-    const noSchemaCollection = new Mongo.Collection("noSchema", {
+  it('no errors when using a schemaless collection', function (done) {
+    const noSchemaCollection = new Mongo.Collection('noSchema', {
       transform(doc) {
-        doc.userFoo = "userBar";
+        doc.userFoo = 'userBar';
         return doc;
       },
     });
@@ -462,7 +462,7 @@ describe("collection2", function () {
 
         const doc = noSchemaCollection.findOne(newId);
         expect(doc instanceof Object).toBe(true);
-        expect(doc.userFoo).toBe("userBar");
+        expect(doc.userFoo).toBe('userBar');
 
         noSchemaCollection.update(
           {
@@ -483,24 +483,24 @@ describe("collection2", function () {
     );
   });
 
-  it("empty strings are removed but we can override", function (done) {
+  it('empty strings are removed but we can override', function (done) {
     const RESSchema = new SimpleSchema({
       foo: { type: String },
       bar: { type: String, optional: true },
     });
 
-    const RES = new Mongo.Collection("RES");
+    const RES = new Mongo.Collection('RES');
     RES.attachSchema(RESSchema);
 
     // Remove empty strings (default)
     RES.insert(
       {
-        foo: "foo",
-        bar: "",
+        foo: 'foo',
+        bar: '',
       },
       (error, newId1) => {
         expect(!!error).toBe(false);
-        expect(typeof newId1).toBe("string");
+        expect(typeof newId1).toBe('string');
 
         const doc = RES.findOne(newId1);
         expect(doc instanceof Object).toBe(true);
@@ -509,19 +509,19 @@ describe("collection2", function () {
         // Don't remove empty strings
         RES.insert(
           {
-            foo: "foo",
-            bar: "",
+            foo: 'foo',
+            bar: '',
           },
           {
             removeEmptyStrings: false,
           },
           (error, newId2) => {
             expect(!!error).toBe(false);
-            expect(typeof newId2).toBe("string");
+            expect(typeof newId2).toBe('string');
 
             const doc = RES.findOne(newId2);
             expect(doc instanceof Object).toBe(true);
-            expect(doc.bar).toBe("");
+            expect(doc.bar).toBe('');
 
             // Don't remove empty strings for an update either
             RES.update(
@@ -530,7 +530,7 @@ describe("collection2", function () {
               },
               {
                 $set: {
-                  bar: "",
+                  bar: '',
                 },
               },
               {
@@ -542,7 +542,7 @@ describe("collection2", function () {
 
                 const doc = RES.findOne(newId1);
                 expect(doc instanceof Object).toBe(true);
-                expect(doc.bar).toBe("");
+                expect(doc.bar).toBe('');
                 done();
               }
             );
@@ -552,24 +552,24 @@ describe("collection2", function () {
     );
   });
 
-  it("extending a schema after attaching it, collection2 validation respects the extension", (done) => {
+  it('extending a schema after attaching it, collection2 validation respects the extension', (done) => {
     const schema = new SimpleSchema({
       foo: String,
     });
 
-    const collection = new Mongo.Collection("ExtendAfterAttach");
+    const collection = new Mongo.Collection('ExtendAfterAttach');
     collection.attachSchema(schema);
 
     collection.insert(
       {
-        foo: "foo",
-        bar: "bar",
+        foo: 'foo',
+        bar: 'bar',
       },
       {
         filter: false,
       },
       (error) => {
-        expect(error.invalidKeys[0].name).toBe("bar");
+        expect(error.invalidKeys[0].name).toBe('bar');
 
         schema.extend({
           bar: String,
@@ -577,8 +577,8 @@ describe("collection2", function () {
 
         collection.insert(
           {
-            foo: "foo",
-            bar: "bar",
+            foo: 'foo',
+            bar: 'bar',
           },
           {
             filter: false,
@@ -593,24 +593,24 @@ describe("collection2", function () {
     );
   });
 
-  it("extending a schema with a selector after attaching it, collection2 validation respects the extension", (done) => {
+  it('extending a schema with a selector after attaching it, collection2 validation respects the extension', (done) => {
     const schema = new SimpleSchema({
       foo: String,
     });
 
-    const collection = new Mongo.Collection("ExtendAfterAttach2");
-    collection.attachSchema(schema, { selector: { foo: "foo" } });
+    const collection = new Mongo.Collection('ExtendAfterAttach2');
+    collection.attachSchema(schema, { selector: { foo: 'foo' } });
 
     collection.insert(
       {
-        foo: "foo",
-        bar: "bar",
+        foo: 'foo',
+        bar: 'bar',
       },
       {
         filter: false,
       },
       (error) => {
-        expect(error.invalidKeys[0].name).toBe("bar");
+        expect(error.invalidKeys[0].name).toBe('bar');
 
         schema.extend({
           bar: String,
@@ -618,8 +618,8 @@ describe("collection2", function () {
 
         collection.insert(
           {
-            foo: "foo",
-            bar: "bar",
+            foo: 'foo',
+            bar: 'bar',
           },
           {
             filter: false,
@@ -634,13 +634,13 @@ describe("collection2", function () {
     );
   });
 
-  it("pick or omit schema fields when options are provided", function () {
+  it('pick or omit schema fields when options are provided', function () {
     const collectionSchema = new SimpleSchema({
       foo: { type: String },
       bar: { type: String, optional: true },
     });
 
-    const collection = new Mongo.Collection("pickOrOmit");
+    const collection = new Mongo.Collection('pickOrOmit');
     collection.attachSchema(collectionSchema);
 
     // Test error from including both pick and omit
@@ -648,12 +648,12 @@ describe("collection2", function () {
 
     try {
       collection.insert(
-        { foo: "foo", bar: "" },
-        { pick: ["foo"], omit: ["foo"] }
+        { foo: 'foo', bar: '' },
+        { pick: ['foo'], omit: ['foo'] }
       );
     } catch (error) {
       expect(error.message).toBe(
-        "pick and omit options are mutually exclusive"
+        'pick and omit options are mutually exclusive'
       );
       errorThrown = true;
     }
@@ -661,28 +661,28 @@ describe("collection2", function () {
     expect(errorThrown).toBe(true);
 
     // Omit required field 'foo'
-    collection.insert({ bar: "test" }, { omit: ["foo"] }, (error, newId2) => {
+    collection.insert({ bar: 'test' }, { omit: ['foo'] }, (error, newId2) => {
       expect(!!error).toBe(false);
-      expect(typeof newId2).toBe("string");
+      expect(typeof newId2).toBe('string');
 
       const doc = collection.findOne(newId2);
       expect(doc instanceof Object).toBe(true);
       expect(doc.foo).toBe(undefined);
-      expect(doc.bar).toBe("test");
+      expect(doc.bar).toBe('test');
 
       // Pick only 'foo'
       collection.update(
         { _id: newId2 },
-        { $set: { foo: "test", bar: "changed" } },
-        { pick: ["foo"] },
+        { $set: { foo: 'test', bar: 'changed' } },
+        { pick: ['foo'] },
         (error, result) => {
           expect(!!error).toBe(false);
           expect(result).toBe(1);
 
           const doc = collection.findOne(newId2);
           expect(doc instanceof Object).toBe(true);
-          expect(doc.foo).toBe("test");
-          expect(doc.bar).toBe("test");
+          expect(doc.foo).toBe('test');
+          expect(doc.bar).toBe('test');
         }
       );
     });
