@@ -141,7 +141,6 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
 
     var schemas = this._c2._simpleSchemas;
     if (schemas && schemas.length > 0) {
-      if (!doc) throw new Error('collection.simpleSchema() requires doc argument when there are multiple schemas');
 
       var schema, selector, target;
       // Position 0 reserved for base schema
