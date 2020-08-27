@@ -3,10 +3,11 @@ import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 import { checkNpmVersions } from 'meteor/tmeasday:check-npm-versions';
 import clone from 'clone';
-import EJSON from 'ejson';
+import { EJSON } from 'meteor/ejson';
 import isEmpty from 'lodash.isempty';
 import isEqual from 'lodash.isequal';
 import isObject from 'lodash.isobject';
+import { flattenSelector } from './lib';
 
 checkNpmVersions({ 'simpl-schema': '>=0.0.0' }, 'aldeed:collection2');
 
@@ -140,7 +141,6 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
 
     var schemas = this._c2._simpleSchemas;
     if (schemas && schemas.length > 0) {
-      if (!doc) throw new Error('collection.simpleSchema() requires doc argument when there are multiple schemas');
 
       var schema, selector, target;
       // Position 0 reserved for base schema
@@ -280,6 +280,19 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
     getAutoValues = false;
   }
 
+  // Process pick/omit options if they are present
+  var picks = Array.isArray(options.pick) ? options.pick : null;
+  var omits = Array.isArray(options.omit) ? options.omit : null;
+
+  if (picks && omits) {
+    // Pick and omit cannot both be present in the options
+    throw new Error('pick and omit options are mutually exclusive');
+  } else if (picks) {
+    schema = schema.pick(...picks);
+  } else if (omits) {
+    schema = schema.omit(...omits);
+  }
+
   // Determine validation context
   var validationContext = options.validationContext;
   if (validationContext) {
@@ -386,26 +399,18 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   // well by default, but it will not know about the fields in the selector,
   // which are also stored in the database if an insert is performed. So we
   // will allow these fields to be considered for validation by adding them
-  // to the $set in the modifier. This is no doubt prone to errors, but there
-  // probably isn't any better way right now.
+  // to the $set in the modifier, while stripping out query selectors as these
+  // don't make it into the upserted document and break validation. 
+  // This is no doubt prone to errors, but there probably isn't any better way
+  // right now.
   if (Meteor.isServer && isUpsert && isObject(selector)) {
     var set = docToValidate.$set || {};
 
-    // If selector uses $and format, convert to plain object selector
-    if (Array.isArray(selector.$and)) {
-      const plainSelector = {};
-      selector.$and.forEach(sel => {
-        Object.assign(plainSelector, sel);
-      });
-      docToValidate.$set = plainSelector;
-    } else {
-      docToValidate.$set = clone(selector);
-    }
+    docToValidate.$set = flattenSelector(selector)
 
     if (!schemaAllowsId) delete docToValidate.$set._id;
     Object.assign(docToValidate.$set, set);
   }
-
   // Set automatic values for validation on the client.
   // On the server, we already updated doc with auto values, but on the client,
   // we will add them to docToValidate for validation purposes only.

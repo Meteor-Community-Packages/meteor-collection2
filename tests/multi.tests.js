@@ -124,8 +124,8 @@ export default function addMultiTests() {
       expect(combinedSchema.schema('two').type).toEqual(SimpleSchema.oneOf(SimpleSchema.Integer));
 
       // Ensure that we've only attached two deny functions
-      expect(c._validators.insert.deny.length, 2);
-      expect(c._validators.update.deny.length, 2);
+      expect(c._validators.insert.deny.length).toBe(2);
+      expect(c._validators.update.deny.length).toBe(2);
     });
 
     it('inserts doc correctly with selector passed via doc', function (done) {
