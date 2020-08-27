@@ -1,6 +1,6 @@
 # Collection2 (aldeed:collection2 Meteor package)
 
-[![Backers on Open Collective](https://opencollective.com/meteor-collection2/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/meteor-collection2/sponsors/badge.svg)](#sponsors) [![CircleCI](https://circleci.com/gh/aldeed/meteor-collection2/tree/master.svg?style=svg)](https://circleci.com/gh/aldeed/meteor-collection2/tree/master)
+[![Backers on Open Collective](https://opencollective.com/meteor-collection2/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/meteor-collection2/sponsors/badge.svg)](#sponsors) [![CircleCI](https://circleci.com/gh/Meteor-Community-Packages/meteor-collection2/tree/master.svg?style=svg)](https://circleci.com/gh/Meteor-Community-Packages/meteor-collection2/tree/master)
 
 A Meteor package that allows you to attach a schema to a Mongo.Collection. Automatically validates against that schema when inserting and updating from client or server code.
 
@@ -30,6 +30,7 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
   - [Skip conversion of values to match what schema expects](#skip-conversion-of-values-to-match-what-schema-expects)
   - [Skip removing empty strings](#skip-removing-empty-strings)
   - [Skip generating automatic values](#skip-generating-automatic-values)
+  - [Pick or omit from the attached schema](#pick-or-omit-from-the-attached-schema)
 - [Inserting or Updating Bypassing Collection2 Entirely](#inserting-or-updating-bypassing-collection2-entirely)
 - [Additional SimpleSchema Options](#additional-simpleschema-options)
   - [index and unique](#index-and-unique)
@@ -45,8 +46,9 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 - [Contributing](#contributing)
   - [Running Tests](#running-tests)
   - [Running Tests in Watch Mode](#running-tests-in-watch-mode)
-  - [Major Code Contributors](#major-code-contributors)
+- [Publishing a New Release to Atmosphere](#publishing-a-new-release-to-atmosphere)
 - [Contributors](#contributors)
+  - [Major Code Contributors](#major-code-contributors)
 - [Backers](#backers)
 - [Sponsors](#sponsors)
 
@@ -293,6 +295,8 @@ Schema.User = new SimpleSchema({
         optional: true,
         blackbox: true
     },
+    // DISCLAIMER: This only applies to the first and second version of meteor-roles package.
+    // https://github.com/Meteor-Community-Packages/meteor-collection2/issues/399 
     // Add `roles` to your schema if you use the meteor-roles package.
     // Option 1: Object type
     // If you specify that type as Object, you must also specify the
@@ -431,6 +435,26 @@ To skip removing empty strings, set the `removeEmptyStrings` option to `false` w
 ### Skip generating automatic values
 
 To skip adding automatic values, set the `getAutoValues` option to `false` when you call `insert` or `update`. This works only in server code.
+
+### Pick or omit from the attached schema
+
+To pick or omit fields from the schema for the operation, set the 'pick' or 'omit' option respectively to an array of schema field names. These options are mutually exclusive, so you cannot have both present in the options object at the same time.
+
+This is the implementation of [pick and omit functionality from simple-schema](https://github.com/aldeed/simpl-schema#extracting-schemas), but on your DB calls like this:
+
+```js
+// Will insert everything except 'noop'
+collection.insert(
+        { foo: 'foo', noop: 'nooooo', bar: 'whiskey' },
+        { omit: ['noop'] });
+```
+```js
+// Pick only 'foo'
+collection.update(
+        { _id: 'myid' },
+        { $set: { foo: 'test', bar: 'changed' } },
+        { pick: ['foo'] });
+```
 
 ## Inserting or Updating Bypassing Collection2 Entirely
 
@@ -671,16 +695,43 @@ cd tests
 meteor npm i && npm run test:watch
 ```
 
-### Major Code Contributors
+## Publishing a New Release to Atmosphere
 
-@mquandalle
+Check out `master` branch.
 
-(Add yourself if you should be listed here.)
+In `/package/collection2/package.js`, increment the version according to semantic versioning rules.
+
+In `CHANGELOG.md`, add a heading for this version and a description of changes committed since the previous version.
+
+Verify that docs in `README.md` are updated for these changes.
+
+In root of project, run `doctoc .`. This updates both TOCs in the markdown files.
+
+Run tests (see "Running Tests" section above).
+
+`cd` to `package/collection2` directory and run `meteor publish`. (You must have permission.)
+
+Commit all version and docs changes, tag, and push:
+
+```sh
+git add .
+git commit -m "publish 1.2.3"
+git push origin master
+git tag 1.2.3 && git push --tags
+```
+
+(substitute actual version number)
 
 ## Contributors
 
 This project exists thanks to all the people who contribute. [[Contribute]](CONTRIBUTING.md).
 <a href="graphs/contributors"><img src="https://opencollective.com/meteor-collection2/contributors.svg?width=890" /></a>
+
+### Major Code Contributors
+
+@mquandalle
+
+(Add yourself if you should be listed here.)
 
 ## Backers
 

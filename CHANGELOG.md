@@ -4,6 +4,11 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [3.1.0](#310)
+- [3.0.6](#306)
+- [3.0.5](#305)
+- [3.0.4](#304)
+- [3.0.3](#303)
 - [3.0.2](#302)
 - [3.0.1](#301)
 - [3.0.0](#300)
@@ -64,6 +69,32 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 3.1.0
+
+Added pick and omit feature
+
+Updated dependencies
+
+Updated tests
+
+## 3.0.6
+
+Fix upsert error when supplying a nested object which was caused by previous change. 
+
+
+## 3.0.5
+
+Fix upsert errors when supplying a value of undefined or null. (thanks @SimonSimCity)
+
+## 3.0.4
+
+Use meteor/ejson instead of npm version. (thanks @CaptainN)
+
+
+## 3.0.3
+
+Fix bug where upserts with query operators fail (thanks @coagmano)
 
 ## 3.0.2
 
