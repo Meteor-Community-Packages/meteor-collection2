@@ -1,6 +1,11 @@
 # Collection2 (aldeed:collection2 Meteor package)
-
-[![Backers on Open Collective](https://opencollective.com/meteor-collection2/backers/badge.svg)](#backers) [![Sponsors on Open Collective](https://opencollective.com/meteor-collection2/sponsors/badge.svg)](#sponsors) [![CircleCI](https://circleci.com/gh/Meteor-Community-Packages/meteor-collection2/tree/master.svg?style=svg)](https://circleci.com/gh/Meteor-Community-Packages/meteor-collection2/tree/master)
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+![GitHub](https://img.shields.io/github/license/Meteor-Community-Packages/meteor-collection2)
+[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
+[![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/Meteor-Community-Packages/meteor-collection2.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Meteor-Community-Packages/meteor-collection2/context:javascript)
+![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/Meteor-Community-Packages/meteor-collection2?label=latest&sort=semver)
+[![](https://img.shields.io/badge/semver-2.0.0-success)](http://semver.org/spec/v2.0.0.html) 
+[![CircleCI](https://circleci.com/gh/Meteor-Community-Packages/meteor-collection2/tree/master.svg?style=svg)](https://circleci.com/gh/Meteor-Community-Packages/meteor-collection2/tree/master)
 
 A Meteor package that allows you to attach a schema to a Mongo.Collection. Automatically validates against that schema when inserting and updating from client or server code.
 
@@ -10,7 +15,8 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
 
 - [Installation](#installation)
 - [Why Use Collection2](#why-use-collection2)
@@ -49,8 +55,7 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 - [Publishing a New Release to Atmosphere](#publishing-a-new-release-to-atmosphere)
 - [Contributors](#contributors)
   - [Major Code Contributors](#major-code-contributors)
-- [Backers](#backers)
-- [Sponsors](#sponsors)
+
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -59,7 +64,7 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 In your Meteor app directory, enter:
 
 ```bash
-meteor add aldeed:collection2@3.0.0
+meteor add aldeed:collection2
 meteor npm install --save simpl-schema
 ```
 
@@ -72,47 +77,47 @@ meteor npm install --save simpl-schema
 
 ## Attaching a Schema to a Collection
 
-Let's say we have a normal "books" collection, defined in code that runs on both client and server (*common.js*):
+Let's say we have a normal "books" collection, defined in code that runs on both client and server (_common.js_):
 
 ```js
-const Books = new Mongo.Collection("books");
+const Books = new Mongo.Collection('books');
 ```
 
-Let's create a `SimpleSchema` schema for this collection. We'll do this in *common.js*, too:
+Let's create a `SimpleSchema` schema for this collection. We'll do this in _common.js_, too:
 
 ```js
 const Schemas = {};
 
 Schemas.Book = new SimpleSchema({
-    title: {
-        type: String,
-        label: "Title",
-        max: 200
-    },
-    author: {
-        type: String,
-        label: "Author"
-    },
-    copies: {
-        type: SimpleSchema.Integer,
-        label: "Number of copies",
-        min: 0
-    },
-    lastCheckedOut: {
-        type: Date,
-        label: "Last date this book was checked out",
-        optional: true
-    },
-    summary: {
-        type: String,
-        label: "Brief summary",
-        optional: true,
-        max: 1000
-    }
+  title: {
+    type: String,
+    label: 'Title',
+    max: 200,
+  },
+  author: {
+    type: String,
+    label: 'Author',
+  },
+  copies: {
+    type: SimpleSchema.Integer,
+    label: 'Number of copies',
+    min: 0,
+  },
+  lastCheckedOut: {
+    type: Date,
+    label: 'Last date this book was checked out',
+    optional: true,
+  },
+  summary: {
+    type: String,
+    label: 'Brief summary',
+    optional: true,
+    max: 1000,
+  },
 });
 ```
 
-Once we have the `SimpleSchema` instance, all we need to do is attach it to our collection using the `attachSchema` method. Again, we will do this in *common.js*:
+Once we have the `SimpleSchema` instance, all we need to do is attach it to our collection using the `attachSchema` method. Again, we will do this in _common.js_:
 
 ```js
 Books.attachSchema(Schemas.Book);
@@ -121,7 +126,7 @@ Books.attachSchema(Schemas.Book);
 Now that our collection has a schema, we can do a validated insert on either the client or the server:
 
 ```js
-Books.insert({title: "Ulysses", author: "James Joyce"}, (error, result) => {
+Books.insert({ title: 'Ulysses', author: 'James Joyce' }, (error, result) => {
   //The insert will fail, error will be set,
   //and result will be undefined or false because "copies" is required.
   //
@@ -132,7 +137,7 @@ Books.insert({title: "Ulysses", author: "James Joyce"}, (error, result) => {
 Or we can do a validated update:
 
 ```js
-Books.update(book._id, {$unset: {copies: 1}}, (error, result) => {
+Books.update(book._id, { $unset: { copies: 1 } }, (error, result) => {
   //The update will fail, error will be set,
   //and result will be undefined or false because "copies" is required.
   //
@@ -144,17 +149,19 @@ Books.update(book._id, {$unset: {copies: 1}}, (error, result) => {
 
 Normally, if call `attachSchema` multiple times, the schemas are merged. If you use the `replace: true` option, then it will replace the previously attached schema. However, in some cases you might actually want both schemas attached, with different documents validated against different schemas.
 
-
 Here is an example:
 
 ```js
 Products.attachSchema(BaseProductSchema);
-Products.attachSchema(ExtendedProductSchema, {selector: {type: 'extended'}});
+Products.attachSchema(ExtendedProductSchema, {
+  selector: { type: 'extended' },
+});
 ```
 
 This adds support for having a base (default) schema while also using multiple selector schemas.
 
 There are four behaviors for attaching schemas:
+
 - **Attach schema without selector.** This will extend the base schema and any attached selector schemas.
 - **Attach schema with selector.** If the given selector schema exists, extends the found schema with any new fields. Or add an additional schema that matches the selector only. The new selector schema will first be extended by the base schema, if the base schema is already specified.
 - **Replace schema without selector.** This replaces the base schema and removes any attached selector schemas. If you want to continue to use the original selector schemas on the collection they must be reattached.
@@ -165,8 +172,8 @@ It is possible to use schemas on collections with or without the base schema spe
 Here is another example:
 
 ```js
-Products.attachSchema(SimpleProductSchema, {selector: {type: 'simple'}});
-Products.attachSchema(VariantProductSchema, {selector: {type: 'variant'}});
+Products.attachSchema(SimpleProductSchema, { selector: { type: 'simple' } });
+Products.attachSchema(VariantProductSchema, { selector: { type: 'variant' } });
 ```
 
 Now both schemas are attached. When you insert a document where `type: 'simple'` in the document, it will validate against only the `SimpleProductSchema`. When you insert a document where `type: 'variant'` in the document, it will validate against only the `VariantProductSchema`.
@@ -174,7 +181,10 @@ Now both schemas are attached. When you insert a document where `type: 'simple'`
 Alternatively, you can pass a `selector` option when inserting to choose which schema to use:
 
 ```js
-Products.insert({ title: 'This is a product' }, { selector: { type: 'simple' } });
+Products.insert(
+  { title: 'This is a product' },
+  { selector: { type: 'simple' } }
+);
 ```
 
 For an update or upsert, the matching selector can be in the query, the modifier `$set` object, or the `selector` option.
@@ -186,7 +196,7 @@ For an update or upsert, the matching selector can be in the query, the modifier
 If your validation requires that your doc be transformed using the collection's transform function prior to being validated, then you must pass the `transform: true` option to `attachSchema` when you attach the schema:
 
 ```js
-Books.attachSchema(Schemas.Book, {transform: true});
+Books.attachSchema(Schemas.Book, { transform: true });
 ```
 
 #### replace
@@ -202,129 +212,129 @@ here is an example schema, which you might have to adjust for your own needs:
 const Schema = {};
 
 Schema.UserCountry = new SimpleSchema({
-    name: {
-        type: String
-    },
-    code: {
-        type: String,
-        regEx: /^[A-Z]{2}$/
-    }
+  name: {
+    type: String,
+  },
+  code: {
+    type: String,
+    regEx: /^[A-Z]{2}$/,
+  },
 });
 
 Schema.UserProfile = new SimpleSchema({
-    firstName: {
-        type: String,
-        optional: true
-    },
-    lastName: {
-        type: String,
-        optional: true
-    },
-    birthday: {
-        type: Date,
-        optional: true
-    },
-    gender: {
-        type: String,
-        allowedValues: ['Male', 'Female'],
-        optional: true
-    },
-    organization : {
-        type: String,
-        optional: true
-    },
-    website: {
-        type: String,
-        regEx: SimpleSchema.RegEx.Url,
-        optional: true
-    },
-    bio: {
-        type: String,
-        optional: true
-    },
-    country: {
-        type: Schema.UserCountry,
-        optional: true
-    }
+  firstName: {
+    type: String,
+    optional: true,
+  },
+  lastName: {
+    type: String,
+    optional: true,
+  },
+  birthday: {
+    type: Date,
+    optional: true,
+  },
+  gender: {
+    type: String,
+    allowedValues: ['Male', 'Female'],
+    optional: true,
+  },
+  organization: {
+    type: String,
+    optional: true,
+  },
+  website: {
+    type: String,
+    regEx: SimpleSchema.RegEx.Url,
+    optional: true,
+  },
+  bio: {
+    type: String,
+    optional: true,
+  },
+  country: {
+    type: Schema.UserCountry,
+    optional: true,
+  },
 });
 
 Schema.User = new SimpleSchema({
-    username: {
-        type: String,
-        // For accounts-password, either emails or username is required, but not both. It is OK to make this
-        // optional here because the accounts-password package does its own validation.
-        // Third-party login packages may not require either. Adjust this schema as necessary for your usage.
-        optional: true
-    },
-    emails: {
-        type: Array,
-        // For accounts-password, either emails or username is required, but not both. It is OK to make this
-        // optional here because the accounts-password package does its own validation.
-        // Third-party login packages may not require either. Adjust this schema as necessary for your usage.
-        optional: true
-    },
-    "emails.$": {
-        type: Object
-    },
-    "emails.$.address": {
-        type: String,
-        regEx: SimpleSchema.RegEx.Email
-    },
-    "emails.$.verified": {
-        type: Boolean
-    },
-    // Use this registered_emails field if you are using splendido:meteor-accounts-emails-field / splendido:meteor-accounts-meld
-    registered_emails: {
-        type: Array,
-        optional: true
-    },
-    'registered_emails.$': {
-        type: Object,
-        blackbox: true
-    },
-    createdAt: {
-        type: Date
-    },
-    profile: {
-        type: Schema.UserProfile,
-        optional: true
-    },
-    // Make sure this services field is in your schema if you're using any of the accounts packages
-    services: {
-        type: Object,
-        optional: true,
-        blackbox: true
-    },
-    // DISCLAIMER: This only applies to the first and second version of meteor-roles package.
-    // https://github.com/Meteor-Community-Packages/meteor-collection2/issues/399 
-    // Add `roles` to your schema if you use the meteor-roles package.
-    // Option 1: Object type
-    // If you specify that type as Object, you must also specify the
-    // `Roles.GLOBAL_GROUP` group whenever you add a user to a role.
-    // Example:
-    // Roles.addUsersToRoles(userId, ["admin"], Roles.GLOBAL_GROUP);
-    // You can't mix and match adding with and without a group since
-    // you will fail validation in some cases.
-    roles: {
-        type: Object,
-        optional: true,
-        blackbox: true
-    },
-    // Option 2: [String] type
-    // If you are sure you will never need to use role groups, then
-    // you can specify [String] as the type
-    roles: {
-        type: Array,
-        optional: true
-    },
-    'roles.$': {
-        type: String
-    },
-    // In order to avoid an 'Exception in setInterval callback' from Meteor
-    heartbeat: {
-        type: Date,
-        optional: true
-    }
+  username: {
+    type: String,
+    // For accounts-password, either emails or username is required, but not both. It is OK to make this
+    // optional here because the accounts-password package does its own validation.
+    // Third-party login packages may not require either. Adjust this schema as necessary for your usage.
+    optional: true,
+  },
+  emails: {
+    type: Array,
+    // For accounts-password, either emails or username is required, but not both. It is OK to make this
+    // optional here because the accounts-password package does its own validation.
+    // Third-party login packages may not require either. Adjust this schema as necessary for your usage.
+    optional: true,
+  },
+  'emails.$': {
+    type: Object,
+  },
+  'emails.$.address': {
+    type: String,
+    regEx: SimpleSchema.RegEx.Email,
+  },
+  'emails.$.verified': {
+    type: Boolean,
+  },
+  // Use this registered_emails field if you are using splendido:meteor-accounts-emails-field / splendido:meteor-accounts-meld
+  registered_emails: {
+    type: Array,
+    optional: true,
+  },
+  'registered_emails.$': {
+    type: Object,
+    blackbox: true,
+  },
+  createdAt: {
+    type: Date,
+  },
+  profile: {
+    type: Schema.UserProfile,
+    optional: true,
+  },
+  // Make sure this services field is in your schema if you're using any of the accounts packages
+  services: {
+    type: Object,
+    optional: true,
+    blackbox: true,
+  },
+  // DISCLAIMER: This only applies to the first and second version of meteor-roles package.
+  // https://github.com/Meteor-Community-Packages/meteor-collection2/issues/399
+  // Add `roles` to your schema if you use the meteor-roles package.
+  // Option 1: Object type
+  // If you specify that type as Object, you must also specify the
+  // `Roles.GLOBAL_GROUP` group whenever you add a user to a role.
+  // Example:
+  // Roles.addUsersToRoles(userId, ["admin"], Roles.GLOBAL_GROUP);
+  // You can't mix and match adding with and without a group since
+  // you will fail validation in some cases.
+  roles: {
+    type: Object,
+    optional: true,
+    blackbox: true,
+  },
+  // Option 2: [String] type
+  // If you are sure you will never need to use role groups, then
+  // you can specify [String] as the type
+  roles: {
+    type: Array,
+    optional: true,
+  },
+  'roles.$': {
+    type: String,
+  },
+  // In order to avoid an 'Exception in setInterval callback' from Meteor
+  heartbeat: {
+    type: Date,
+    optional: true,
+  },
 });
 
 Meteor.users.attachSchema(Schema.User);
@@ -360,7 +370,7 @@ MyCollection.simpleSchema().validate(doc);
 In Meteor, the `update` function accepts an options argument. Collection2 changes the `insert` function signature to also accept options in the same way, as an optional second argument. Whenever this documentation says to "use X option", it's referring to this options argument. For example:
 
 ```js
-myCollection.insert(doc, {validate: false});
+myCollection.insert(doc, { validate: false });
 ```
 
 ## Validation Contexts
@@ -378,13 +388,22 @@ To use a specific named validation context, use the `validationContext` option
 when calling `insert` or `update`:
 
 ```js
-Books.insert({title: "Ulysses", author: "James Joyce"}, { validationContext: "insertForm" }, (error, result) => {
-  //The list of errors is available by calling Books.simpleSchema().namedContext("insertForm").validationErrors()
-});
+Books.insert(
+  { title: 'Ulysses', author: 'James Joyce' },
+  { validationContext: 'insertForm' },
+  (error, result) => {
+    //The list of errors is available by calling Books.simpleSchema().namedContext("insertForm").validationErrors()
+  }
+);
 
-Books.update(book._id, {$unset: {copies: 1}}, { validationContext: "updateForm" }, (error, result) => {
-  //The list of errors is available by calling Books.simpleSchema().namedContext("updateForm").validationErrors()
-});
+Books.update(
+  book._id,
+  { $unset: { copies: 1 } },
+  { validationContext: 'updateForm' },
+  (error, result) => {
+    //The list of errors is available by calling Books.simpleSchema().namedContext("updateForm").validationErrors()
+  }
+);
 ```
 
 ## Validating Without Inserting or Updating
@@ -392,7 +411,9 @@ Books.update(book._id, {$unset: {copies: 1}}, { validationContext: "updateForm" 
 It's also possible to validate a document without performing the actual insert or update:
 
 ```js
-Books.simpleSchema().namedContext().validate({title: "Ulysses", author: "James Joyce"}, {modifier: false});
+Books.simpleSchema()
+  .namedContext()
+  .validate({ title: 'Ulysses', author: 'James Joyce' }, { modifier: false });
 ```
 
 Set the modifier option to true if the document is a mongo modifier object.
@@ -400,14 +421,26 @@ Set the modifier option to true if the document is a mongo modifier object.
 You can also validate just one key in the document:
 
 ```js
-Books.simpleSchema().namedContext().validate({title: "Ulysses", author: "James Joyce"}, {modifier: false, keys: ['title']});
+Books.simpleSchema()
+  .namedContext()
+  .validate(
+    { title: 'Ulysses', author: 'James Joyce' },
+    { modifier: false, keys: ['title'] }
+  );
 ```
 
 Or you can specify a certain validation context when calling either method:
 
 ```js
-Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", author: "James Joyce"}, {modifier: false});
-Books.simpleSchema().namedContext("insertForm").validate({title: "Ulysses", author: "James Joyce"}, {modifier: false, keys: ['title']});
+Books.simpleSchema()
+  .namedContext('insertForm')
+  .validate({ title: 'Ulysses', author: 'James Joyce' }, { modifier: false });
+Books.simpleSchema()
+  .namedContext('insertForm')
+  .validate(
+    { title: 'Ulysses', author: 'James Joyce' },
+    { modifier: false, keys: ['title'] }
+  );
 ```
 
 Refer to the [simpl-schema](https://github.com/aldeed/simple-schema-js) package documentation for more information about these methods.
@@ -445,15 +478,18 @@ This is the implementation of [pick and omit functionality from simple-schema](h
 ```js
 // Will insert everything except 'noop'
 collection.insert(
-        { foo: 'foo', noop: 'nooooo', bar: 'whiskey' },
-        { omit: ['noop'] });
+  { foo: 'foo', noop: 'nooooo', bar: 'whiskey' },
+  { omit: ['noop'] }
+);
 ```
+
 ```js
 // Pick only 'foo'
 collection.update(
-        { _id: 'myid' },
-        { $set: { foo: 'test', bar: 'changed' } },
-        { pick: ['foo'] });
+  { _id: 'myid' },
+  { $set: { foo: 'test', bar: 'changed' } },
+  { pick: ['foo'] }
+);
 ```
 
 ## Inserting or Updating Bypassing Collection2 Entirely
@@ -480,12 +516,12 @@ The `autoValue` option is provided by the SimpleSchema package and is documented
 there. Collection2 adds the following properties to `this` for any `autoValue`
 function that is called as part of a C2 database operation:
 
-* isInsert: True if it's an insert operation
-* isUpdate: True if it's an update operation
-* isUpsert: True if it's an upsert operation (either `upsert()` or `upsert: true`)
-* userId: The ID of the currently logged in user. (Always `null` for server-initiated actions.)
-* isFromTrustedCode: True if the insert, update, or upsert was initiated from trusted (server) code
-* docId: The `_id` property of the document being inserted or updated. For an insert, this will be set only when it is provided in the insert doc, or when the operation is initiated on the client. For an update or upsert, this will be set only when the selector is or includes the `_id`, or when the operation is initiated on the client.
+- isInsert: True if it's an insert operation
+- isUpdate: True if it's an update operation
+- isUpsert: True if it's an upsert operation (either `upsert()` or `upsert: true`)
+- userId: The ID of the currently logged in user. (Always `null` for server-initiated actions.)
+- isFromTrustedCode: True if the insert, update, or upsert was initiated from trusted (server) code
+- docId: The `_id` property of the document being inserted or updated. For an insert, this will be set only when it is provided in the insert doc, or when the operation is initiated on the client. For an update or upsert, this will be set only when the selector is or includes the `_id`, or when the operation is initiated on the client.
 
 Note that autoValue functions are run on the client only for validation purposes,
 but the actual value saved will always be generated on the server, regardless of
@@ -594,12 +630,12 @@ The `custom` option is provided by the SimpleSchema package and is documented
 there. Collection2 adds the following properties to `this` for any `custom`
 function that is called as part of a C2 database operation:
 
-* isInsert: True if it's an insert operation
-* isUpdate: True if it's an update operation
-* isUpsert: True if it's an upsert operation (either `upsert()` or `upsert: true`)
-* userId: The ID of the currently logged in user. (Always `null` for server-initiated actions.)
-* isFromTrustedCode: True if the insert, update, or upsert was initiated from trusted (server) code
-* docId: The `_id` property of the document being inserted or updated. For an insert, this will be set only when it is provided in the insert doc, or when the operation is initiated on the client. For an update or upsert, this will be set only when the selector is or includes the `_id`, or when the operation is initiated on the client.
+- isInsert: True if it's an insert operation
+- isUpdate: True if it's an update operation
+- isUpsert: True if it's an upsert operation (either `upsert()` or `upsert: true`)
+- userId: The ID of the currently logged in user. (Always `null` for server-initiated actions.)
+- isFromTrustedCode: True if the insert, update, or upsert was initiated from trusted (server) code
+- docId: The `_id` property of the document being inserted or updated. For an insert, this will be set only when it is provided in the insert doc, or when the operation is initiated on the client. For an update or upsert, this will be set only when the selector is or includes the `_id`, or when the operation is initiated on the client.
 
 ## What Happens When The Document Is Invalid?
 
@@ -634,7 +670,7 @@ You might find yourself in a situation where it seems as though validation is no
 
 ### SubObjects and Arrays of Objects
 
-One critical thing to know about Collection2 and SimpleSchema is that they don't validate the *saved document* but rather the *proposed insert doc* or the *update modifier*. In the case of updates, this means there is some information unknown to SimpleSchema, such as whether the array object you're attempting to modify already exists or not. If it doesn't exist, MongoDB would create it, so SimpleSchema will validate conservatively. It will assume that any properties not set by the modifier will not exist after the update. This means that the modifier will be deemed invalid if any required keys in the same object are not explicitly set in the update modifier.
+One critical thing to know about Collection2 and SimpleSchema is that they don't validate the _saved document_ but rather the _proposed insert doc_ or the _update modifier_. In the case of updates, this means there is some information unknown to SimpleSchema, such as whether the array object you're attempting to modify already exists or not. If it doesn't exist, MongoDB would create it, so SimpleSchema will validate conservatively. It will assume that any properties not set by the modifier will not exist after the update. This means that the modifier will be deemed invalid if any required keys in the same object are not explicitly set in the update modifier.
 
 For example, say we add the following keys to our "books" schema:
 
@@ -661,16 +697,16 @@ Every object in the `borrowedBy` array must have a `name` and `email` property.
 Now we discover that the name is incorrect in item 1, although the email address is correct. So we will just set the name to the correct value:
 
 ```js
-Books.update(id, {$set: {"borrowedBy.1.name": "Frank"}});
+Books.update(id, { $set: { 'borrowedBy.1.name': 'Frank' } });
 ```
 
 However, this will not pass validation. Why? Because we don't know whether item 1 in the `borrowedBy` array already exists, so we don't know whether it will have the required `email` property after the update finishes.
 
 There are three ways to make this work:
 
-* `$set` the entire object
-* `$set` all required keys in the object
-* Perform the update on the server, and pass the `validate: false` option to skip validation.
+- `$set` the entire object
+- `$set` all required keys in the object
+- Perform the update on the server, and pass the `validate: false` option to skip validation.
 
 When this situation occurs on the client with an `autoForm`, it generally does not cause any problems because AutoForm is smart enough to `$set` the entire object; it's aware of this potential issue. However, this means that you need to ensure that all required properties are represented by an `input` on the form. In our example, if you want an `autoForm` that only shows a field for changing the borrowedBy `name` and not the `email`, you should include both fields but make the `email` field hidden. Alternatively, you can submit the `autoForm` to a server method and then do a server update without validation.
 
@@ -729,27 +765,12 @@ This project exists thanks to all the people who contribute. [[Contribute]](CONT
 
 ### Major Code Contributors
 
+@aldeed
 @mquandalle
+@newsiberian
+@harryadel
+@StorytellerCZ
+@SimonSimCity
 
 (Add yourself if you should be listed here.)
 
-## Backers
-
-Thank you to all our backers! 🙏 [[Become a backer](https://opencollective.com/meteor-collection2#backer)]
-
-<a href="https://opencollective.com/meteor-collection2#backers" target="_blank"><img src="https://opencollective.com/meteor-collection2/backers.svg?width=890"></a>
-
-## Sponsors
-
-Support this project by becoming a sponsor. Your logo will show up here with a link to your website. [[Become a sponsor](https://opencollective.com/meteor-collection2#sponsor)]
-
-<a href="https://opencollective.com/meteor-collection2/sponsor/0/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/0/avatar.svg"></a>
-<a href="https://opencollective.com/meteor-collection2/sponsor/1/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/1/avatar.svg"></a>
-<a href="https://opencollective.com/meteor-collection2/sponsor/2/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/2/avatar.svg"></a>
-<a href="https://opencollective.com/meteor-collection2/sponsor/3/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/3/avatar.svg"></a>
-<a href="https://opencollective.com/meteor-collection2/sponsor/4/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/4/avatar.svg"></a>
-<a href="https://opencollective.com/meteor-collection2/sponsor/5/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/5/avatar.svg"></a>
-<a href="https://opencollective.com/meteor-collection2/sponsor/6/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/6/avatar.svg"></a>
-<a href="https://opencollective.com/meteor-collection2/sponsor/7/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/7/avatar.svg"></a>
-<a href="https://opencollective.com/meteor-collection2/sponsor/8/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/8/avatar.svg"></a>
-<a href="https://opencollective.com/meteor-collection2/sponsor/9/website" target="_blank"><img src="https://opencollective.com/meteor-collection2/sponsor/9/avatar.svg"></a>
