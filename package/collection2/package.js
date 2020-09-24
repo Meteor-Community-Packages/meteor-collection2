@@ -3,7 +3,7 @@
 Package.describe({
   name: "aldeed:collection2",
   summary: "Automatic validation of Meteor Mongo insert and update operations on the client and server",
-  version: "3.2.0",
+  version: "3.2.1",
   documentation: "../../README.md",
   git: "https://github.com/aldeed/meteor-collection2.git"
 });

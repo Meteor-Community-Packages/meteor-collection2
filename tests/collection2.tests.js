@@ -574,7 +574,6 @@ describe('collection2', function () {
           bar: String,
         });
 
-        collection.attachSchema(schema); // reattach schema after extending it
         collection.insert(
           {
             foo: 'foo',

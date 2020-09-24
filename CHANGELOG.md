@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [3.2.1](#321)
 - [3.2.0](#320)
 - [3.1.0](#310)
 - [3.0.6](#306)
@@ -70,6 +71,10 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 3.2.1
+
+Add fix for extending schemas caused by previous release [421](https://github.com/Meteor-Community-Packages/meteor-collection2/issues/421)
 
 
 ## 3.2.0

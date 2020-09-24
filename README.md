@@ -16,7 +16,6 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
 
 - [Installation](#installation)
 - [Why Use Collection2](#why-use-collection2)
@@ -55,7 +54,6 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 - [Publishing a New Release to Atmosphere](#publishing-a-new-release-to-atmosphere)
 - [Contributors](#contributors)
   - [Major Code Contributors](#major-code-contributors)
-
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 

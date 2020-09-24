@@ -98,7 +98,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       } else {
         // Set base schema if not yet set
         if (!obj._c2._simpleSchemas[0]) {
-          obj._c2._simpleSchemas[0] = { schema: ss, selector: undefined };
+          return obj._c2._simpleSchemas[0] = { schema: ss, selector: undefined };
         }
         // Extend base schema and therefore extend all schemas
         obj._c2._simpleSchemas.forEach((schema, index) => {
@@ -151,7 +151,6 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         // We will set this to undefined because in theory you might want to select
         // on a null value.
         target = undefined;
-
         // here we are looking for selector in different places
         // $set should have more priority here
         if (doc.$set && typeof doc.$set[selector] !== 'undefined') {
@@ -405,7 +404,6 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   // right now.
   if (Meteor.isServer && isUpsert && isObject(selector)) {
     var set = docToValidate.$set || {};
-
     docToValidate.$set = flattenSelector(selector)
 
     if (!schemaAllowsId) delete docToValidate.$set._id;
