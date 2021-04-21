@@ -3,7 +3,7 @@
 Package.describe({
   name: "aldeed:collection2",
   summary: "Automatic validation of Meteor Mongo insert and update operations on the client and server",
-  version: "3.2.2",
+  version: "3.3.0",
   documentation: "../../README.md",
   git: "https://github.com/aldeed/meteor-collection2.git"
 });
@@ -20,9 +20,9 @@ Package.onUse(function(api) {
   api.imply('mongo');
   api.use('minimongo@1.6.0');
   api.use('ejson@1.1.1');
-  api.use('raix:eventemitter@0.1.3 || 1.0.0');
+  api.use('raix:eventemitter@1.0.0');
   api.use('ecmascript@0.14.3');
-  api.use('tmeasday:check-npm-versions@0.3.2 || 1.0.1');
+  api.use('tmeasday:check-npm-versions@1.0.1');
 
   // Allow us to detect 'insecure'.
   api.use('insecure@1.0.7', {weak: true});
