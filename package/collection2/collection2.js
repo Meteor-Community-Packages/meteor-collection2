@@ -269,7 +269,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
 
   // we need to pass `doc` and `options` to `simpleSchema` method, that's why
   // schema declaration moved here
-  const schema = collection.simpleSchema(doc, options, selector);
+  let schema = collection.simpleSchema(doc, options, selector);
   const isLocalCollection = (collection._connection === null);
 
   // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
@@ -402,7 +402,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   // right now.
   if (Meteor.isServer && isUpsert && isObject(selector)) {
     const set = docToValidate.$set || {};
-    docToValidate.$set = flattenSelector(selector)
+    docToValidate.$set = flattenSelector(selector);
 
     if (!schemaAllowsId) delete docToValidate.$set._id;
     Object.assign(docToValidate.$set, set);
@@ -529,7 +529,7 @@ function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
   return function wrappedCallbackForParsingMongoValidationErrors(...args) {
     const error = args[0];
     if (error &&
-        ((error.name === "MongoError" && error.code === 11001) || error.message.indexOf('MongoError: E11000' !== -1)) &&
+        ((error.name === "MongoError" && error.code === 11001) || error.message.indexOf('MongoError: E11000') !== -1) &&
         error.message.indexOf('c2_') !== -1) {
       addUniqueError(validationContext, error.message);
       args[0] = getErrorObject(validationContext);
