@@ -19,9 +19,9 @@ Package.onUse(function(api) {
   api.imply('mongo');
   api.use('minimongo@1.6.2');
   api.use('ejson@1.1.1');
-  api.use('raix:eventemitter@0.1.3 || 1.0.0');
-  api.use('ecmascript@0.15.1');
-  api.use('tmeasday:check-npm-versions@0.3.2 || 1.0.1');
+  api.use('raix:eventemitter@1.0.0');
+  api.use('ecmascript@0.14.3');
+  api.use('tmeasday:check-npm-versions@1.0.1');
 
   // Allow us to detect 'insecure'.
   api.use('insecure@1.0.7', {weak: true});
