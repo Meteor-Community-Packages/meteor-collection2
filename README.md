@@ -710,51 +710,17 @@ When this situation occurs on the client with an `autoForm`, it generally does n
 
 Although these examples focused on an array of objects, sub-objects are treated basically the same way.
 
-## Contributing
-
-Anyone is welcome to contribute. Fork, make and test your changes (`meteor test-packages ./`),
-and then submit a pull request.
-
-### Running Tests
-
-```bash
-cd tests
-meteor npm i && npm test
+## Disable displaying collection name in error message
+Since version `3.4` an option has been added that disables displaying of collection names in error messages. This is set to `false` until version `4.0`. You can change this by setting the value in your Meteor settings like this:
+```json
+{
+  "packages": {
+    "collection2": {
+      "disableCollectionNamesInValidation": true
+    }
+  }
+}
 ```
-
-### Running Tests in Watch Mode
-
-```bash
-cd tests
-meteor npm i && npm run test:watch
-```
-
-## Publishing a New Release to Atmosphere
-
-Check out `master` branch.
-
-In `/package/collection2/package.js`, increment the version according to semantic versioning rules.
-
-In `CHANGELOG.md`, add a heading for this version and a description of changes committed since the previous version.
-
-Verify that docs in `README.md` are updated for these changes.
-
-In root of project, run `doctoc .`. This updates both TOCs in the markdown files.
-
-Run tests (see "Running Tests" section above).
-
-`cd` to `package/collection2` directory and run `meteor publish`. (You must have permission.)
-
-Commit all version and docs changes, tag, and push:
-
-```sh
-git add .
-git commit -m "publish 1.2.3"
-git push origin master
-git tag 1.2.3 && git push --tags
-```
-
-(substitute actual version number)
 
 ## Contributors
 

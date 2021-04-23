@@ -474,7 +474,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
 
     return args;
   } else {
-    error = getErrorObject(validationContext, Meteor.isProduction ? '' : `in ${collection._name} ${type}`);
+    error = getErrorObject(validationContext, Meteor.settings?.packages?.collection2?.disableCollectionNamesInValidation ? '' : `in ${collection._name} ${type}`);
     if (callback) {
       // insert/update/upsert pass `false` when there's an error, so we do that
       callback(error, false);
