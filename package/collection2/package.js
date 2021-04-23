@@ -15,12 +15,13 @@ Npm.depends({
 });
 
 Package.onUse(function(api) {
-  api.use('mongo@1.10.0');
+  api.versionsFrom('1.12.1');
+  api.use('mongo');
   api.imply('mongo');
-  api.use('minimongo@1.6.2');
-  api.use('ejson@1.1.1');
+  api.use('minimongo');
+  api.use('ejson');
   api.use('raix:eventemitter@1.0.0');
-  api.use('ecmascript@0.14.3');
+  api.use('ecmascript');
   api.use('tmeasday:check-npm-versions@1.0.1');
 
   // Allow us to detect 'insecure'.
