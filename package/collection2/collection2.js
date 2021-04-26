@@ -2,7 +2,6 @@ import { EventEmitter } from 'meteor/raix:eventemitter';
 import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 import { checkNpmVersions } from 'meteor/tmeasday:check-npm-versions';
-import clone from 'clone';
 import { EJSON } from 'meteor/ejson';
 import isEmpty from 'lodash.isempty';
 import isEqual from 'lodash.isequal';
@@ -57,17 +56,17 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       // Selector Schemas
 
       // Extend selector schema with base schema
-      var baseSchema = obj._c2._simpleSchemas[0];
+      const baseSchema = obj._c2._simpleSchemas[0];
       if (baseSchema) {
         ss = extendSchema(baseSchema.schema, ss);
       }
 
       // Index of existing schema with identical selector
-      var schemaIndex;
+      let schemaIndex;
 
       // Loop through existing schemas with selectors,
       for (schemaIndex = obj._c2._simpleSchemas.length - 1; 0 < schemaIndex; schemaIndex--) {
-        var schema = obj._c2._simpleSchemas[schemaIndex];
+        const schema = obj._c2._simpleSchemas[schemaIndex];
         if (schema && isEqual(schema.selector, options.selector)) break;
       }
 
@@ -139,13 +138,12 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     if (!this._c2) return null;
     if (this._c2._simpleSchema) return this._c2._simpleSchema;
 
-    var schemas = this._c2._simpleSchemas;
+    const schemas = this._c2._simpleSchemas;
     if (schemas && schemas.length > 0) {
 
-      var schema, selector, target;
+      let selector, target;
       // Position 0 reserved for base schema
-      for (var i = 1; i < schemas.length; i++) {
-        schema = schemas[i];
+      schemas.forEach((schema) => {
         selector = Object.keys(schema.selector)[0];
 
         // We will set this to undefined because in theory you might want to select
@@ -168,7 +166,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         if (target !== undefined && target === schema.selector[selector]) {
           return schema.schema;
         }
-      }
+      });
       if (schemas[0]) {
         return schemas[0].schema;
       } else {
@@ -192,7 +190,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     }
 
     if (this._c2 && options.bypassCollection2 !== true) {
-      var userId = null;
+      let userId = null;
       try { // https://github.com/aldeed/meteor-collection2/issues/175
         userId = Meteor.userId();
       } catch (err) {}
@@ -224,7 +222,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
  */
 
 function doValidate(collection, type, args, getAutoValues, userId, isFromTrustedCode) {
-  var doc, callback, error, options, isUpsert, selector, last, hasCallback;
+  let doc, callback, error, options, isUpsert, selector, last, hasCallback;
 
   if (!args.length) {
     throw new Error(type + " requires an argument");
@@ -253,7 +251,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
     throw new Error("invalid type argument");
   }
 
-  var validatedObjectWasInitiallyEmpty = isEmpty(doc);
+  const validatedObjectWasInitiallyEmpty = isEmpty(doc);
 
   // Support missing options arg
   if (!callback && typeof options === "function") {
@@ -271,8 +269,8 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
 
   // we need to pass `doc` and `options` to `simpleSchema` method, that's why
   // schema declaration moved here
-  var schema = collection.simpleSchema(doc, options, selector);
-  var isLocalCollection = (collection._connection === null);
+  let schema = collection.simpleSchema(doc, options, selector);
+  const isLocalCollection = (collection._connection === null);
 
   // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
   if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
@@ -280,8 +278,8 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   }
 
   // Process pick/omit options if they are present
-  var picks = Array.isArray(options.pick) ? options.pick : null;
-  var omits = Array.isArray(options.omit) ? options.omit : null;
+  const picks = Array.isArray(options.pick) ? options.pick : null;
+  const omits = Array.isArray(options.omit) ? options.omit : null;
 
   if (picks && omits) {
     // Pick and omit cannot both be present in the options
@@ -293,7 +291,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   }
 
   // Determine validation context
-  var validationContext = options.validationContext;
+  let validationContext = options.validationContext;
   if (validationContext) {
     if (typeof validationContext === 'string') {
       validationContext = schema.namedContext(validationContext);
@@ -323,13 +321,13 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
     callback = args[last] = wrapCallbackForParsingServerErrors(validationContext, callback);
   }
 
-  var schemaAllowsId = schema.allowsKey("_id");
+  const schemaAllowsId = schema.allowsKey("_id");
   if (type === "insert" && !doc._id && schemaAllowsId) {
     doc._id = collection._makeNewID();
   }
 
   // Get the docId for passing in the autoValue/custom context
-  var docId;
+  let docId;
   if (type === 'insert') {
     docId = doc._id; // might be undefined
   } else if (type === "update" && selector) {
@@ -338,7 +336,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
 
   // If _id has already been added, remove it temporarily if it's
   // not explicitly defined in the schema.
-  var cachedId;
+  let cachedId;
   if (doc._id && !schemaAllowsId) {
     cachedId = doc._id;
     delete doc._id;
@@ -385,7 +383,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   // We clone before validating because in some cases we need to adjust the
   // object a bit before validating it. If we adjusted `doc` itself, our
   // changes would persist into the database.
-  var docToValidate = {};
+  let docToValidate = {};
   for (var prop in doc) {
     // We omit prototype properties when cloning because they will not be valid
     // and mongo omits them when saving to the database anyway.
@@ -399,12 +397,12 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   // which are also stored in the database if an insert is performed. So we
   // will allow these fields to be considered for validation by adding them
   // to the $set in the modifier, while stripping out query selectors as these
-  // don't make it into the upserted document and break validation. 
+  // don't make it into the upserted document and break validation.
   // This is no doubt prone to errors, but there probably isn't any better way
   // right now.
   if (Meteor.isServer && isUpsert && isObject(selector)) {
-    var set = docToValidate.$set || {};
-    docToValidate.$set = flattenSelector(selector)
+    const set = docToValidate.$set || {};
+    docToValidate.$set = flattenSelector(selector);
 
     if (!schemaAllowsId) delete docToValidate.$set._id;
     Object.assign(docToValidate.$set, set);
@@ -435,7 +433,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   }
 
   // Validate doc
-  var isValid;
+  let isValid;
   if (options.validate === false) {
     isValid = true;
   } else {
@@ -476,7 +474,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
 
     return args;
   } else {
-    error = getErrorObject(validationContext, `in ${collection._name} ${type}`);
+    error = getErrorObject(validationContext, Meteor.settings?.packages?.collection2?.disableCollectionNamesInValidation ? '' : `in ${collection._name} ${type}`);
     if (callback) {
       // insert/update/upsert pass `false` when there's an error, so we do that
       callback(error, false);
@@ -516,10 +514,10 @@ function getErrorObject(context, appendToMessage = '') {
 }
 
 function addUniqueError(context, errorMessage) {
-  var name = errorMessage.split('c2_')[1].split(' ')[0];
-  var val = errorMessage.split('dup key:')[1].split('"')[1];
+  const name = errorMessage.split('c2_')[1].split(' ')[0];
+  const val = errorMessage.split('dup key:')[1].split('"')[1];
 
-  var addValidationErrorsPropName = (typeof context.addValidationErrors === 'function') ? 'addValidationErrors' : 'addInvalidKeys';
+  const addValidationErrorsPropName = (typeof context.addValidationErrors === 'function') ? 'addValidationErrors' : 'addInvalidKeys';
   context[addValidationErrorsPropName]([{
     name: name,
     type: 'notUnique',
@@ -531,7 +529,7 @@ function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
   return function wrappedCallbackForParsingMongoValidationErrors(...args) {
     const error = args[0];
     if (error &&
-        ((error.name === "MongoError" && error.code === 11001) || error.message.indexOf('MongoError: E11000' !== -1)) &&
+        ((error.name === "MongoError" && error.code === 11001) || error.message.indexOf('MongoError: E11000') !== -1) &&
         error.message.indexOf('c2_') !== -1) {
       addUniqueError(validationContext, error.message);
       args[0] = getErrorObject(validationContext);
@@ -541,7 +539,7 @@ function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
 }
 
 function wrapCallbackForParsingServerErrors(validationContext, cb) {
-  var addValidationErrorsPropName = (typeof validationContext.addValidationErrors === 'function') ? 'addValidationErrors' : 'addInvalidKeys';
+  const addValidationErrorsPropName = (typeof validationContext.addValidationErrors === 'function') ? 'addValidationErrors' : 'addInvalidKeys';
   return function wrappedCallbackForParsingServerErrors(...args) {
     const error = args[0];
     // Handle our own validation errors
@@ -549,7 +547,7 @@ function wrapCallbackForParsingServerErrors(validationContext, cb) {
         error.error === 400 &&
         error.reason === "INVALID" &&
         typeof error.details === "string") {
-      var invalidKeysFromServer = EJSON.parse(error.details);
+      const invalidKeysFromServer = EJSON.parse(error.details);
       validationContext[addValidationErrorsPropName](invalidKeysFromServer);
       args[0] = getErrorObject(validationContext);
     }
@@ -566,7 +564,7 @@ function wrapCallbackForParsingServerErrors(validationContext, cb) {
   };
 }
 
-var alreadyInsecure = {};
+let alreadyInsecure = {};
 function keepInsecure(c) {
   // If insecure package is in use, we need to add allow rules that return
   // true. Otherwise, it would seemingly turn off insecure mode.
@@ -593,11 +591,11 @@ function keepInsecure(c) {
   // additional deny functions, but does not have to.
 }
 
-var alreadyDefined = {};
+let alreadyDefined = {};
 function defineDeny(c, options) {
   if (!alreadyDefined[c._name]) {
 
-    var isLocalCollection = (c._connection === null);
+    const isLocalCollection = (c._connection === null);
 
     // First define deny functions to extend doc with the results of clean
     // and auto-values. This must be done with "transform: null" or we would be
