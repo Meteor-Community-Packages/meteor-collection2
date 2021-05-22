@@ -22,7 +22,7 @@ Package.onUse(function(api) {
   api.use('ejson');
   api.use('raix:eventemitter@1.0.0');
   api.use('ecmascript');
-  api.use('tmeasday:check-npm-versions@1.0.1');
+  api.use('tmeasday:check-npm-versions@1.0.2');
 
   // Allow us to detect 'insecure'.
   api.use('insecure@1.0.7', {weak: true});
