@@ -5,7 +5,8 @@
 [![Language grade: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/Meteor-Community-Packages/meteor-collection2.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Meteor-Community-Packages/meteor-collection2/context:javascript)
 ![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/Meteor-Community-Packages/meteor-collection2?label=latest&sort=semver)
 [![](https://img.shields.io/badge/semver-2.0.0-success)](http://semver.org/spec/v2.0.0.html) 
-[![CircleCI](https://circleci.com/gh/Meteor-Community-Packages/meteor-collection2/tree/master.svg?style=svg)](https://circleci.com/gh/Meteor-Community-Packages/meteor-collection2/tree/master)
+![Test suite](https://github.com/Meteor-Community-Packages/meteor-collection2/workflows/Test%20suite/badge.svg)
+
 
 A Meteor package that allows you to attach a schema to a Mongo.Collection. Automatically validates against that schema when inserting and updating from client or server code.
 
