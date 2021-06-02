@@ -2,6 +2,8 @@ import { Meteor } from 'meteor/meteor';
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from 'simpl-schema';
+import Collection2 from 'meteor/aldeed:collection2'
+Collection2.load()
 
 const collection = new Mongo.Collection('autoValueTestCollection');
 const localCollection = new Mongo.Collection('autoValueTestLocalCollection', { connection: null });
