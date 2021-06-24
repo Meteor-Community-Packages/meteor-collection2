@@ -72,6 +72,26 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+## 3.4.1
+
+Make compatible with Meteor 2.3
+
+## 3.4.0
+
+Code modernization in few places
+
+You can now set `packages.collection2.disableCollectionNamesInValidation` in your Meteor settings to disable showing Collection name in errors from server, this is set to `false` by default to preserve the original behavior. (fixes [#422](https://github.com/Meteor-Community-Packages/meteor-collection2/issues/422))
+
+Moved from CircleCI testing to GitHub actions
+
+## 3.3.0
+
+Force `raix:eventemitter@1.0.0` and `tmeasday:check-npm-versions@1.0.1`
+
+## 3.2.2
+
+Allow `tmeasday:check-npm-versions` to use version `1.0.1` as well
+
 ## 3.2.1
 
 Add fix for extending schemas caused by previous release [421](https://github.com/Meteor-Community-Packages/meteor-collection2/issues/421)
