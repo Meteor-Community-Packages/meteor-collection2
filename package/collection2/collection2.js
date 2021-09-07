@@ -15,7 +15,7 @@ const SimpleSchema = require('simpl-schema').default;
 // Exported only for listening to events
 const Collection2 = new EventEmitter();
 
-const defaultCleanOptions = {
+Collection2.cleanOptions = {
   filter: true,
   autoConvert: true,
   removeEmptyStrings: true,
@@ -372,7 +372,7 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
     mutate: true, // Clean the doc/modifier in place
     isModifier: (type !== "insert"),
     // Start with some Collection2 defaults, which will usually be overwritten
-    ...defaultCleanOptions,
+    ...Collection2.cleanOptions,
     // The extend with the schema-level defaults (from SimpleSchema constructor options)
     ...(schema._cleanOptions || {}),
     // Finally, options for this specific operation should take precedence
