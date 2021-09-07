@@ -17,7 +17,6 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Installation](#installation)
 - [Why Use Collection2](#why-use-collection2)
 - [Attaching a Schema to a Collection](#attaching-a-schema-to-a-collection)
@@ -50,7 +49,7 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
   - [Automatic Migrations](#automatic-migrations)
 - [Problems](#problems)
   - [SubObjects and Arrays of Objects](#subobjects-and-arrays-of-objects)
-  - [Disable Displaying Collection Name in Error Message](#Disable-Displaying-Collection-Name-in-Error-Message)
+- [Disable displaying collection name in error message](#disable-displaying-collection-name-in-error-message)
 - [Contributors](#contributors)
   - [Major Code Contributors](#major-code-contributors)
 
