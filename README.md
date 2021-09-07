@@ -27,6 +27,7 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
     - [replace](#replace)
   - [Attach a Schema to Meteor.users](#attach-a-schema-to-meteorusers)
 - [Schema Format](#schema-format)
+- [Schema Clean Options](#schema-clean-options)
 - [Passing Options](#passing-options)
 - [Validation Contexts](#validation-contexts)
 - [Validating Without Inserting or Updating](#validating-without-inserting-or-updating)
@@ -50,10 +51,6 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 - [Problems](#problems)
   - [SubObjects and Arrays of Objects](#subobjects-and-arrays-of-objects)
   - [Disable Displaying Collection Name in Error Message](#Disable-Displaying-Collection-Name-in-Error-Message)
-- [Contributing](#contributing)
-  - [Running Tests](#running-tests)
-  - [Running Tests in Watch Mode](#running-tests-in-watch-mode)
-- [Publishing a New Release to Atmosphere](#publishing-a-new-release-to-atmosphere)
 - [Contributors](#contributors)
   - [Major Code Contributors](#major-code-contributors)
 
@@ -365,6 +362,23 @@ instance for a Mongo.Collection instance. For example:
 MyCollection.simpleSchema().validate(doc);
 ```
 
+## Schema Clean Options
+
+You can set clean options globally in collection2. 
+
+```js
+import Collection2 from 'meteor/aldeed:Collecion2'
+
+Collection2.cleanOptions = {
+        filter: false,
+        autoConvert: false,
+        removeEmptyStrings: false,
+        trimStrings: false,
+        removeNullsFromArrays: false,
+      }
+```
+
+
 ## Passing Options
 
 In Meteor, the `update` function accepts an options argument. Collection2 changes the `insert` function signature to also accept options in the same way, as an optional second argument. Whenever this documentation says to "use X option", it's referring to this options argument. For example:
@@ -499,7 +513,7 @@ Even if you skip all validation and cleaning, Collection2 will still do some obj
 ## Additional SimpleSchema Options
 
 In addition to all the other schema validation options documented in the
-[simpl-schema](https://github.com/aldeed/simple-schema-js) package, the
+[simpl-schema](https://github.com/longshotlabs/simpl-schema) package, the
 collection2 package adds additional options explained in this section.
 
 ### index and unique
@@ -723,53 +737,6 @@ Since version `3.4` an option has been added that disables displaying of collect
   }
 }
 ```
-
-## Contributing
-
-Anyone is welcome to contribute. Fork, make and test your changes (`meteor test-packages ./`),
-and then submit a pull request.
-
-### Running Tests
-
-```bash
-cd tests
-meteor npm i && npm test
-```
-
-### Running Tests in Watch Mode
-
-```bash
-cd tests
-meteor npm i && npm run test:watch
-```
-
-## Publishing a New Release to Atmosphere
-
-Check out `master` branch.
-
-In `/package/collection2/package.js`, increment the version according to semantic versioning rules.
-
-In `CHANGELOG.md`, add a heading for this version and a description of changes committed since the previous version.
-
-Verify that docs in `README.md` are updated for these changes.
-
-In root of project, run `doctoc .`. This updates both TOCs in the markdown files.
-
-Run tests (see "Running Tests" section above).
-
-`cd` to `package/collection2` directory and run `meteor publish`. (You must have permission.)
-
-Commit all version and docs changes, tag, and push:
-
-```sh
-git add .
-git commit -m "publish 1.2.3"
-git push origin master
-git tag 1.2.3 && git push --tags
-```
-
-(substitute actual version number)
-
 
 ## Contributors
 
