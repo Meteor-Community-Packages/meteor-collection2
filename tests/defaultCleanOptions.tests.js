@@ -1,8 +1,8 @@
 import expect from 'expect';
 import Collection2 from 'meteor/aldeed:collection2';
 
-describe('defaultCleanOptions', function () {
-  it('comes preloaded with defaultCleanOptions', function() {
+describe('cleanOptions', function () {
+  it('comes preloaded with default values', function() {
       expect(Collection2.cleanOptions).toEqual({
         filter: true,
         autoConvert: true,
