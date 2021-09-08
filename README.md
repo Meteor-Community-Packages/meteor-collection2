@@ -366,7 +366,7 @@ MyCollection.simpleSchema().validate(doc);
 You can set the simpl-schema clean options globally in collection2. They are merged with any options defined on the schema level.
 
 ```js
-import Collection2 from 'meteor/aldeed:Collecion2'
+import Collection2 from 'meteor/aldeed:collection2'
 
 // The values shown are the default options used internally. Overwrite them if needed.
 Collection2.cleanOptions = {
@@ -375,7 +375,7 @@ Collection2.cleanOptions = {
     removeEmptyStrings: true,
     trimStrings: true,
     removeNullsFromArrays: true,
-      }
+}
 
 // Or you can update individual options.
 Collection2.cleanOptions.filter = false;
