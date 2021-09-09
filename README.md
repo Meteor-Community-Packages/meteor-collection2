@@ -26,7 +26,6 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
     - [replace](#replace)
   - [Attach a Schema to Meteor.users](#attach-a-schema-to-meteorusers)
 - [Schema Format](#schema-format)
-- [Schema Clean Options](#schema-clean-options)
 - [Passing Options](#passing-options)
 - [Validation Contexts](#validation-contexts)
 - [Validating Without Inserting or Updating](#validating-without-inserting-or-updating)
@@ -359,26 +358,6 @@ instance for a Mongo.Collection instance. For example:
 
 ```js
 MyCollection.simpleSchema().validate(doc);
-```
-
-## Schema Clean Options
-
-You can set the simpl-schema clean options globally in collection2. They are merged with any options defined on the schema level.
-
-```js
-import Collection2 from 'meteor/aldeed:collection2'
-
-// The values shown are the default options used internally. Overwrite them if needed.
-Collection2.cleanOptions = {
-    filter: true,
-    autoConvert: true,
-    removeEmptyStrings: true,
-    trimStrings: true,
-    removeNullsFromArrays: true,
-}
-
-// Or you can update individual options.
-Collection2.cleanOptions.filter = false;
 ```
 
 ## Passing Options
