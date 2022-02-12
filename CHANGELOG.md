@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [3.5.1](#351)
 - [3.5.0](#350)
 - [3.4.1](#341)
 - [3.4.0](#340)
@@ -76,6 +77,10 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 3.5.1
+
+Add compatibility with Meteor 2.6
 
 ## 3.5.0
 

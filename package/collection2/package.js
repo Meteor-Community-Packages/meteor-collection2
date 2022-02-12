@@ -3,7 +3,7 @@
 Package.describe({
   name: "aldeed:collection2",
   summary: "Automatic validation of Meteor Mongo insert and update operations on the client and server",
-  version: "3.5.0",
+  version: "3.5.1",
   documentation: "../../README.md",
   git: "https://github.com/aldeed/meteor-collection2.git"
 });
@@ -15,7 +15,7 @@ Npm.depends({
 });
 
 Package.onUse(function(api) {
-  api.versionsFrom(['1.12.1', '2.3']);
+  api.versionsFrom(['1.12.1', '2.3', '2.6']);
   api.use('mongo');
   api.imply('mongo');
   api.use('minimongo');
