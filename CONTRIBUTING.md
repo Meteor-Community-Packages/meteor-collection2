@@ -1,3 +1,20 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [How to contribute to this repository](#how-to-contribute-to-this-repository)
+  - [Getting started](#getting-started)
+    - [Clone the repository to your account](#clone-the-repository-to-your-account)
+    - [Setup](#setup)
+  - [Submitting your work](#submitting-your-work)
+    - [Make changes](#make-changes)
+    - [Running Tests](#running-tests)
+    - [Running Tests in Watch Mode](#running-tests-in-watch-mode)
+    - [Submit your work](#submit-your-work)
+  - [Publishing a New Release to Atmosphere](#publishing-a-new-release-to-atmosphere)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # How to contribute to this repository
 [Read more about submitting a contribution.](https://opensource.guide/how-to-contribute/#how-to-submit-a-contribution)
 

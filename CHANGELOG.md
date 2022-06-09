@@ -4,6 +4,11 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [3.5.0](#350)
+- [3.4.1](#341)
+- [3.4.0](#340)
+- [3.3.0](#330)
+- [3.2.2](#322)
 - [3.2.1](#321)
 - [3.2.0](#320)
 - [3.1.0](#310)
@@ -71,6 +76,10 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 3.5.0
+
+Add the ability to override in-built schema clean options.
 
 ## 3.4.1
 
