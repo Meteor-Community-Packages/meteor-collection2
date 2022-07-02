@@ -18,6 +18,8 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Installation](#installation)
+  - [Import using static imports](#import-using-static-imports)
+  - [Import using dynamic imports](#import-using-dynamic-imports)
 - [Why Use Collection2](#why-use-collection2)
 - [Attaching a Schema to a Collection](#attaching-a-schema-to-a-collection)
   - [Attaching Multiple Schemas to the Same Collection](#attaching-multiple-schemas-to-the-same-collection)
@@ -59,8 +61,27 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 In your Meteor app directory, enter:
 
 ```bash
-meteor add aldeed:collection2
 meteor npm install --save simpl-schema
+meteor add aldeed:collection2
+```
+
+### Import using static imports
+
+If you come from a previous version and want to "keep things as they were" then
+this is the option you should choose.
+
+```javascript
+import 'meteor/aldeed:collection2/load';
+```
+
+### Import using dynamic imports
+
+If you'd like to use [dynamic-import](https://docs.meteor.com/packages/dynamic-import.html), use the following example: 
+
+```javascript
+import Collection2 from 'meteor/aldeed:collection2';
+
+Collection2.load();
 ```
 
 ## Why Use Collection2
