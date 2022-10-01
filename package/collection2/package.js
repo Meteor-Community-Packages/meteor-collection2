@@ -15,7 +15,7 @@ Npm.depends({
 });
 
 Package.onUse(function(api) {
-  api.versionsFrom(['1.12.1', '2.3']);
+  api.versionsFrom(['2.8']);
   api.use('mongo');
   api.imply('mongo');
   api.use('minimongo');
