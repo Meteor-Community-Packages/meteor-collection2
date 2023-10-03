@@ -3,12 +3,7 @@
 
 name: Test suite
 
-on:
-  push:
-    branches:
-      - master
-      - develop
-  pull_request:
+on: [push, pull_request]
 
 jobs:
   tests:
@@ -17,12 +12,12 @@ jobs:
     # needs: [lintcode,lintstyle,lintdocs] # we could add prior jobs for linting, if desired
     steps:
       - name: checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup meteor
         uses: meteorengineer/setup-meteor@v1
         with:
-          meteor-release: '2.2'
+          meteor-release: '2.13.3'
 
       - name: cache dependencies
         uses: actions/cache@v1
@@ -32,3 +27,4 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
       - run: cd tests && meteor npm install && meteor npm run test
+

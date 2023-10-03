@@ -3,18 +3,18 @@
   "private": true,
   "scripts": {
     "test": "METEOR_PACKAGE_DIRS=../package TEST_BROWSER_DRIVER=puppeteer meteor test --once --driver-package meteortesting:mocha --raw-logs",
-    "test:watch": "METEOR_PACKAGE_DIRS=../package TEST_BROWSER_DRIVER=puppeteer TEST_WATCH=1 meteor test --driver-package meteortesting:mocha --raw-logs",
+    "test:watch": "METEOR_PACKAGE_DIRS=../package TEST_BROWSER_DRIVER=puppeteer TEST_WATCH=1 meteor test --driver-package meteortesting:mocha",
     "test:watch:browser": "METEOR_PACKAGE_DIRS=../package TEST_WATCH=1 meteor test --driver-package meteortesting:mocha --raw-logs"
   },
   "dependencies": {
-    "@babel/runtime": "^7.11.2",
+    "@babel/runtime": "^7.23.1",
     "babel-polyfill": "6.26.0",
     "jquery": "^3.5.1",
     "meteor-node-stubs": "1.0.1",
-    "simpl-schema": "1.10.2"
+    "simpl-schema": "1.12.3"
   },
   "devDependencies": {
     "expect": "^26.4.2",
-    "puppeteer": "^5.2.1"
+    "puppeteer": "^19.11.1"
   }
 }
