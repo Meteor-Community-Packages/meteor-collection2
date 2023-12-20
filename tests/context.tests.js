@@ -1,8 +1,8 @@
-import expect from 'expect'
-import { Mongo } from 'meteor/mongo'
-import SimpleSchema from 'simpl-schema'
-import { Meteor } from 'meteor/meteor'
-import { callMongoMethod } from './helper'
+import expect from "expect";
+import { Mongo } from "meteor/mongo";
+import SimpleSchema from "simpl-schema";
+import { Meteor } from "meteor/meteor";
+import { callMongoMethod } from "./helper";
 
 /* global it */
 
@@ -16,83 +16,89 @@ const contextCheckSchema = new SimpleSchema({
     optional: true,
     defaultValue: {}
   },
-  'context.userId': {
+  "context.userId": {
     type: String,
     optional: true,
-    autoValue () {
-      return this.userId
+    autoValue() {
+      return this.userId;
     }
   },
-  'context.isFromTrustedCode': {
+  "context.isFromTrustedCode": {
     type: Boolean,
     optional: true,
-    autoValue () {
-      return this.isFromTrustedCode
+    autoValue() {
+      return this.isFromTrustedCode;
     }
   },
-  'context.isInsert': {
+  "context.isInsert": {
     type: Boolean,
     optional: true,
-    autoValue () {
-      return this.isInsert
+    autoValue() {
+      return this.isInsert;
     }
   },
-  'context.isUpdate': {
+  "context.isUpdate": {
     type: Boolean,
     optional: true,
-    autoValue () {
-      return this.isUpdate
+    autoValue() {
+      return this.isUpdate;
     }
   },
-  'context.docId': {
+  "context.docId": {
     type: String,
     optional: true,
-    autoValue () {
-      return this.docId
+    autoValue() {
+      return this.docId;
     }
   }
-})
+});
 
-const contextCheck = new Mongo.Collection('contextCheck')
-contextCheck.attachSchema(contextCheckSchema)
+const contextCheck = new Mongo.Collection("contextCheck");
+contextCheck.attachSchema(contextCheckSchema);
 
-export default function addContextTests () {
-  it('AutoValue Context', async function () {
-    const testId = await callMongoMethod(contextCheck, 'insert', [{}])
+export default function addContextTests() {
+  it("AutoValue Context", async function () {
+    const testId = await callMongoMethod(contextCheck, "insert", [{}]);
 
-    let ctx = await callMongoMethod(contextCheck, 'findOne', [testId])
-    expect(ctx.context.isInsert).toBe(true)
-    expect(ctx.context.isUpdate).toBe(false)
-    expect(ctx.context.userId).toBe(null)
-    expect(ctx.context.docId).toBe(undefined)
-    expect(ctx.context.isFromTrustedCode).toBe(!Meteor.isClient)
+    let ctx = await callMongoMethod(contextCheck, "findOne", [testId]);
+    expect(ctx.context.isInsert).toBe(true);
+    expect(ctx.context.isUpdate).toBe(false);
+    expect(ctx.context.userId).toBe(null);
+    expect(ctx.context.docId).toBe(undefined);
+    expect(ctx.context.isFromTrustedCode).toBe(!Meteor.isClient);
 
-    await callMongoMethod(contextCheck, 'update', [{
-      _id: testId
-    }, {
-      $set: {
-        context: {},
-        foo: 'bar'
+    await callMongoMethod(contextCheck, "update", [
+      {
+        _id: testId
+      },
+      {
+        $set: {
+          context: {},
+          foo: "bar"
+        }
       }
-    }])
+    ]);
 
-    ctx = await callMongoMethod(contextCheck, 'findOne', [testId])
-    expect(ctx.foo).toBe('bar')
-    expect(ctx.context.isUpdate).toBe(true)
-    expect(ctx.context.isInsert).toBe(false)
-    expect(ctx.context.userId).toBe(null)
-    expect(ctx.context.docId).toBe(testId)
-    expect(ctx.context.isFromTrustedCode).toBe(!Meteor.isClient)
+    ctx = await callMongoMethod(contextCheck, "findOne", [testId]);
+    expect(ctx.foo).toBe("bar");
+    expect(ctx.context.isUpdate).toBe(true);
+    expect(ctx.context.isInsert).toBe(false);
+    expect(ctx.context.userId).toBe(null);
+    expect(ctx.context.docId).toBe(testId);
+    expect(ctx.context.isFromTrustedCode).toBe(!Meteor.isClient);
 
     // make sure docId works with `_id` direct, too
-    await callMongoMethod(contextCheck, 'update', [testId, {
-      $set: {
-        context: {},
-        foo: 'bar'
+    await callMongoMethod(contextCheck, "update", [
+      testId,
+      {
+        $set: {
+          context: {},
+          foo: "bar"
+        }
       }
-    }])
+    ]);
 
-    ctx = await callMongoMethod(contextCheck, 'findOne', [testId])
-    expect(ctx.context.docId).toBe(testId)
-  })
+    ctx = await callMongoMethod(contextCheck, "findOne", [testId]);
+    expect(ctx.context.docId).toBe(testId);
+  });
 }

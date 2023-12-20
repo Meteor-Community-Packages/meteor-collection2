@@ -1,57 +1,60 @@
-import { Meteor } from 'meteor/meteor'
-import { Mongo } from 'meteor/mongo'
+import { Meteor } from "meteor/meteor";
+import { Mongo } from "meteor/mongo";
 
-let strategy = null
+let strategy = null;
 if (Mongo.Collection.prototype.insertAsync && Meteor.isFibersDisabled) {
-  strategy = 3
+  strategy = 3;
 } else if (Mongo.Collection.prototype.insertAsync) {
-  strategy = 2
+  strategy = 2;
 } else {
-  strategy = 1
+  strategy = 1;
 }
 
-function getMethodNameByMeteorVersion (methodName) {
+function getMethodNameByMeteorVersion(methodName) {
   if (strategy === 1) {
-    return methodName
+    return methodName;
   }
 
-  return `${methodName}Async`
+  return `${methodName}Async`;
 }
 
-export function callMongoMethod (collection, method, args) {
-  const methodName = getMethodNameByMeteorVersion(method)
+export function callMongoMethod(collection, method, args) {
+  const methodName = getMethodNameByMeteorVersion(method);
 
   return new Promise((resolve, reject) => {
     if (strategy <= 2) {
-      if (Meteor.isClient && !['findOne', 'findOneAsync'].includes(methodName)) {
+      if (
+        Meteor.isClient &&
+        !["findOne", "findOneAsync"].includes(methodName)
+      ) {
         collection[methodName](...args, (error, result) => {
           if (error) {
-            reject(error)
+            reject(error);
           } else {
-            resolve(result)
+            resolve(result);
           }
-        })
+        });
       } else {
         try {
-          resolve(collection[methodName](...args))
+          resolve(collection[methodName](...args));
         } catch (error) {
-          reject(error)
+          reject(error);
         }
       }
     } else {
       collection[methodName](...args)
         .then(resolve)
-        .catch(reject)
+        .catch(reject);
     }
-  })
+  });
 }
 
-export function callMeteorFetch (collection, selector) {
+export function callMeteorFetch(collection, selector) {
   return new Promise((resolve, reject) => {
     if (strategy === 1) {
-      resolve(collection.find(selector).fetch())
+      resolve(collection.find(selector).fetch());
     } else {
-      resolve(collection.find(selector).fetchAsync())
+      resolve(collection.find(selector).fetchAsync());
     }
-  })
+  });
 }
