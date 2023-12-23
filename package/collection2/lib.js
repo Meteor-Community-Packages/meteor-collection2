@@ -18,11 +18,7 @@ export function flattenSelector(selector) {
           obj[key] = value.$eq;
         } else if (Array.isArray(value.$in) && value.$in.length === 1) {
           obj[key] = value.$in[0];
-        } else if (
-          Object.keys(value).every(
-            (v) => !(typeof v === 'string' && v.startsWith('$'))
-          )
-        ) {
+        } else if (Object.keys(value).every((v) => !(typeof v === 'string' && v.startsWith('$')))) {
           obj[key] = value;
         }
       } else {

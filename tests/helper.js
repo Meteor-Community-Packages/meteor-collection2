@@ -23,10 +23,7 @@ export function callMongoMethod(collection, method, args) {
 
   return new Promise((resolve, reject) => {
     if (strategy <= 2) {
-      if (
-        Meteor.isClient &&
-        !['findOne', 'findOneAsync'].includes(methodName)
-      ) {
+      if (Meteor.isClient && !['findOne', 'findOneAsync'].includes(methodName)) {
         collection[methodName](...args, (error, result) => {
           if (error) {
             reject(error);

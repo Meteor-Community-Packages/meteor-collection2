@@ -143,9 +143,7 @@ export default function addMultiTests() {
       let combinedSchema = c.simpleSchema();
       expect(combinedSchema._schemaKeys.includes('one')).toBe(true);
       expect(combinedSchema._schemaKeys.includes('two')).toBe(true);
-      expect(combinedSchema.schema('two').type).toEqual(
-        SimpleSchema.oneOf(String)
-      );
+      expect(combinedSchema.schema('two').type).toEqual(SimpleSchema.oneOf(String));
 
       // Attach a third schema and make sure that it extends/overwrites the others
       c.attachSchema(
@@ -156,9 +154,7 @@ export default function addMultiTests() {
       combinedSchema = c.simpleSchema();
       expect(combinedSchema._schemaKeys.includes('one')).toBe(true);
       expect(combinedSchema._schemaKeys.includes('two')).toBe(true);
-      expect(combinedSchema.schema('two').type).toEqual(
-        SimpleSchema.oneOf(SimpleSchema.Integer)
-      );
+      expect(combinedSchema.schema('two').type).toEqual(SimpleSchema.oneOf(SimpleSchema.Integer));
 
       // Ensure that we've only attached two deny functions
       expect(c._validators.insert.deny.length).toBe(2);
@@ -185,9 +181,7 @@ export default function addMultiTests() {
             type: 'variant' // other selector in doc
           }
         ]);
-        const product3 = await callMongoMethod(products, 'findOne', [
-          productId3
-        ]);
+        const product3 = await callMongoMethod(products, 'findOne', [productId3]);
         expect(product3.description).toBe(undefined);
         expect(product3.price).toBe(5);
       });
@@ -214,9 +208,7 @@ export default function addMultiTests() {
         ]);
 
         const product = await callMongoMethod(products, 'findOne', [productId]);
-        const productVariant = await callMongoMethod(products, 'findOne', [
-          productVariantId
-        ]);
+        const productVariant = await callMongoMethod(products, 'findOne', [productVariantId]);
 
         // we should receive new docs with correct property set for each type of doc
         expect(product.description).toBe('This is a simple product.');
@@ -243,9 +235,7 @@ export default function addMultiTests() {
           { selector: { type: 'simple' } }
         ]); // selector in option
 
-        const product2 = await callMongoMethod(products, 'findOne', [
-          productId2
-        ]);
+        const product2 = await callMongoMethod(products, 'findOne', [productId2]);
         expect(product2.description).toBe('This is a simple product.');
         expect(product2.price).toBe(undefined);
 
@@ -257,9 +247,7 @@ export default function addMultiTests() {
           }
         ]);
 
-        const product3 = await callMongoMethod(products, 'findOne', [
-          productId3
-        ]);
+        const product3 = await callMongoMethod(products, 'findOne', [productId3]);
         expect(product3.description).toBe(undefined);
         expect(product3.price).toBe(5);
       });
@@ -284,9 +272,7 @@ export default function addMultiTests() {
 
         const productsList = await callMeteorFetch(products, {});
         expect(productsList.length).toBe(2);
-        expect(productsList[0].description).toBe(
-          'This is a modified product one.'
-        );
+        expect(productsList[0].description).toBe('This is a modified product one.');
         expect(productsList[0].price).toBe(undefined);
         expect(productsList[1].description).toBe('This is a product two.');
         expect(productsList[1].price).toBe(undefined);
@@ -369,9 +355,7 @@ export default function addMultiTests() {
         ]);
 
         const product = await callMongoMethod(products, 'findOne', [productId]);
-        const productVariant = await callMongoMethod(products, 'findOne', [
-          productVariantId
-        ]);
+        const productVariant = await callMongoMethod(products, 'findOne', [productVariantId]);
 
         // we should receive new docs with the same properties as before update
         expect(product.description).toBe('This is a simple product.');
@@ -506,28 +490,18 @@ export default function addMultiTests() {
           { selector: { type: 'simple' } }
         ]);
 
-        const productVariantId = await callMongoMethod(
-          extendedProducts,
-          'insert',
-          [
-            {
-              title: 'Product variant one',
-              createdAt: new Date()
-            },
-            { selector: { type: 'variant' } }
-          ]
-        );
+        const productVariantId = await callMongoMethod(extendedProducts, 'insert', [
+          {
+            title: 'Product variant one',
+            createdAt: new Date()
+          },
+          { selector: { type: 'variant' } }
+        ]);
 
-        const extendedProduct = await callMongoMethod(
-          extendedProducts,
-          'findOne',
-          [productId]
-        );
-        const extendedProductVariant = await callMongoMethod(
-          extendedProducts,
-          'findOne',
-          [productVariantId]
-        );
+        const extendedProduct = await callMongoMethod(extendedProducts, 'findOne', [productId]);
+        const extendedProductVariant = await callMongoMethod(extendedProducts, 'findOne', [
+          productVariantId
+        ]);
 
         // we should receive new docs with correct property set for each type of doc
         expect(extendedProduct.description).toBe('This is a simple product.');
@@ -547,17 +521,13 @@ export default function addMultiTests() {
           { selector: { type: 'simple' } }
         ]);
 
-        const productVariantId = await callMongoMethod(
-          extendedProducts,
-          'insert',
-          [
-            {
-              title: 'Product variant one',
-              createdAt: new Date()
-            },
-            { selector: { type: 'variant' } }
-          ]
-        );
+        const productVariantId = await callMongoMethod(extendedProducts, 'insert', [
+          {
+            title: 'Product variant one',
+            createdAt: new Date()
+          },
+          { selector: { type: 'variant' } }
+        ]);
 
         await callMongoMethod(extendedProducts, 'update', [
           productId,
@@ -575,14 +545,10 @@ export default function addMultiTests() {
           { selector: { type: 'simple' } }
         ]);
 
-        const product = await callMongoMethod(extendedProducts, 'findOne', [
-          productId
+        const product = await callMongoMethod(extendedProducts, 'findOne', [productId]);
+        const productVariant = await callMongoMethod(extendedProducts, 'findOne', [
+          productVariantId
         ]);
-        const productVariant = await callMongoMethod(
-          extendedProducts,
-          'findOne',
-          [productVariantId]
-        );
 
         // we should receive new docs with the same properties as before update
         expect(product.description).toBe('This is a simple product.');

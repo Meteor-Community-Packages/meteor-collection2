@@ -12,10 +12,7 @@ import { callMongoMethod } from './helper';
 
 describe('collection2', function () {
   it('attach and get simpleSchema for normal collection', function () {
-    const mc = new Mongo.Collection(
-      'mc',
-      Meteor.isClient ? { connection: null } : undefined
-    );
+    const mc = new Mongo.Collection('mc', Meteor.isClient ? { connection: null } : undefined);
 
     mc.attachSchema(
       new SimpleSchema({
@@ -140,11 +137,7 @@ describe('collection2', function () {
 
       expect(numberAffected).toBe(1);
 
-      const doc = await callMongoMethod(
-        upsertQueryOperatorsTest,
-        'findOne',
-        []
-      );
+      const doc = await callMongoMethod(upsertQueryOperatorsTest, 'findOne', []);
       expect(insertedId).toBe(doc._id);
       expect(doc.bar).toBe(2);
       expect(doc.baz).toBe(4);
@@ -170,31 +163,23 @@ describe('collection2', function () {
       // Let's try for undefined.
       await callMongoMethod(upsertQueryOperatorUndefinedTest, 'remove', [{}]);
 
-      const result = await callMongoMethod(
-        upsertQueryOperatorUndefinedTest,
-        'upsert',
-        [
-          {
-            foo: undefined
+      const result = await callMongoMethod(upsertQueryOperatorUndefinedTest, 'upsert', [
+        {
+          foo: undefined
+        },
+        {
+          $set: {
+            bar: 2
           },
-          {
-            $set: {
-              bar: 2
-            },
-            $inc: {
-              baz: 4
-            }
+          $inc: {
+            baz: 4
           }
-        ]
-      );
+        }
+      ]);
 
       expect(result.numberAffected).toBe(1);
 
-      const doc = await callMongoMethod(
-        upsertQueryOperatorUndefinedTest,
-        'findOne',
-        []
-      );
+      const doc = await callMongoMethod(upsertQueryOperatorUndefinedTest, 'findOne', []);
       expect(result.insertedId).toBe(doc._id);
       expect(doc.foo).toBe(undefined);
       expect(doc.bar).toBe(2);
@@ -204,31 +189,23 @@ describe('collection2', function () {
 
       await callMongoMethod(upsertQueryOperatorUndefinedTest, 'remove', [{}]);
 
-      const result2 = await callMongoMethod(
-        upsertQueryOperatorUndefinedTest,
-        'upsert',
-        [
-          {
-            foo: null
+      const result2 = await callMongoMethod(upsertQueryOperatorUndefinedTest, 'upsert', [
+        {
+          foo: null
+        },
+        {
+          $set: {
+            bar: 2
           },
-          {
-            $set: {
-              bar: 2
-            },
-            $inc: {
-              baz: 4
-            }
+          $inc: {
+            baz: 4
           }
-        ]
-      );
+        }
+      ]);
 
       expect(result2.numberAffected).toBe(1);
 
-      const doc2 = await callMongoMethod(
-        upsertQueryOperatorUndefinedTest,
-        'findOne',
-        []
-      );
+      const doc2 = await callMongoMethod(upsertQueryOperatorUndefinedTest, 'findOne', []);
       expect(result2.insertedId).toBe(doc2._id);
       expect(doc2.foo).toBe(null);
       expect(doc2.bar).toBe(2);
@@ -251,31 +228,23 @@ describe('collection2', function () {
 
       await callMongoMethod(upsertQueryOperatorEqTest, 'remove', [{}]);
 
-      const result = await callMongoMethod(
-        upsertQueryOperatorEqTest,
-        'upsert',
-        [
-          {
-            foo: { $eq: 'test' }
+      const result = await callMongoMethod(upsertQueryOperatorEqTest, 'upsert', [
+        {
+          foo: { $eq: 'test' }
+        },
+        {
+          $set: {
+            bar: 2
           },
-          {
-            $set: {
-              bar: 2
-            },
-            $inc: {
-              baz: 4
-            }
+          $inc: {
+            baz: 4
           }
-        ]
-      );
+        }
+      ]);
 
       expect(result.numberAffected).toBe(1);
 
-      const doc = await callMongoMethod(
-        upsertQueryOperatorEqTest,
-        'findOne',
-        []
-      );
+      const doc = await callMongoMethod(upsertQueryOperatorEqTest, 'findOne', []);
       expect(result.insertedId).toBe(doc._id);
       expect(doc.foo).toBe('test');
       expect(doc.bar).toBe(2);
@@ -298,31 +267,23 @@ describe('collection2', function () {
 
       await callMongoMethod(upsertQueryOperatorInSingleTest, 'remove', [{}]);
 
-      const result = await callMongoMethod(
-        upsertQueryOperatorInSingleTest,
-        'upsert',
-        [
-          {
-            foo: { $in: ['test'] }
+      const result = await callMongoMethod(upsertQueryOperatorInSingleTest, 'upsert', [
+        {
+          foo: { $in: ['test'] }
+        },
+        {
+          $set: {
+            bar: 2
           },
-          {
-            $set: {
-              bar: 2
-            },
-            $inc: {
-              baz: 4
-            }
+          $inc: {
+            baz: 4
           }
-        ]
-      );
+        }
+      ]);
 
       expect(result.numberAffected).toBe(1);
 
-      const doc = await callMongoMethod(
-        upsertQueryOperatorInSingleTest,
-        'findOne',
-        []
-      );
+      const doc = await callMongoMethod(upsertQueryOperatorInSingleTest, 'findOne', []);
       expect(result.insertedId).toBe(doc._id);
       expect(doc.foo).toBe('test');
       expect(doc.bar).toBe(2);
@@ -348,31 +309,23 @@ describe('collection2', function () {
 
       await callMongoMethod(upsertQueryOperatorInMultiTest, 'remove', [{}]);
 
-      const result = await callMongoMethod(
-        upsertQueryOperatorInMultiTest,
-        'upsert',
-        [
-          {
-            foo: { $in: ['test', 'test2'] }
+      const result = await callMongoMethod(upsertQueryOperatorInMultiTest, 'upsert', [
+        {
+          foo: { $in: ['test', 'test2'] }
+        },
+        {
+          $set: {
+            bar: 2
           },
-          {
-            $set: {
-              bar: 2
-            },
-            $inc: {
-              baz: 4
-            }
+          $inc: {
+            baz: 4
           }
-        ]
-      );
+        }
+      ]);
 
       expect(result.numberAffected).toBe(1);
 
-      const doc = await callMongoMethod(
-        upsertQueryOperatorInMultiTest,
-        'findOne',
-        []
-      );
+      const doc = await callMongoMethod(upsertQueryOperatorInMultiTest, 'findOne', []);
       expect(result.insertedId).toBe(doc._id);
       expect(doc.foo).toBe(undefined);
       expect(doc.bar).toBe(2);
@@ -408,36 +361,28 @@ describe('collection2', function () {
 
       const testDateValue = new Date();
 
-      const result = await callMongoMethod(
-        upsertQueryOperatorNestedObject,
-        'upsert',
-        [
-          {
-            test: '1'
-          },
-          {
-            $set: {
-              foo: {
-                bar: '1',
-                baz: '2'
-              },
-              test: testDateValue
-            }
+      const result = await callMongoMethod(upsertQueryOperatorNestedObject, 'upsert', [
+        {
+          test: '1'
+        },
+        {
+          $set: {
+            foo: {
+              bar: '1',
+              baz: '2'
+            },
+            test: testDateValue
           }
-        ]
-      );
+        }
+      ]);
 
       expect(result.numberAffected).toBe(1);
 
-      const doc = await callMongoMethod(
-        upsertQueryOperatorNestedObject,
-        'findOne',
-        [
-          {
-            _id: result.insertedId
-          }
-        ]
-      );
+      const doc = await callMongoMethod(upsertQueryOperatorNestedObject, 'findOne', [
+        {
+          _id: result.insertedId
+        }
+      ]);
 
       expect(result.insertedId).toBe(doc._id);
       expect(doc.foo.bar).toBe('1');
@@ -463,32 +408,24 @@ describe('collection2', function () {
 
       await callMongoMethod(upsertQueryOperatorAndTest, 'remove', [{}]);
 
-      const result = await callMongoMethod(
-        upsertQueryOperatorAndTest,
-        'upsert',
-        [
-          {
-            foo: 'test',
-            $and: [{ test1: 'abc' }, { $and: [{ test2: { $in: ['abc'] } }] }]
+      const result = await callMongoMethod(upsertQueryOperatorAndTest, 'upsert', [
+        {
+          foo: 'test',
+          $and: [{ test1: 'abc' }, { $and: [{ test2: { $in: ['abc'] } }] }]
+        },
+        {
+          $set: {
+            bar: 2
           },
-          {
-            $set: {
-              bar: 2
-            },
-            $inc: {
-              baz: 4
-            }
+          $inc: {
+            baz: 4
           }
-        ]
-      );
+        }
+      ]);
 
       expect(result.numberAffected).toBe(1);
 
-      const doc = await callMongoMethod(
-        upsertQueryOperatorAndTest,
-        'findOne',
-        []
-      );
+      const doc = await callMongoMethod(upsertQueryOperatorAndTest, 'findOne', []);
       expect(result.insertedId).toBe(doc._id);
       expect(doc.foo).toBe('test');
       expect(doc.test1).toBe('abc');
@@ -539,10 +476,7 @@ describe('collection2', function () {
       bar: { type: String, optional: true }
     });
 
-    const RES = new Mongo.Collection(
-      'RES',
-      Meteor.isClient ? { connection: null } : undefined
-    );
+    const RES = new Mongo.Collection('RES', Meteor.isClient ? { connection: null } : undefined);
     RES.attachSchema(RESSchema);
 
     // Remove empty strings (default)
@@ -701,9 +635,7 @@ describe('collection2', function () {
         { pick: ['foo'], omit: ['foo'] }
       ]);
     } catch (error) {
-      expect(error.message).toBe(
-        'pick and omit options are mutually exclusive'
-      );
+      expect(error.message).toBe('pick and omit options are mutually exclusive');
       errorThrown = true;
     }
 

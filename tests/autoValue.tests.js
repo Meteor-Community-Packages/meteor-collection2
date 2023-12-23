@@ -87,10 +87,7 @@ if (Meteor.isServer) {
     });
 
     it('with getAutoValues false, does not run function', async function () {
-      const id = await callMongoMethod(collection, 'insert', [
-        {},
-        { getAutoValues: false }
-      ]);
+      const id = await callMongoMethod(collection, 'insert', [{}, { getAutoValues: false }]);
       const doc = await callMongoMethod(collection, 'findOne', [id]);
       expect(doc.clientAV).toBe(undefined);
       expect(doc.serverAV).toBe(undefined);
@@ -104,10 +101,7 @@ if (Meteor.isServer) {
     });
 
     it('with getAutoValues false, does not run function for LocalCollection', async function () {
-      const id = await callMongoMethod(localCollection, 'insert', [
-        {},
-        { getAutoValues: false }
-      ]);
+      const id = await callMongoMethod(localCollection, 'insert', [{}, { getAutoValues: false }]);
       const doc = await callMongoMethod(localCollection, 'findOne', [id]);
       expect(doc.clientAV).toBe(undefined);
       expect(doc.serverAV).toBe(undefined);

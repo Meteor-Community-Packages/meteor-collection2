@@ -47,9 +47,7 @@ export default function addDefaultValuesTests() {
                 }
               ])
                 .then(async () => {
-                  p = await callMongoMethod(defaultValues, 'findOne', [
-                    testId1
-                  ]);
+                  p = await callMongoMethod(defaultValues, 'findOne', [testId1]);
                   expect(p.bool1).toBe(true);
                   done();
                 })
@@ -67,9 +65,7 @@ export default function addDefaultValuesTests() {
       expect(p.bool1).toBe(false);
 
       // Ensure that default values do not mess with inserts and updates of the field
-      const testId2 = await callMongoMethod(defaultValues, 'insert', [
-        { bool1: true }
-      ]);
+      const testId2 = await callMongoMethod(defaultValues, 'insert', [{ bool1: true }]);
       p = await callMongoMethod(defaultValues, 'findOne', [testId2]);
       expect(p.bool1).toBe(true);
 

@@ -53,10 +53,7 @@ describe('clean options', function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, 'insert', [
-        { name: 'name', bad: 'prop' },
-        { filter: false }
-      ])
+      callMongoMethod(collection, 'insert', [{ name: 'name', bad: 'prop' }, { filter: false }])
         .then(() => {
           done(new Error('Should not have inserted'));
         })
@@ -118,10 +115,7 @@ describe('clean options', function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, 'insert', [
-        { name: 1 },
-        { autoConvert: false }
-      ])
+      callMongoMethod(collection, 'insert', [{ name: 1 }, { autoConvert: false }])
         .then(() => {
           done(new Error('Should not have inserted'));
         })
@@ -185,10 +179,7 @@ describe('clean options', function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, 'insert', [
-        { name: '', other: 1 },
-        { removeEmptyStrings: false }
-      ])
+      callMongoMethod(collection, 'insert', [{ name: '', other: 1 }, { removeEmptyStrings: false }])
         .then(() => {
           done();
         })
@@ -252,10 +243,7 @@ describe('clean options', function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, 'insert', [
-        { name: ' foo ' },
-        { trimStrings: false }
-      ])
+      callMongoMethod(collection, 'insert', [{ name: ' foo ' }, { trimStrings: false }])
         .then(async (_id) => {
           const data = await callMongoMethod(collection, 'findOne', [_id]);
           expect(data).toEqual({ _id, name: ' foo ' });

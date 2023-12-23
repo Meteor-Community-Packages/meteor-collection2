@@ -6,12 +6,7 @@ import { EJSON } from 'meteor/ejson';
 import isEmpty from 'lodash.isempty';
 import isEqual from 'lodash.isequal';
 import isObject from 'lodash.isobject';
-import {
-  flattenSelector,
-  isInsertType,
-  isUpdateType,
-  isUpsertType
-} from './lib';
+import { flattenSelector, isInsertType, isUpdateType, isUpsertType } from './lib';
 
 /* global LocalCollection, Package */
 
@@ -73,11 +68,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       let schemaIndex;
 
       // Loop through existing schemas with selectors,
-      for (
-        schemaIndex = obj._c2._simpleSchemas.length - 1;
-        schemaIndex > 0;
-        schemaIndex--
-      ) {
+      for (schemaIndex = obj._c2._simpleSchemas.length - 1; schemaIndex > 0; schemaIndex--) {
         const schema = obj._c2._simpleSchemas[schemaIndex];
         if (schema && isEqual(schema.selector, options.selector)) break;
       }
@@ -241,8 +232,7 @@ function _methodMutation(async, methodName) {
       }
     } else {
       // We still need to adjust args because insert does not take options
-      if (isInsertType(methodName) && typeof args[1] !== 'function')
-        args.splice(1, 1);
+      if (isInsertType(methodName) && typeof args[1] !== 'function') args.splice(1, 1);
     }
 
     if (async && !Meteor.isFibersDisabled) {
@@ -255,11 +245,7 @@ function _methodMutation(async, methodName) {
           typeof validationContext.addValidationErrors === 'function'
             ? 'addValidationErrors'
             : 'addInvalidKeys';
-        parsingServerError(
-          [err],
-          validationContext,
-          addValidationErrorsPropName
-        );
+        parsingServerError([err], validationContext, addValidationErrorsPropName);
         error = getErrorObject(validationContext, err.message);
         return Promise.reject(error);
       }
@@ -304,8 +290,7 @@ function _methodMutationAsync(methodName) {
       }
     } else {
       // We still need to adjust args because insert does not take options
-      if (methodName === 'insert' && typeof args[1] !== 'function')
-        args.splice(1, 1);
+      if (methodName === 'insert' && typeof args[1] !== 'function') args.splice(1, 1);
     }
 
     try {
@@ -335,15 +320,7 @@ if (Mongo.Collection.prototype.insertAsync) {
  * Private
  */
 
-function doValidate(
-  collection,
-  type,
-  args,
-  getAutoValues,
-  userId,
-  isFromTrustedCode,
-  async
-) {
+function doValidate(collection, type, args, getAutoValues, userId, isFromTrustedCode, async) {
   let doc, callback, error, options, selector;
 
   if (!args.length) {
@@ -395,10 +372,7 @@ function doValidate(
   const isLocalCollection = collection._connection === null;
 
   // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
-  if (
-    (Meteor.isServer || isLocalCollection) &&
-    options.getAutoValues === false
-  ) {
+  if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
     getAutoValues = false;
   }
 
@@ -443,10 +417,7 @@ function doValidate(
   // is found to be invalid on the server, we get that error back
   // as a special Meteor.Error that we need to parse.
   if (Meteor.isClient && hasCallback) {
-    callback = args[last] = wrapCallbackForParsingServerErrors(
-      validationContext,
-      callback
-    );
+    callback = args[last] = wrapCallbackForParsingServerErrors(validationContext, callback);
   }
 
   const schemaAllowsId = schema.allowsKey('_id');
@@ -460,9 +431,7 @@ function doValidate(
     docId = doc._id; // might be undefined
   } else if (isUpdateType(type) && selector) {
     docId =
-      typeof selector === 'string' || selector instanceof Mongo.ObjectID
-        ? selector
-        : selector._id;
+      typeof selector === 'string' || selector instanceof Mongo.ObjectID ? selector : selector._id;
   }
 
   // If _id has already been added, remove it temporarily if it's
@@ -490,17 +459,13 @@ function doValidate(
   };
 
   const cleanOptionsForThisOperation = {};
-  [
-    'autoConvert',
-    'filter',
-    'removeEmptyStrings',
-    'removeNullsFromArrays',
-    'trimStrings'
-  ].forEach((prop) => {
-    if (typeof options[prop] === 'boolean') {
-      cleanOptionsForThisOperation[prop] = options[prop];
+  ['autoConvert', 'filter', 'removeEmptyStrings', 'removeNullsFromArrays', 'trimStrings'].forEach(
+    (prop) => {
+      if (typeof options[prop] === 'boolean') {
+        cleanOptionsForThisOperation[prop] = options[prop];
+      }
     }
-  });
+  );
 
   // Preliminary cleaning on both client and server. On the server and for local
   // collections, automatic values will also be set at this point.
@@ -608,10 +573,7 @@ function doValidate(
 
     // If callback, set invalidKey when we get a mongo unique error
     if (Meteor.isServer && hasCallback) {
-      args[last] = wrapCallbackForParsingMongoValidationErrors(
-        validationContext,
-        args[last]
-      );
+      args[last] = wrapCallbackForParsingMongoValidationErrors(validationContext, args[last]);
     }
 
     return [args, validationContext];
@@ -659,11 +621,7 @@ function getErrorObject(context, appendToMessage = '') {
   // If on the server, we add a sanitized error, too, in case we're
   // called from a method.
   if (Meteor.isServer) {
-    error.sanitizedError = new Meteor.Error(
-      400,
-      message,
-      EJSON.stringify(error.invalidKeys)
-    );
+    error.sanitizedError = new Meteor.Error(400, message, EJSON.stringify(error.invalidKeys));
   }
   return error;
 }
@@ -673,9 +631,7 @@ function addUniqueError(context, errorMessage) {
   const val = errorMessage.split('dup key:')[1].split('"')[1];
 
   const addValidationErrorsPropName =
-    typeof context.addValidationErrors === 'function'
-      ? 'addValidationErrors'
-      : 'addInvalidKeys';
+    typeof context.addValidationErrors === 'function' ? 'addValidationErrors' : 'addInvalidKeys';
   context[addValidationErrorsPropName]([
     {
       name,
@@ -685,11 +641,7 @@ function addUniqueError(context, errorMessage) {
   ]);
 }
 
-function parsingServerError(
-  args,
-  validationContext,
-  addValidationErrorsPropName
-) {
+function parsingServerError(args, validationContext, addValidationErrorsPropName) {
   const error = args[0];
   // Handle our own validation errors
   if (
@@ -871,11 +823,7 @@ function defineDeny(c, options) {
             },
             function (error) {
               if (error) {
-                throw new Meteor.Error(
-                  400,
-                  'INVALID',
-                  EJSON.stringify(error.invalidKeys)
-                );
+                throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
               }
             }
           ],
@@ -904,11 +852,7 @@ function defineDeny(c, options) {
             },
             function (error) {
               if (error) {
-                throw new Meteor.Error(
-                  400,
-                  'INVALID',
-                  EJSON.stringify(error.invalidKeys)
-                );
+                throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
               }
             }
           ],
