@@ -1,23 +1,23 @@
-import { EventEmitter } from "meteor/raix:eventemitter";
-import { Meteor } from "meteor/meteor";
-import { Mongo } from "meteor/mongo";
-import { checkNpmVersions } from "meteor/tmeasday:check-npm-versions";
-import { EJSON } from "meteor/ejson";
-import isEmpty from "lodash.isempty";
-import isEqual from "lodash.isequal";
-import isObject from "lodash.isobject";
+import { EventEmitter } from 'meteor/raix:eventemitter';
+import { Meteor } from 'meteor/meteor';
+import { Mongo } from 'meteor/mongo';
+import { checkNpmVersions } from 'meteor/tmeasday:check-npm-versions';
+import { EJSON } from 'meteor/ejson';
+import isEmpty from 'lodash.isempty';
+import isEqual from 'lodash.isequal';
+import isObject from 'lodash.isobject';
 import {
   flattenSelector,
   isInsertType,
   isUpdateType,
   isUpsertType
-} from "./lib";
+} from './lib';
 
 /* global LocalCollection, Package */
 
-checkNpmVersions({ "simpl-schema": ">=0.0.0" }, "aldeed:collection2");
+checkNpmVersions({ 'simpl-schema': '>=0.0.0' }, 'aldeed:collection2');
 
-const SimpleSchema = require("simpl-schema").default;
+const SimpleSchema = require('simpl-schema').default;
 
 // Exported only for listening to events
 const Collection2 = new EventEmitter();
@@ -60,7 +60,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     obj._c2 = obj._c2 || {};
     obj._c2._simpleSchemas = obj._c2._simpleSchemas || [null];
 
-    if (typeof options.selector === "object") {
+    if (typeof options.selector === 'object') {
       // Selector Schemas
 
       // Extend selector schema with base schema
@@ -140,7 +140,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   defineDeny(this, options);
   keepInsecure(this);
 
-  Collection2.emit("schema.attached", this, ss, options);
+  Collection2.emit('schema.attached', this, ss, options);
 };
 
 [Mongo.Collection, LocalCollection].forEach((obj) => {
@@ -172,9 +172,9 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         target = undefined;
         // here we are looking for selector in different places
         // $set should have more priority here
-        if (doc.$set && typeof doc.$set[selector] !== "undefined") {
+        if (doc.$set && typeof doc.$set[selector] !== 'undefined') {
           target = doc.$set[selector];
-        } else if (typeof doc[selector] !== "undefined") {
+        } else if (typeof doc[selector] !== 'undefined') {
           target = doc[selector];
         } else if (options && options.selector) {
           target = options.selector[selector];
@@ -192,7 +192,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       if (schemas[0]) {
         return schemas[0].schema;
       } else {
-        throw new Error("No default schema");
+        throw new Error('No default schema');
       }
     }
 
@@ -203,7 +203,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
 function _methodMutation(async, methodName) {
   const _super = Meteor.isFibersDisabled
     ? Mongo.Collection.prototype[methodName]
-    : Mongo.Collection.prototype[methodName.replace("Async", "")];
+    : Mongo.Collection.prototype[methodName.replace('Async', '')];
 
   if (!_super) return;
 
@@ -211,7 +211,7 @@ function _methodMutation(async, methodName) {
     let options = isInsertType(methodName) ? args[1] : args[2];
 
     // Support missing options arg
-    if (!options || typeof options === "function") {
+    if (!options || typeof options === 'function') {
       options = {};
     }
 
@@ -241,20 +241,20 @@ function _methodMutation(async, methodName) {
       }
     } else {
       // We still need to adjust args because insert does not take options
-      if (isInsertType(methodName) && typeof args[1] !== "function")
+      if (isInsertType(methodName) && typeof args[1] !== 'function')
         args.splice(1, 1);
     }
 
     if (async && !Meteor.isFibersDisabled) {
       try {
-        this[methodName.replace("Async", "")].isCalledFromAsync = true;
+        this[methodName.replace('Async', '')].isCalledFromAsync = true;
         _super.isCalledFromAsync = true;
         return Promise.resolve(_super.apply(this, args));
       } catch (err) {
         const addValidationErrorsPropName =
-          typeof validationContext.addValidationErrors === "function"
-            ? "addValidationErrors"
-            : "addInvalidKeys";
+          typeof validationContext.addValidationErrors === 'function'
+            ? 'addValidationErrors'
+            : 'addInvalidKeys';
         parsingServerError(
           [err],
           validationContext,
@@ -275,7 +275,7 @@ function _methodMutationAsync(methodName) {
     let options = isInsertType(methodName) ? args[1] : args[2];
 
     // Support missing options arg
-    if (!options || typeof options === "function") {
+    if (!options || typeof options === 'function') {
       options = {};
     }
 
@@ -304,7 +304,7 @@ function _methodMutationAsync(methodName) {
       }
     } else {
       // We still need to adjust args because insert does not take options
-      if (methodName === "insert" && typeof args[1] !== "function")
+      if (methodName === 'insert' && typeof args[1] !== 'function')
         args.splice(1, 1);
     }
 
@@ -312,9 +312,9 @@ function _methodMutationAsync(methodName) {
       return await _super.apply(this, args);
     } catch (err) {
       const addValidationErrorsPropName =
-        typeof validationContext.addValidationErrors === "function"
-          ? "addValidationErrors"
-          : "addInvalidKeys";
+        typeof validationContext.addValidationErrors === 'function'
+          ? 'addValidationErrors'
+          : 'addInvalidKeys';
       parsingServerError([err], validationContext, addValidationErrorsPropName);
       throw getErrorObject(validationContext, err.message);
     }
@@ -324,12 +324,12 @@ function _methodMutationAsync(methodName) {
 // Wrap DB write operation methods
 if (Mongo.Collection.prototype.insertAsync) {
   if (Meteor.isFibersDisabled) {
-    ["insertAsync", "updateAsync"].forEach(_methodMutationAsync.bind(this));
+    ['insertAsync', 'updateAsync'].forEach(_methodMutationAsync.bind(this));
   } else {
-    ["insertAsync", "updateAsync"].forEach(_methodMutation.bind(this, true));
+    ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
   }
 }
-["insert", "update"].forEach(_methodMutation.bind(this, false));
+['insert', 'update'].forEach(_methodMutation.bind(this, false));
 
 /*
  * Private
@@ -347,7 +347,7 @@ function doValidate(
   let doc, callback, error, options, selector;
 
   if (!args.length) {
-    throw new Error(type + " requires an argument");
+    throw new Error(type + ' requires an argument');
   }
 
   // Gather arguments and cache the selector
@@ -357,9 +357,9 @@ function doValidate(
     callback = args[2];
 
     // The real insert doesn't take options
-    if (typeof options === "function") {
+    if (typeof options === 'function') {
       args = [doc, options];
-    } else if (typeof callback === "function") {
+    } else if (typeof callback === 'function') {
       args = [doc, callback];
     } else {
       args = [doc];
@@ -370,13 +370,13 @@ function doValidate(
     options = args[2];
     callback = args[3];
   } else {
-    throw new Error("invalid type argument");
+    throw new Error('invalid type argument');
   }
 
   const validatedObjectWasInitiallyEmpty = isEmpty(doc);
 
   // Support missing options arg
-  if (!callback && typeof options === "function") {
+  if (!callback && typeof options === 'function') {
     callback = options;
     options = {};
   }
@@ -384,7 +384,7 @@ function doValidate(
 
   const last = args.length - 1;
 
-  const hasCallback = typeof args[last] === "function";
+  const hasCallback = typeof args[last] === 'function';
 
   // If update was called with upsert:true, flag as an upsert
   const isUpsert = isUpdateType(type) && options.upsert === true;
@@ -408,7 +408,7 @@ function doValidate(
 
   if (picks && omits) {
     // Pick and omit cannot both be present in the options
-    throw new Error("pick and omit options are mutually exclusive");
+    throw new Error('pick and omit options are mutually exclusive');
   } else if (picks) {
     schema = schema.pick(...picks);
   } else if (omits) {
@@ -418,7 +418,7 @@ function doValidate(
   // Determine validation context
   let validationContext = options.validationContext;
   if (validationContext) {
-    if (typeof validationContext === "string") {
+    if (typeof validationContext === 'string') {
       validationContext = schema.namedContext(validationContext);
     }
   } else {
@@ -434,7 +434,7 @@ function doValidate(
     // down.
     callback = function (err) {
       if (err) {
-        Meteor._debug(type + " failed: " + (err.reason || err.stack));
+        Meteor._debug(type + ' failed: ' + (err.reason || err.stack));
       }
     };
   }
@@ -449,7 +449,7 @@ function doValidate(
     );
   }
 
-  const schemaAllowsId = schema.allowsKey("_id");
+  const schemaAllowsId = schema.allowsKey('_id');
   if (isInsertType(type) && !doc._id && schemaAllowsId) {
     doc._id = collection._makeNewID();
   }
@@ -460,7 +460,7 @@ function doValidate(
     docId = doc._id; // might be undefined
   } else if (isUpdateType(type) && selector) {
     docId =
-      typeof selector === "string" || selector instanceof Mongo.ObjectID
+      typeof selector === 'string' || selector instanceof Mongo.ObjectID
         ? selector
         : selector._id;
   }
@@ -491,13 +491,13 @@ function doValidate(
 
   const cleanOptionsForThisOperation = {};
   [
-    "autoConvert",
-    "filter",
-    "removeEmptyStrings",
-    "removeNullsFromArrays",
-    "trimStrings"
+    'autoConvert',
+    'filter',
+    'removeEmptyStrings',
+    'removeNullsFromArrays',
+    'trimStrings'
   ].forEach((prop) => {
-    if (typeof options[prop] === "boolean") {
+    if (typeof options[prop] === 'boolean') {
       cleanOptionsForThisOperation[prop] = options[prop];
     }
   });
@@ -565,9 +565,9 @@ function doValidate(
   // XXX Maybe move this into SimpleSchema
   if (!validatedObjectWasInitiallyEmpty && isEmpty(docToValidate)) {
     throw new Error(
-      "After filtering out keys not in the schema, your " +
-        (isUpdateType(type) ? "modifier" : "object") +
-        " is now empty"
+      'After filtering out keys not in the schema, your ' +
+        (isUpdateType(type) ? 'modifier' : 'object') +
+        ' is now empty'
     );
   }
 
@@ -619,7 +619,7 @@ function doValidate(
     error = getErrorObject(
       validationContext,
       Meteor.settings?.packages?.collection2?.disableCollectionNamesInValidation
-        ? ""
+        ? ''
         : `in ${collection._name} ${type}`
     );
     if (callback) {
@@ -632,10 +632,10 @@ function doValidate(
   }
 }
 
-function getErrorObject(context, appendToMessage = "") {
+function getErrorObject(context, appendToMessage = '') {
   let message;
   const invalidKeys =
-    typeof context.validationErrors === "function"
+    typeof context.validationErrors === 'function'
       ? context.validationErrors()
       : context.invalidKeys();
   if (invalidKeys.length) {
@@ -644,13 +644,13 @@ function getErrorObject(context, appendToMessage = "") {
 
     // If the error is in a nested key, add the full key to the error message
     // to be more helpful.
-    if (firstErrorKey.indexOf(".") === -1) {
+    if (firstErrorKey.indexOf('.') === -1) {
       message = firstErrorMessage;
     } else {
       message = `${firstErrorMessage} (${firstErrorKey})`;
     }
   } else {
-    message = "Failed validation";
+    message = 'Failed validation';
   }
   message = `${message} ${appendToMessage}`.trim();
   const error = new Error(message);
@@ -669,17 +669,17 @@ function getErrorObject(context, appendToMessage = "") {
 }
 
 function addUniqueError(context, errorMessage) {
-  const name = errorMessage.split("c2_")[1].split(" ")[0];
-  const val = errorMessage.split("dup key:")[1].split('"')[1];
+  const name = errorMessage.split('c2_')[1].split(' ')[0];
+  const val = errorMessage.split('dup key:')[1].split('"')[1];
 
   const addValidationErrorsPropName =
-    typeof context.addValidationErrors === "function"
-      ? "addValidationErrors"
-      : "addInvalidKeys";
+    typeof context.addValidationErrors === 'function'
+      ? 'addValidationErrors'
+      : 'addInvalidKeys';
   context[addValidationErrorsPropName]([
     {
       name,
-      type: "notUnique",
+      type: 'notUnique',
       value: val
     }
   ]);
@@ -695,8 +695,8 @@ function parsingServerError(
   if (
     error instanceof Meteor.Error &&
     error.error === 400 &&
-    error.reason === "INVALID" &&
-    typeof error.details === "string"
+    error.reason === 'INVALID' &&
+    typeof error.details === 'string'
   ) {
     const invalidKeysFromServer = EJSON.parse(error.details);
     validationContext[addValidationErrorsPropName](invalidKeysFromServer);
@@ -706,8 +706,8 @@ function parsingServerError(
     // Handle Mongo unique index errors, which are forwarded to the client as 409 errors
     error.error === 409 &&
     error.reason &&
-    error.reason.indexOf("E11000") !== -1 &&
-    error.reason.indexOf("c2_") !== -1
+    error.reason.indexOf('E11000') !== -1 &&
+    error.reason.indexOf('c2_') !== -1
   ) {
     addUniqueError(validationContext, error.reason);
     args[0] = getErrorObject(validationContext);
@@ -719,9 +719,9 @@ function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
     const error = args[0];
     if (
       error &&
-      ((error.name === "MongoError" && error.code === 11001) ||
-        error.message.indexOf("MongoError: E11000") !== -1) &&
-      error.message.indexOf("c2_") !== -1
+      ((error.name === 'MongoError' && error.code === 11001) ||
+        error.message.indexOf('MongoError: E11000') !== -1) &&
+      error.message.indexOf('c2_') !== -1
     ) {
       addUniqueError(validationContext, error.message);
       args[0] = getErrorObject(validationContext);
@@ -732,9 +732,9 @@ function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
 
 function wrapCallbackForParsingServerErrors(validationContext, cb) {
   const addValidationErrorsPropName =
-    typeof validationContext.addValidationErrors === "function"
-      ? "addValidationErrors"
-      : "addInvalidKeys";
+    typeof validationContext.addValidationErrors === 'function'
+      ? 'addValidationErrors'
+      : 'addInvalidKeys';
   return function wrappedCallbackForParsingServerErrors(...args) {
     parsingServerError(args, validationContext, addValidationErrorsPropName);
     return cb.apply(this, args);
@@ -836,7 +836,7 @@ function defineDeny(c, options) {
 
         return false;
       },
-      fetch: ["_id"],
+      fetch: ['_id'],
       transform: null
     };
 
@@ -860,7 +860,7 @@ function defineDeny(c, options) {
         // We pass the false options because we will have done them on the client if desired
         doValidate(
           c,
-          "insert",
+          'insert',
           [
             doc,
             {
@@ -873,7 +873,7 @@ function defineDeny(c, options) {
               if (error) {
                 throw new Meteor.Error(
                   400,
-                  "INVALID",
+                  'INVALID',
                   EJSON.stringify(error.invalidKeys)
                 );
               }
@@ -892,7 +892,7 @@ function defineDeny(c, options) {
         // We pass the false options because we will have done them on the client if desired
         doValidate(
           c,
-          "update",
+          'update',
           [
             { _id: doc && doc._id },
             modifier,
@@ -906,7 +906,7 @@ function defineDeny(c, options) {
               if (error) {
                 throw new Meteor.Error(
                   400,
-                  "INVALID",
+                  'INVALID',
                   EJSON.stringify(error.invalidKeys)
                 );
               }
@@ -919,7 +919,7 @@ function defineDeny(c, options) {
 
         return false;
       },
-      fetch: ["_id"],
+      fetch: ['_id'],
       ...(options.transform === true ? {} : { transform: null })
     };
 

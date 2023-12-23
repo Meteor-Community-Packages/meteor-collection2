@@ -1,22 +1,22 @@
-import expect from "expect";
-import { Mongo } from "meteor/mongo";
-import SimpleSchema from "simpl-schema";
-import { Meteor } from "meteor/meteor";
-import { callMongoMethod } from "./helper";
+import expect from 'expect';
+import { Mongo } from 'meteor/mongo';
+import SimpleSchema from 'simpl-schema';
+import { Meteor } from 'meteor/meteor';
+import { callMongoMethod } from './helper';
 
 /* global describe it */
 
 let collection;
 
 if (Meteor.isClient) {
-  collection = new Mongo.Collection("cleanTests", { connection: null });
+  collection = new Mongo.Collection('cleanTests', { connection: null });
 } else {
-  collection = new Mongo.Collection("cleanTests");
+  collection = new Mongo.Collection('cleanTests');
 }
 
-describe("clean options", function () {
-  describe("filter", function () {
-    it("keeps default schema clean options", function (done) {
+describe('clean options', function () {
+  describe('filter', function () {
+    it('keeps default schema clean options', function (done) {
       const schema = new SimpleSchema(
         {
           name: String
@@ -30,16 +30,16 @@ describe("clean options", function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [{ name: "name", bad: "prop" }])
+      callMongoMethod(collection, 'insert', [{ name: 'name', bad: 'prop' }])
         .then(() => {
-          done(new Error("Should not have inserted"));
+          done(new Error('Should not have inserted'));
         })
         .catch(() => {
           done();
         });
     });
 
-    it("keeps operation clean options", function (done) {
+    it('keeps operation clean options', function (done) {
       const schema = new SimpleSchema(
         {
           name: String
@@ -53,24 +53,24 @@ describe("clean options", function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [
-        { name: "name", bad: "prop" },
+      callMongoMethod(collection, 'insert', [
+        { name: 'name', bad: 'prop' },
         { filter: false }
       ])
         .then(() => {
-          done(new Error("Should not have inserted"));
+          done(new Error('Should not have inserted'));
         })
         .catch(() => {
           done();
         });
     });
 
-    it("has clean option on by default", function (done) {
+    it('has clean option on by default', function (done) {
       const schema = new SimpleSchema({ name: String });
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [{ name: "name", bad: "prop" }])
+      callMongoMethod(collection, 'insert', [{ name: 'name', bad: 'prop' }])
         .then(() => {
           done();
         })
@@ -80,8 +80,8 @@ describe("clean options", function () {
     });
   });
 
-  describe("autoConvert", function () {
-    it("keeps default schema clean options", function (done) {
+  describe('autoConvert', function () {
+    it('keeps default schema clean options', function (done) {
       const schema = new SimpleSchema(
         {
           name: String
@@ -95,16 +95,16 @@ describe("clean options", function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [{ name: 1 }])
+      callMongoMethod(collection, 'insert', [{ name: 1 }])
         .then(() => {
-          done(new Error("Should not have inserted"));
+          done(new Error('Should not have inserted'));
         })
         .catch(() => {
           done();
         });
     });
 
-    it("keeps operation clean options", function (done) {
+    it('keeps operation clean options', function (done) {
       const schema = new SimpleSchema(
         {
           name: String
@@ -118,24 +118,24 @@ describe("clean options", function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [
+      callMongoMethod(collection, 'insert', [
         { name: 1 },
         { autoConvert: false }
       ])
         .then(() => {
-          done(new Error("Should not have inserted"));
+          done(new Error('Should not have inserted'));
         })
         .catch(() => {
           done();
         });
     });
 
-    it("has clean option on by default", function (done) {
+    it('has clean option on by default', function (done) {
       const schema = new SimpleSchema({ name: String });
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [{ name: 1 }])
+      callMongoMethod(collection, 'insert', [{ name: 1 }])
         .then(() => {
           done();
         })
@@ -145,8 +145,8 @@ describe("clean options", function () {
     });
   });
 
-  describe("removeEmptyStrings", function () {
-    it("keeps default schema clean options", function (done) {
+  describe('removeEmptyStrings', function () {
+    it('keeps default schema clean options', function (done) {
       const schema = new SimpleSchema(
         {
           name: String,
@@ -161,7 +161,7 @@ describe("clean options", function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [{ name: "", other: 1 }])
+      callMongoMethod(collection, 'insert', [{ name: '', other: 1 }])
         .then(() => {
           done();
         })
@@ -170,7 +170,7 @@ describe("clean options", function () {
         });
     });
 
-    it("keeps operation clean options", function (done) {
+    it('keeps operation clean options', function (done) {
       const schema = new SimpleSchema(
         {
           name: String,
@@ -185,8 +185,8 @@ describe("clean options", function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [
-        { name: "", other: 1 },
+      callMongoMethod(collection, 'insert', [
+        { name: '', other: 1 },
         { removeEmptyStrings: false }
       ])
         .then(() => {
@@ -197,14 +197,14 @@ describe("clean options", function () {
         });
     });
 
-    it("has clean option on by default", function (done) {
+    it('has clean option on by default', function (done) {
       const schema = new SimpleSchema({ name: String, other: Number });
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [{ name: "", other: 1 }])
+      callMongoMethod(collection, 'insert', [{ name: '', other: 1 }])
         .then(() => {
-          done(new Error("Should not have inserted"));
+          done(new Error('Should not have inserted'));
         })
         .catch(() => {
           done();
@@ -212,8 +212,8 @@ describe("clean options", function () {
     });
   });
 
-  describe("trimStrings", function () {
-    it("keeps default schema clean options", function (done) {
+  describe('trimStrings', function () {
+    it('keeps default schema clean options', function (done) {
       const schema = new SimpleSchema(
         {
           name: String
@@ -227,10 +227,10 @@ describe("clean options", function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [{ name: " foo " }])
+      callMongoMethod(collection, 'insert', [{ name: ' foo ' }])
         .then(async (_id) => {
-          const data = await callMongoMethod(collection, "findOne", [_id]);
-          expect(data).toEqual({ _id, name: " foo " });
+          const data = await callMongoMethod(collection, 'findOne', [_id]);
+          expect(data).toEqual({ _id, name: ' foo ' });
           done();
         })
         .catch((err) => {
@@ -238,7 +238,7 @@ describe("clean options", function () {
         });
     });
 
-    it("keeps operation clean options", function (done) {
+    it('keeps operation clean options', function (done) {
       const schema = new SimpleSchema(
         {
           name: String
@@ -252,13 +252,13 @@ describe("clean options", function () {
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [
-        { name: " foo " },
+      callMongoMethod(collection, 'insert', [
+        { name: ' foo ' },
         { trimStrings: false }
       ])
         .then(async (_id) => {
-          const data = await callMongoMethod(collection, "findOne", [_id]);
-          expect(data).toEqual({ _id, name: " foo " });
+          const data = await callMongoMethod(collection, 'findOne', [_id]);
+          expect(data).toEqual({ _id, name: ' foo ' });
           done();
         })
         .catch((err) => {
@@ -266,15 +266,15 @@ describe("clean options", function () {
         });
     });
 
-    it("has clean option on by default", function (done) {
+    it('has clean option on by default', function (done) {
       const schema = new SimpleSchema({ name: String });
 
       collection.attachSchema(schema, { replace: true });
 
-      callMongoMethod(collection, "insert", [{ name: " foo " }])
+      callMongoMethod(collection, 'insert', [{ name: ' foo ' }])
         .then(async (_id) => {
-          const data = await callMongoMethod(collection, "findOne", [_id]);
-          expect(data).toEqual({ _id, name: "foo" });
+          const data = await callMongoMethod(collection, 'findOne', [_id]);
+          expect(data).toEqual({ _id, name: 'foo' });
           done();
         })
         .catch((err) => {

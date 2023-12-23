@@ -1,10 +1,10 @@
-import expect from "expect";
-import Collection2 from "meteor/aldeed:collection2";
+import expect from 'expect';
+import Collection2 from 'meteor/aldeed:collection2';
 
 /* global it describe */
 
-describe("cleanOptions", function () {
-  it("comes preloaded with default values", function () {
+describe('cleanOptions', function () {
+  it('comes preloaded with default values', function () {
     expect(Collection2.cleanOptions).toEqual({
       filter: true,
       autoConvert: true,
@@ -14,7 +14,7 @@ describe("cleanOptions", function () {
     });
   });
 
-  it("allows setting cleanOptions", function () {
+  it('allows setting cleanOptions', function () {
     const cleanOptions = {
       filter: false,
       autoConvert: false,

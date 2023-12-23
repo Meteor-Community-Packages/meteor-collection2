@@ -1,19 +1,19 @@
-import expect from "expect";
-import { Mongo } from "meteor/mongo";
-import SimpleSchema from "simpl-schema";
-import addMultiTests from "./multi.tests.js";
-import addBooksTests from "./books.tests.js";
-import addContextTests from "./context.tests.js";
-import addDefaultValuesTests from "./default.tests.js";
-import { Meteor } from "meteor/meteor";
-import { callMongoMethod } from "./helper";
+import expect from 'expect';
+import { Mongo } from 'meteor/mongo';
+import SimpleSchema from 'simpl-schema';
+import addMultiTests from './multi.tests.js';
+import addBooksTests from './books.tests.js';
+import addContextTests from './context.tests.js';
+import addDefaultValuesTests from './default.tests.js';
+import { Meteor } from 'meteor/meteor';
+import { callMongoMethod } from './helper';
 
 /* global describe, it */
 
-describe("collection2", function () {
-  it("attach and get simpleSchema for normal collection", function () {
+describe('collection2', function () {
+  it('attach and get simpleSchema for normal collection', function () {
     const mc = new Mongo.Collection(
-      "mc",
+      'mc',
       Meteor.isClient ? { connection: null } : undefined
     );
 
@@ -26,7 +26,7 @@ describe("collection2", function () {
     expect(mc.simpleSchema() instanceof SimpleSchema).toBe(true);
   });
 
-  it("attach and get simpleSchema for local collection", function () {
+  it('attach and get simpleSchema for local collection', function () {
     const mc = new Mongo.Collection(null);
 
     mc.attachSchema(
@@ -38,9 +38,9 @@ describe("collection2", function () {
     expect(mc.simpleSchema() instanceof SimpleSchema).toBe(true);
   });
 
-  it("handles prototype-less objects", async function () {
+  it('handles prototype-less objects', async function () {
     const prototypelessTest = new Mongo.Collection(
-      "prototypelessTest",
+      'prototypelessTest',
       Meteor.isClient ? { connection: null } : undefined
     );
 
@@ -53,16 +53,16 @@ describe("collection2", function () {
     );
 
     const prototypelessObject = Object.create(null);
-    prototypelessObject.foo = "bar";
+    prototypelessObject.foo = 'bar';
 
-    await callMongoMethod(prototypelessTest, "insert", [prototypelessObject]);
+    await callMongoMethod(prototypelessTest, 'insert', [prototypelessObject]);
   });
 
   if (Meteor.isServer) {
     // https://github.com/aldeed/meteor-collection2/issues/243
-    it("upsert runs autoValue only once", async function () {
+    it('upsert runs autoValue only once', async function () {
       const upsertAutoValueTest = new Mongo.Collection(
-        "upsertAutoValueTest",
+        'upsertAutoValueTest',
         Meteor.isClient ? { connection: null } : undefined
       );
       let times = 0;
@@ -76,21 +76,21 @@ describe("collection2", function () {
             type: String,
             autoValue() {
               times++;
-              return "test";
+              return 'test';
             }
           }
         })
       );
 
-      await callMongoMethod(upsertAutoValueTest, "remove", [{}]);
+      await callMongoMethod(upsertAutoValueTest, 'remove', [{}]);
 
-      await callMongoMethod(upsertAutoValueTest, "upsert", [
+      await callMongoMethod(upsertAutoValueTest, 'upsert', [
         {
-          foo: "bar"
+          foo: 'bar'
         },
         {
           $set: {
-            av: "abc"
+            av: 'abc'
           }
         }
       ]);
@@ -98,9 +98,9 @@ describe("collection2", function () {
     });
 
     // https://forums.meteor.com/t/simpl-schema-update-error-while-using-lte-operator-when-calling-update-by-the-field-of-type-date/50414/3
-    it("upsert can handle query operators in the selector", async function () {
+    it('upsert can handle query operators in the selector', async function () {
       const upsertQueryOperatorsTest = new Mongo.Collection(
-        "upsertQueryOperatorsTest",
+        'upsertQueryOperatorsTest',
         Meteor.isClient ? { connection: null } : undefined
       );
 
@@ -115,14 +115,14 @@ describe("collection2", function () {
         })
       );
 
-      await callMongoMethod(upsertQueryOperatorsTest, "remove", [{}]);
+      await callMongoMethod(upsertQueryOperatorsTest, 'remove', [{}]);
       const oneDayInMs = 1000 * 60 * 60 * 24;
       const yesterday = new Date(Date.now() - oneDayInMs);
       const tomorrow = new Date(Date.now() + oneDayInMs);
 
       const { numberAffected, insertedId } = await callMongoMethod(
         upsertQueryOperatorsTest,
-        "upsert",
+        'upsert',
         [
           {
             foo: { $gte: yesterday, $lte: tomorrow }
@@ -142,7 +142,7 @@ describe("collection2", function () {
 
       const doc = await callMongoMethod(
         upsertQueryOperatorsTest,
-        "findOne",
+        'findOne',
         []
       );
       expect(insertedId).toBe(doc._id);
@@ -150,9 +150,9 @@ describe("collection2", function () {
       expect(doc.baz).toBe(4);
     });
 
-    it("upsert with schema can handle query operator which contains undefined or null", async function () {
+    it('upsert with schema can handle query operator which contains undefined or null', async function () {
       const upsertQueryOperatorUndefinedTest = new Mongo.Collection(
-        "upsertQueryOperatorUndefinedTest",
+        'upsertQueryOperatorUndefinedTest',
         Meteor.isClient ? { connection: null } : undefined
       );
 
@@ -168,11 +168,11 @@ describe("collection2", function () {
       );
 
       // Let's try for undefined.
-      await callMongoMethod(upsertQueryOperatorUndefinedTest, "remove", [{}]);
+      await callMongoMethod(upsertQueryOperatorUndefinedTest, 'remove', [{}]);
 
       const result = await callMongoMethod(
         upsertQueryOperatorUndefinedTest,
-        "upsert",
+        'upsert',
         [
           {
             foo: undefined
@@ -192,7 +192,7 @@ describe("collection2", function () {
 
       const doc = await callMongoMethod(
         upsertQueryOperatorUndefinedTest,
-        "findOne",
+        'findOne',
         []
       );
       expect(result.insertedId).toBe(doc._id);
@@ -202,11 +202,11 @@ describe("collection2", function () {
 
       // Let's try for null.
 
-      await callMongoMethod(upsertQueryOperatorUndefinedTest, "remove", [{}]);
+      await callMongoMethod(upsertQueryOperatorUndefinedTest, 'remove', [{}]);
 
       const result2 = await callMongoMethod(
         upsertQueryOperatorUndefinedTest,
-        "upsert",
+        'upsert',
         [
           {
             foo: null
@@ -226,7 +226,7 @@ describe("collection2", function () {
 
       const doc2 = await callMongoMethod(
         upsertQueryOperatorUndefinedTest,
-        "findOne",
+        'findOne',
         []
       );
       expect(result2.insertedId).toBe(doc2._id);
@@ -237,7 +237,7 @@ describe("collection2", function () {
 
     it('upsert with schema can handle query operator "eq" correctly in the selector when property is left out in $set or $setOnInsert', async function () {
       const upsertQueryOperatorEqTest = new Mongo.Collection(
-        "upsertQueryOperatorEqTest",
+        'upsertQueryOperatorEqTest',
         Meteor.isClient ? { connection: null } : undefined
       );
 
@@ -249,14 +249,14 @@ describe("collection2", function () {
         })
       );
 
-      await callMongoMethod(upsertQueryOperatorEqTest, "remove", [{}]);
+      await callMongoMethod(upsertQueryOperatorEqTest, 'remove', [{}]);
 
       const result = await callMongoMethod(
         upsertQueryOperatorEqTest,
-        "upsert",
+        'upsert',
         [
           {
-            foo: { $eq: "test" }
+            foo: { $eq: 'test' }
           },
           {
             $set: {
@@ -273,18 +273,18 @@ describe("collection2", function () {
 
       const doc = await callMongoMethod(
         upsertQueryOperatorEqTest,
-        "findOne",
+        'findOne',
         []
       );
       expect(result.insertedId).toBe(doc._id);
-      expect(doc.foo).toBe("test");
+      expect(doc.foo).toBe('test');
       expect(doc.bar).toBe(2);
       expect(doc.baz).toBe(4);
     });
 
     it('upsert with schema can handle query operator "in" with one element correctly in the selector when property is left out in $set or $setOnInsert', async function () {
       const upsertQueryOperatorInSingleTest = new Mongo.Collection(
-        "upsertQueryOperatorInSingleTest",
+        'upsertQueryOperatorInSingleTest',
         Meteor.isClient ? { connection: null } : undefined
       );
 
@@ -296,14 +296,14 @@ describe("collection2", function () {
         })
       );
 
-      await callMongoMethod(upsertQueryOperatorInSingleTest, "remove", [{}]);
+      await callMongoMethod(upsertQueryOperatorInSingleTest, 'remove', [{}]);
 
       const result = await callMongoMethod(
         upsertQueryOperatorInSingleTest,
-        "upsert",
+        'upsert',
         [
           {
-            foo: { $in: ["test"] }
+            foo: { $in: ['test'] }
           },
           {
             $set: {
@@ -320,18 +320,18 @@ describe("collection2", function () {
 
       const doc = await callMongoMethod(
         upsertQueryOperatorInSingleTest,
-        "findOne",
+        'findOne',
         []
       );
       expect(result.insertedId).toBe(doc._id);
-      expect(doc.foo).toBe("test");
+      expect(doc.foo).toBe('test');
       expect(doc.bar).toBe(2);
       expect(doc.baz).toBe(4);
     });
 
     it('upsert with schema can handle query operator "in" with multiple elements correctly in the selector when property is left out in $set or $setOnInsert', async function () {
       const upsertQueryOperatorInMultiTest = new Mongo.Collection(
-        "upsertQueryOperatorInMultiTest",
+        'upsertQueryOperatorInMultiTest',
         Meteor.isClient ? { connection: null } : undefined
       );
 
@@ -346,14 +346,14 @@ describe("collection2", function () {
         })
       );
 
-      await callMongoMethod(upsertQueryOperatorInMultiTest, "remove", [{}]);
+      await callMongoMethod(upsertQueryOperatorInMultiTest, 'remove', [{}]);
 
       const result = await callMongoMethod(
         upsertQueryOperatorInMultiTest,
-        "upsert",
+        'upsert',
         [
           {
-            foo: { $in: ["test", "test2"] }
+            foo: { $in: ['test', 'test2'] }
           },
           {
             $set: {
@@ -370,7 +370,7 @@ describe("collection2", function () {
 
       const doc = await callMongoMethod(
         upsertQueryOperatorInMultiTest,
-        "findOne",
+        'findOne',
         []
       );
       expect(result.insertedId).toBe(doc._id);
@@ -380,9 +380,9 @@ describe("collection2", function () {
     });
 
     // https://github.com/Meteor-Community-Packages/meteor-collection2/issues/408
-    it("upsert with schema can handle nested objects correctly", async function () {
+    it('upsert with schema can handle nested objects correctly', async function () {
       const upsertQueryOperatorNestedObject = new Mongo.Collection(
-        "upsertQueryOperatorNestedObject",
+        'upsertQueryOperatorNestedObject',
         Meteor.isClient ? { connection: null } : undefined
       );
 
@@ -404,22 +404,22 @@ describe("collection2", function () {
         })
       );
 
-      await callMongoMethod(upsertQueryOperatorNestedObject, "remove", [{}]);
+      await callMongoMethod(upsertQueryOperatorNestedObject, 'remove', [{}]);
 
       const testDateValue = new Date();
 
       const result = await callMongoMethod(
         upsertQueryOperatorNestedObject,
-        "upsert",
+        'upsert',
         [
           {
-            test: "1"
+            test: '1'
           },
           {
             $set: {
               foo: {
-                bar: "1",
-                baz: "2"
+                bar: '1',
+                baz: '2'
               },
               test: testDateValue
             }
@@ -431,7 +431,7 @@ describe("collection2", function () {
 
       const doc = await callMongoMethod(
         upsertQueryOperatorNestedObject,
-        "findOne",
+        'findOne',
         [
           {
             _id: result.insertedId
@@ -440,14 +440,14 @@ describe("collection2", function () {
       );
 
       expect(result.insertedId).toBe(doc._id);
-      expect(doc.foo.bar).toBe("1");
-      expect(doc.foo.baz).toBe("2");
+      expect(doc.foo.bar).toBe('1');
+      expect(doc.foo.baz).toBe('2');
       expect(doc.test).toEqual(testDateValue);
     });
 
     it('upsert with schema can handle query operator "$and" including inner nested selectors correctly when properties is left out in $set or $setOnInsert', async function () {
       const upsertQueryOperatorAndTest = new Mongo.Collection(
-        "upsertQueryOperatorAndTest",
+        'upsertQueryOperatorAndTest',
         Meteor.isClient ? { connection: null } : undefined
       );
 
@@ -461,15 +461,15 @@ describe("collection2", function () {
         })
       );
 
-      await callMongoMethod(upsertQueryOperatorAndTest, "remove", [{}]);
+      await callMongoMethod(upsertQueryOperatorAndTest, 'remove', [{}]);
 
       const result = await callMongoMethod(
         upsertQueryOperatorAndTest,
-        "upsert",
+        'upsert',
         [
           {
-            foo: "test",
-            $and: [{ test1: "abc" }, { $and: [{ test2: { $in: ["abc"] } }] }]
+            foo: 'test',
+            $and: [{ test1: 'abc' }, { $and: [{ test2: { $in: ['abc'] } }] }]
           },
           {
             $set: {
@@ -486,28 +486,28 @@ describe("collection2", function () {
 
       const doc = await callMongoMethod(
         upsertQueryOperatorAndTest,
-        "findOne",
+        'findOne',
         []
       );
       expect(result.insertedId).toBe(doc._id);
-      expect(doc.foo).toBe("test");
-      expect(doc.test1).toBe("abc");
-      expect(doc.test2).toBe("abc");
+      expect(doc.foo).toBe('test');
+      expect(doc.test1).toBe('abc');
+      expect(doc.test2).toBe('abc');
       expect(doc.bar).toBe(2);
       expect(doc.baz).toBe(4);
     });
   }
 
-  it("no errors when using a schemaless collection", async function () {
-    const noSchemaCollection = new Mongo.Collection("noSchema", {
+  it('no errors when using a schemaless collection', async function () {
+    const noSchemaCollection = new Mongo.Collection('noSchema', {
       transform(doc) {
-        doc.userFoo = "userBar";
+        doc.userFoo = 'userBar';
         return doc;
       },
       connection: Meteor.isClient ? null : undefined
     });
 
-    const newId = await callMongoMethod(noSchemaCollection, "insert", [
+    const newId = await callMongoMethod(noSchemaCollection, 'insert', [
       {
         a: 1,
         b: 2
@@ -516,11 +516,11 @@ describe("collection2", function () {
 
     expect(!!newId).toBe(true);
 
-    const doc = await callMongoMethod(noSchemaCollection, "findOne", [newId]);
+    const doc = await callMongoMethod(noSchemaCollection, 'findOne', [newId]);
     expect(doc instanceof Object).toBe(true);
-    expect(doc.userFoo).toBe("userBar");
+    expect(doc.userFoo).toBe('userBar');
 
-    await callMongoMethod(noSchemaCollection, "update", [
+    await callMongoMethod(noSchemaCollection, 'update', [
       {
         _id: newId
       },
@@ -533,56 +533,56 @@ describe("collection2", function () {
     ]);
   });
 
-  it("empty strings are removed but we can override", async function () {
+  it('empty strings are removed but we can override', async function () {
     const RESSchema = new SimpleSchema({
       foo: { type: String },
       bar: { type: String, optional: true }
     });
 
     const RES = new Mongo.Collection(
-      "RES",
+      'RES',
       Meteor.isClient ? { connection: null } : undefined
     );
     RES.attachSchema(RESSchema);
 
     // Remove empty strings (default)
-    const newId1 = await callMongoMethod(RES, "insert", [
+    const newId1 = await callMongoMethod(RES, 'insert', [
       {
-        foo: "foo",
-        bar: ""
+        foo: 'foo',
+        bar: ''
       }
     ]);
-    expect(typeof newId1).toBe("string");
+    expect(typeof newId1).toBe('string');
 
-    const doc = await callMongoMethod(RES, "findOne", [newId1]);
+    const doc = await callMongoMethod(RES, 'findOne', [newId1]);
     expect(doc instanceof Object).toBe(true);
     expect(doc.bar).toBe(undefined);
 
     // Don't remove empty strings
-    const newId2 = await callMongoMethod(RES, "insert", [
+    const newId2 = await callMongoMethod(RES, 'insert', [
       {
-        foo: "foo",
-        bar: ""
+        foo: 'foo',
+        bar: ''
       },
       {
         removeEmptyStrings: false
       }
     ]);
 
-    expect(typeof newId2).toBe("string");
+    expect(typeof newId2).toBe('string');
 
-    const doc2 = await callMongoMethod(RES, "findOne", [newId2]);
+    const doc2 = await callMongoMethod(RES, 'findOne', [newId2]);
     expect(doc2 instanceof Object).toBe(true);
-    expect(doc2.bar).toBe("");
+    expect(doc2.bar).toBe('');
 
     // Don't remove empty strings for an update either
-    const result = await callMongoMethod(RES, "update", [
+    const result = await callMongoMethod(RES, 'update', [
       {
         _id: newId1
       },
       {
         $set: {
-          bar: ""
+          bar: ''
         }
       },
       {
@@ -591,43 +591,43 @@ describe("collection2", function () {
     ]);
 
     expect(result).toBe(1);
-    const doc3 = await callMongoMethod(RES, "findOne", [newId1]);
+    const doc3 = await callMongoMethod(RES, 'findOne', [newId1]);
     expect(doc3 instanceof Object).toBe(true);
-    expect(doc3.bar).toBe("");
+    expect(doc3.bar).toBe('');
   });
 
-  it("extending a schema after attaching it, collection2 validation respects the extension", async function () {
+  it('extending a schema after attaching it, collection2 validation respects the extension', async function () {
     const schema = new SimpleSchema({
       foo: String
     });
 
     const collection = new Mongo.Collection(
-      "ExtendAfterAttach",
+      'ExtendAfterAttach',
       Meteor.isClient ? { connection: null } : undefined
     );
     collection.attachSchema(schema);
 
     try {
-      await callMongoMethod(collection, "insert", [
+      await callMongoMethod(collection, 'insert', [
         {
-          foo: "foo",
-          bar: "bar"
+          foo: 'foo',
+          bar: 'bar'
         },
         {
           filter: false
         }
       ]);
     } catch (error) {
-      expect(error.invalidKeys[0].name).toBe("bar");
+      expect(error.invalidKeys[0].name).toBe('bar');
 
       schema.extend({
         bar: String
       });
 
-      await callMongoMethod(collection, "insert", [
+      await callMongoMethod(collection, 'insert', [
         {
-          foo: "foo",
-          bar: "bar"
+          foo: 'foo',
+          bar: 'bar'
         },
         {
           filter: false
@@ -637,41 +637,41 @@ describe("collection2", function () {
       return;
     }
 
-    throw new Error("should not get here");
+    throw new Error('should not get here');
   });
 
-  it("extending a schema with a selector after attaching it, collection2 validation respects the extension", async () => {
+  it('extending a schema with a selector after attaching it, collection2 validation respects the extension', async () => {
     const schema = new SimpleSchema({
       foo: String
     });
 
     const collection = new Mongo.Collection(
-      "ExtendAfterAttach2",
+      'ExtendAfterAttach2',
       Meteor.isClient ? { connection: null } : undefined
     );
-    collection.attachSchema(schema, { selector: { foo: "foo" } });
+    collection.attachSchema(schema, { selector: { foo: 'foo' } });
 
     try {
-      await callMongoMethod(collection, "insert", [
+      await callMongoMethod(collection, 'insert', [
         {
-          foo: "foo",
-          bar: "bar"
+          foo: 'foo',
+          bar: 'bar'
         },
         {
           filter: false
         }
       ]);
     } catch (error) {
-      expect(error.invalidKeys[0].name).toBe("bar");
+      expect(error.invalidKeys[0].name).toBe('bar');
 
       schema.extend({
         bar: String
       });
 
-      await callMongoMethod(collection, "insert", [
+      await callMongoMethod(collection, 'insert', [
         {
-          foo: "foo",
-          bar: "bar"
+          foo: 'foo',
+          bar: 'bar'
         },
         {
           filter: false
@@ -680,14 +680,14 @@ describe("collection2", function () {
     }
   });
 
-  it("pick or omit schema fields when options are provided", async function () {
+  it('pick or omit schema fields when options are provided', async function () {
     const collectionSchema = new SimpleSchema({
       foo: { type: String },
       bar: { type: String, optional: true }
     });
 
     const collection = new Mongo.Collection(
-      "pickOrOmit",
+      'pickOrOmit',
       Meteor.isClient ? { connection: null } : undefined
     );
     collection.attachSchema(collectionSchema);
@@ -696,13 +696,13 @@ describe("collection2", function () {
     let errorThrown = false;
 
     try {
-      await callMongoMethod(collection, "insert", [
-        { foo: "foo", bar: "" },
-        { pick: ["foo"], omit: ["foo"] }
+      await callMongoMethod(collection, 'insert', [
+        { foo: 'foo', bar: '' },
+        { pick: ['foo'], omit: ['foo'] }
       ]);
     } catch (error) {
       expect(error.message).toBe(
-        "pick and omit options are mutually exclusive"
+        'pick and omit options are mutually exclusive'
       );
       errorThrown = true;
     }
@@ -710,31 +710,31 @@ describe("collection2", function () {
     expect(errorThrown).toBe(true); // should have thrown error
 
     // Omit required field 'foo'
-    const newId2 = await callMongoMethod(collection, "insert", [
-      { bar: "test" },
-      { omit: ["foo"] }
+    const newId2 = await callMongoMethod(collection, 'insert', [
+      { bar: 'test' },
+      { omit: ['foo'] }
     ]);
 
-    expect(typeof newId2).toBe("string");
+    expect(typeof newId2).toBe('string');
 
-    const doc = await callMongoMethod(collection, "findOne", [newId2]);
+    const doc = await callMongoMethod(collection, 'findOne', [newId2]);
     expect(doc instanceof Object).toBe(true);
     expect(doc.foo).toBe(undefined);
-    expect(doc.bar).toBe("test");
+    expect(doc.bar).toBe('test');
 
     // Pick only 'foo'
-    const result = await callMongoMethod(collection, "update", [
+    const result = await callMongoMethod(collection, 'update', [
       { _id: newId2 },
-      { $set: { foo: "test", bar: "changed" } },
-      { pick: ["foo"] }
+      { $set: { foo: 'test', bar: 'changed' } },
+      { pick: ['foo'] }
     ]);
 
     expect(result).toBe(1);
 
-    const doc2 = await callMongoMethod(collection, "findOne", [newId2]);
+    const doc2 = await callMongoMethod(collection, 'findOne', [newId2]);
     expect(doc2 instanceof Object).toBe(true);
-    expect(doc2.foo).toBe("test");
-    expect(doc2.bar).toBe("test");
+    expect(doc2.foo).toBe('test');
+    expect(doc2.bar).toBe('test');
   });
 
   addBooksTests();

@@ -1,5 +1,5 @@
-import { Meteor } from "meteor/meteor";
-import { Mongo } from "meteor/mongo";
+import { Meteor } from 'meteor/meteor';
+import { Mongo } from 'meteor/mongo';
 
 let strategy = null;
 if (Mongo.Collection.prototype.insertAsync && Meteor.isFibersDisabled) {
@@ -25,7 +25,7 @@ export function callMongoMethod(collection, method, args) {
     if (strategy <= 2) {
       if (
         Meteor.isClient &&
-        !["findOne", "findOneAsync"].includes(methodName)
+        !['findOne', 'findOneAsync'].includes(methodName)
       ) {
         collection[methodName](...args, (error, result) => {
           if (error) {

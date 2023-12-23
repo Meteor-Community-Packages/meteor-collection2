@@ -1,41 +1,41 @@
-import expect from "expect";
-import { Mongo } from "meteor/mongo";
-import SimpleSchema from "simpl-schema";
-import { Meteor } from "meteor/meteor";
-import { _ } from "meteor/underscore";
-import { callMeteorFetch, callMongoMethod } from "./helper";
+import expect from 'expect';
+import { Mongo } from 'meteor/mongo';
+import SimpleSchema from 'simpl-schema';
+import { Meteor } from 'meteor/meteor';
+import { _ } from 'meteor/underscore';
+import { callMeteorFetch, callMongoMethod } from './helper';
 
 /* global describe, it, beforeEach */
 
 const booksSchema = new SimpleSchema({
   title: {
     type: String,
-    label: "Title",
+    label: 'Title',
     max: 200
   },
   author: {
     type: String,
-    label: "Author"
+    label: 'Author'
   },
   copies: {
     type: SimpleSchema.Integer,
-    label: "Number of copies",
+    label: 'Number of copies',
     min: 0
   },
   lastCheckedOut: {
     type: Date,
-    label: "Last date this book was checked out",
+    label: 'Last date this book was checked out',
     optional: true
   },
   summary: {
     type: String,
-    label: "Brief summary",
+    label: 'Brief summary',
     optional: true,
     max: 1000
   },
   isbn: {
     type: String,
-    label: "ISBN",
+    label: 'ISBN',
     optional: true
   },
   field1: {
@@ -56,10 +56,10 @@ const booksSchema = new SimpleSchema({
   }
 });
 
-const books = new Mongo.Collection("books");
+const books = new Mongo.Collection('books');
 books.attachSchema(booksSchema);
 
-const upsertTest = new Mongo.Collection("upsertTest");
+const upsertTest = new Mongo.Collection('upsertTest');
 upsertTest.attachSchema(
   new SimpleSchema({
     _id: { type: String },
@@ -68,21 +68,21 @@ upsertTest.attachSchema(
 );
 
 export default function addBooksTests() {
-  describe("insert", function () {
+  describe('insert', function () {
     beforeEach(async function () {
       for (const book of await callMeteorFetch(books, {})) {
-        await callMongoMethod(books, "remove", [book._id]);
+        await callMongoMethod(books, 'remove', [book._id]);
       }
     });
 
     if (Meteor.isClient) {
-      it("required", function (done) {
+      it('required', function (done) {
         const maybeNext = _.after(2, done);
 
         const id = books.insert(
           {
-            title: "Ulysses",
-            author: "James Joyce"
+            title: 'Ulysses',
+            author: 'James Joyce'
           },
           (error, result) => {
             // The insert will fail, error will be set,
@@ -97,36 +97,36 @@ export default function addBooksTests() {
             expect(validationErrors.length).toBe(1);
 
             const key = validationErrors[0] || {};
-            expect(key.name).toBe("copies");
-            expect(key.type).toBe("required");
+            expect(key.name).toBe('copies');
+            expect(key.type).toBe('required');
             maybeNext();
           }
         );
 
-        expect(typeof id).toBe("string");
+        expect(typeof id).toBe('string');
         maybeNext();
       });
 
-      it("validate false", function (done) {
-        const title = "Validate False Client";
+      it('validate false', function (done) {
+        const title = 'Validate False Client';
 
-        callMongoMethod(books, "insert", [
+        callMongoMethod(books, 'insert', [
           {
             title,
-            author: "James Joyce"
+            author: 'James Joyce'
           },
           {
             validate: false,
-            validationContext: "validateFalse"
+            validationContext: 'validateFalse'
           }
         ])
           .then(() => {
-            done(new Error("should not get here"));
+            done(new Error('should not get here'));
           })
           .catch(async (error) => {
             const validationErrors = books
               .simpleSchema()
-              .namedContext("validateFalse")
+              .namedContext('validateFalse')
               .validationErrors();
 
             // When validated: false on the client,
@@ -137,57 +137,57 @@ export default function addBooksTests() {
             // expect(!!result).toBe(false)
             expect(validationErrors.length).toBe(1);
 
-            const insertedBook = await callMongoMethod(books, "findOne", [
+            const insertedBook = await callMongoMethod(books, 'findOne', [
               { title }
             ]);
             expect(!!insertedBook).toBe(false);
 
             // do a good one to set up update test
-            callMongoMethod(books, "insert", [
+            callMongoMethod(books, 'insert', [
               {
-                title: title + " 2",
-                author: "James Joyce",
+                title: title + ' 2',
+                author: 'James Joyce',
                 copies: 1
               },
               {
                 validate: false,
-                validationContext: "validateFalse2"
+                validationContext: 'validateFalse2'
               }
             ]).then(async (newId) => {
               const validationErrors = books
                 .simpleSchema()
-                .namedContext("validateFalse2")
+                .namedContext('validateFalse2')
                 .validationErrors();
 
               expect(!!newId).toBe(true);
               expect(validationErrors.length).toBe(0);
 
-              const insertedBook = await callMongoMethod(books, "findOne", [
-                { title: title + " 2" }
+              const insertedBook = await callMongoMethod(books, 'findOne', [
+                { title: title + ' 2' }
               ]);
               expect(!!insertedBook).toBe(true);
 
-              callMongoMethod(books, "update", [
+              callMongoMethod(books, 'update', [
                 {
                   _id: newId
                 },
                 {
                   $set: {
-                    copies: "Yes Please"
+                    copies: 'Yes Please'
                   }
                 },
                 {
                   validate: false,
-                  validationContext: "validateFalse3"
+                  validationContext: 'validateFalse3'
                 }
               ])
                 .then(() => {
-                  done(new Error("should not get here"));
+                  done(new Error('should not get here'));
                 })
                 .catch(async (error) => {
                   const validationErrors = books
                     .simpleSchema()
-                    .namedContext("validateFalse3")
+                    .namedContext('validateFalse3')
                     .validationErrors();
 
                   // When validated: false on the client,
@@ -198,7 +198,7 @@ export default function addBooksTests() {
                   // expect(!!result).toBe(false)
                   expect(validationErrors.length).toBe(1);
 
-                  const updatedBook = await callMongoMethod(books, "findOne", [
+                  const updatedBook = await callMongoMethod(books, 'findOne', [
                     newId
                   ]);
                   expect(!!updatedBook).toBe(true);
@@ -206,7 +206,7 @@ export default function addBooksTests() {
                   expect(updatedBook.copies).toBe(1);
 
                   // now try a good one
-                  callMongoMethod(books, "update", [
+                  callMongoMethod(books, 'update', [
                     {
                       _id: newId
                     },
@@ -217,19 +217,19 @@ export default function addBooksTests() {
                     },
                     {
                       validate: false,
-                      validationContext: "validateFalse4"
+                      validationContext: 'validateFalse4'
                     }
                   ]).then(async (result) => {
                     const validationErrors = books
                       .simpleSchema()
-                      .namedContext("validateFalse4")
+                      .namedContext('validateFalse4')
                       .validationErrors();
                     expect(result).toBe(1);
                     expect(validationErrors.length).toBe(0);
 
                     const updatedBook = await callMongoMethod(
                       books,
-                      "findOne",
+                      'findOne',
                       [newId]
                     );
                     expect(!!updatedBook).toBe(true);
@@ -244,15 +244,15 @@ export default function addBooksTests() {
     }
 
     if (Meteor.isServer) {
-      it("required 1 on server", function (done) {
-        callMongoMethod(books, "insert", [
+      it('required 1 on server', function (done) {
+        callMongoMethod(books, 'insert', [
           {
-            title: "Ulysses",
-            author: "James Joyce"
+            title: 'Ulysses',
+            author: 'James Joyce'
           }
         ])
           .then((result) => {
-            done("should not get here");
+            done('should not get here');
           })
           .catch((error) => {
             // The insert will fail, error will be set,
@@ -268,29 +268,29 @@ export default function addBooksTests() {
             expect(validationErrors.length).toBe(1);
 
             const key = validationErrors[0] || {};
-            expect(key.name).toBe("copies");
-            expect(key.type).toBe("required");
+            expect(key.name).toBe('copies');
+            expect(key.type).toBe('required');
             done();
           });
       });
 
-      it("required 2 on server", async function () {
-        const title = "Validate False Server";
+      it('required 2 on server', async function () {
+        const title = 'Validate False Server';
 
         let error;
         let newId;
         let result;
         // do a good one to set up update test
         try {
-          newId = await callMongoMethod(books, "insert", [
+          newId = await callMongoMethod(books, 'insert', [
             {
-              title: title + " 2",
-              author: "James Joyce",
+              title: title + ' 2',
+              author: 'James Joyce',
               copies: 1
             },
             {
               validate: false,
-              validationContext: "validateFalse2"
+              validationContext: 'validateFalse2'
             }
           ]);
         } catch (e) {
@@ -299,31 +299,31 @@ export default function addBooksTests() {
 
         let validationErrors = books
           .simpleSchema()
-          .namedContext("validateFalse2")
+          .namedContext('validateFalse2')
           .validationErrors();
 
         expect(!!error).toBe(false);
         expect(!!newId).toBe(true);
         expect(validationErrors.length).toBe(0);
 
-        const insertedBook = await callMongoMethod(books, "findOne", [
-          { title: title + " 2" }
+        const insertedBook = await callMongoMethod(books, 'findOne', [
+          { title: title + ' 2' }
         ]);
         expect(!!insertedBook).toBe(true);
 
         try {
-          result = await callMongoMethod(books, "update", [
+          result = await callMongoMethod(books, 'update', [
             {
               _id: newId
             },
             {
               $set: {
-                copies: "Yes Please"
+                copies: 'Yes Please'
               }
             },
             {
               validate: false,
-              validationContext: "validateFalse3"
+              validationContext: 'validateFalse3'
             }
           ]);
           error = null;
@@ -334,7 +334,7 @@ export default function addBooksTests() {
         let updatedBook;
         validationErrors = books
           .simpleSchema()
-          .namedContext("validateFalse3")
+          .namedContext('validateFalse3')
           .validationErrors();
 
         // When validated: false on the server, validation should be skipped
@@ -342,15 +342,15 @@ export default function addBooksTests() {
         expect(!!result).toBe(true);
         expect(validationErrors.length).toBe(0);
 
-        updatedBook = await callMongoMethod(books, "findOne", [newId]);
+        updatedBook = await callMongoMethod(books, 'findOne', [newId]);
 
         expect(!!updatedBook).toBe(true);
         // copies should be changed despite being invalid because we skipped validation on the server
-        expect(updatedBook.copies).toBe("Yes Please");
+        expect(updatedBook.copies).toBe('Yes Please');
 
         // now try a good one
         try {
-          result = await callMongoMethod(books, "update", [
+          result = await callMongoMethod(books, 'update', [
             {
               _id: newId
             },
@@ -361,7 +361,7 @@ export default function addBooksTests() {
             },
             {
               validate: false,
-              validationContext: "validateFalse4"
+              validationContext: 'validateFalse4'
             }
           ]);
           error = null;
@@ -371,23 +371,23 @@ export default function addBooksTests() {
 
         validationErrors = books
           .simpleSchema()
-          .namedContext("validateFalse4")
+          .namedContext('validateFalse4')
           .validationErrors();
         expect(!!error).toBe(false);
         expect(result).toBe(1);
         expect(validationErrors.length).toBe(0);
 
-        updatedBook = await callMongoMethod(books, "findOne", [newId]);
+        updatedBook = await callMongoMethod(books, 'findOne', [newId]);
         expect(!!updatedBook).toBe(true);
         // copies should be changed because we used a valid value
         expect(updatedBook.copies).toBe(3);
       });
 
-      it("no validation when calling underlying _collection on the server", function (done) {
-        callMongoMethod(books._collection, "insert", [
+      it('no validation when calling underlying _collection on the server', function (done) {
+        callMongoMethod(books._collection, 'insert', [
           {
-            title: "Ulysses",
-            author: "James Joyce",
+            title: 'Ulysses',
+            author: 'James Joyce',
             copies: 1,
             updatedAt: new Date()
           }
@@ -401,7 +401,7 @@ export default function addBooksTests() {
   });
 
   if (Meteor.isServer) {
-    describe("upsert", function () {
+    describe('upsert', function () {
       function getCallback(done) {
         return (result) => {
           expect(result.numberAffected).toBe(1);
@@ -445,16 +445,16 @@ export default function addBooksTests() {
         };
       }
 
-      it("valid", function (done) {
-        callMongoMethod(books, "upsert", [
+      it('valid', function (done) {
+        callMongoMethod(books, 'upsert', [
           {
-            title: "Ulysses",
-            author: "James Joyce"
+            title: 'Ulysses',
+            author: 'James Joyce'
           },
           {
             $set: {
-              title: "Ulysses",
-              author: "James Joyce",
+              title: 'Ulysses',
+              author: 'James Joyce',
               copies: 1
             }
           }
@@ -463,19 +463,19 @@ export default function addBooksTests() {
           .catch(done);
       });
 
-      it("upsert as update should update entity by _id - valid", function (done) {
-        callMongoMethod(books, "insert", [
-          { title: "new", author: "author new", copies: 2 }
+      it('upsert as update should update entity by _id - valid', function (done) {
+        callMongoMethod(books, 'insert', [
+          { title: 'new', author: 'author new', copies: 2 }
         ])
           .then((id) => {
-            return callMongoMethod(books, "upsert", [
+            return callMongoMethod(books, 'upsert', [
               {
                 _id: id
               },
               {
                 $set: {
-                  title: "Ulysses",
-                  author: "James Joyce",
+                  title: 'Ulysses',
+                  author: 'James Joyce',
                   copies: 1
                 }
               }
@@ -485,16 +485,16 @@ export default function addBooksTests() {
           .catch(done);
       });
 
-      it("upsert as update - valid", function (done) {
-        callMongoMethod(books, "update", [
+      it('upsert as update - valid', function (done) {
+        callMongoMethod(books, 'update', [
           {
-            title: "Ulysses",
-            author: "James Joyce"
+            title: 'Ulysses',
+            author: 'James Joyce'
           },
           {
             $set: {
-              title: "Ulysses",
-              author: "James Joyce",
+              title: 'Ulysses',
+              author: 'James Joyce',
               copies: 1
             }
           },
@@ -506,15 +506,15 @@ export default function addBooksTests() {
           .catch(done);
       });
 
-      it("upsert as update with $and", function (done) {
-        callMongoMethod(books, "update", [
+      it('upsert as update with $and', function (done) {
+        callMongoMethod(books, 'update', [
           {
-            $and: [{ title: "Ulysses" }, { author: "James Joyce" }]
+            $and: [{ title: 'Ulysses' }, { author: 'James Joyce' }]
           },
           {
             $set: {
-              title: "Ulysses",
-              author: "James Joyce",
+              title: 'Ulysses',
+              author: 'James Joyce',
               copies: 1
             }
           },
@@ -526,11 +526,11 @@ export default function addBooksTests() {
           .catch(done);
       });
 
-      it("upsert - invalid", function (done) {
-        callMongoMethod(books, "upsert", [
+      it('upsert - invalid', function (done) {
+        callMongoMethod(books, 'upsert', [
           {
-            title: "Ulysses",
-            author: "James Joyce"
+            title: 'Ulysses',
+            author: 'James Joyce'
           },
           {
             $set: {
@@ -538,15 +538,15 @@ export default function addBooksTests() {
             }
           }
         ])
-          .then(() => done(new Error("should not get here")))
+          .then(() => done(new Error('should not get here')))
           .catch(getErrorCallback(done));
       });
 
-      it("upsert as update - invalid", function (done) {
-        callMongoMethod(books, "update", [
+      it('upsert as update - invalid', function (done) {
+        callMongoMethod(books, 'update', [
           {
-            title: "Ulysses",
-            author: "James Joyce"
+            title: 'Ulysses',
+            author: 'James Joyce'
           },
           {
             $set: {
@@ -557,15 +557,15 @@ export default function addBooksTests() {
             upsert: true
           }
         ])
-          .then(() => done(new Error("should not get here")))
+          .then(() => done(new Error('should not get here')))
           .catch(getErrorCallback(done));
       });
 
-      it("upsert - valid with selector", function (done) {
-        callMongoMethod(books, "upsert", [
+      it('upsert - valid with selector', function (done) {
+        callMongoMethod(books, 'upsert', [
           {
-            title: "Ulysses",
-            author: "James Joyce"
+            title: 'Ulysses',
+            author: 'James Joyce'
           },
           {
             $set: {
@@ -577,11 +577,11 @@ export default function addBooksTests() {
           .catch(done);
       });
 
-      it("upsert as update - valid with selector", function (done) {
-        callMongoMethod(books, "update", [
+      it('upsert as update - valid with selector', function (done) {
+        callMongoMethod(books, 'update', [
           {
-            title: "Ulysses",
-            author: "James Joyce"
+            title: 'Ulysses',
+            author: 'James Joyce'
           },
           {
             $set: {
@@ -599,24 +599,24 @@ export default function addBooksTests() {
   }
 
   if (Meteor.isServer) {
-    it("validate false", function (done) {
-      const title = "Validate False Server";
+    it('validate false', function (done) {
+      const title = 'Validate False Server';
       let insertedBook, error, newId;
 
-      callMongoMethod(books, "insert", [
+      callMongoMethod(books, 'insert', [
         {
           title,
-          author: "James Joyce"
+          author: 'James Joyce'
         },
         {
           validate: false,
-          validationContext: "validateFalse"
+          validationContext: 'validateFalse'
         }
       ])
         .then(async (result) => {
           const validationErrors = books
             .simpleSchema()
-            .namedContext("validateFalse")
+            .namedContext('validateFalse')
             .validationErrors();
 
           // When validated: false on the server, validation should be skipped
@@ -624,18 +624,18 @@ export default function addBooksTests() {
           expect(!!result).toBe(true);
           expect(validationErrors.length).toBe(0);
 
-          insertedBook = await callMongoMethod(books, "findOne", [{ title }]);
+          insertedBook = await callMongoMethod(books, 'findOne', [{ title }]);
           expect(!!insertedBook).toBe(true);
 
-          return callMongoMethod(books, "insert", [
+          return callMongoMethod(books, 'insert', [
             {
-              title: title + " 2",
-              author: "James Joyce",
+              title: title + ' 2',
+              author: 'James Joyce',
               copies: 1
             },
             {
               validate: false,
-              validationContext: "validateFalse2"
+              validationContext: 'validateFalse2'
             }
           ]);
         })
@@ -644,49 +644,49 @@ export default function addBooksTests() {
 
           const validationErrors = books
             .simpleSchema()
-            .namedContext("validateFalse2")
+            .namedContext('validateFalse2')
             .validationErrors();
 
           expect(!!newId).toBe(true);
           expect(validationErrors.length).toBe(0);
 
-          return callMongoMethod(books, "findOne", [{ title: title + " 2" }]);
+          return callMongoMethod(books, 'findOne', [{ title: title + ' 2' }]);
         })
         .then((insertedBook) => {
           expect(!!insertedBook).toBe(true);
 
-          return callMongoMethod(books, "update", [
+          return callMongoMethod(books, 'update', [
             {
               _id: newId
             },
             {
               $set: {
-                copies: "Yes Please"
+                copies: 'Yes Please'
               }
             },
             {
               validate: false,
-              validationContext: "validateFalse3"
+              validationContext: 'validateFalse3'
             }
           ]);
         })
         .then((result) => {
           const validationErrors = books
             .simpleSchema()
-            .namedContext("validateFalse3")
+            .namedContext('validateFalse3')
             .validationErrors();
 
           // When validated: false on the server, validation should be skipped
           expect(!!result).toBe(true);
           expect(validationErrors.length).toBe(0);
-          return callMongoMethod(books, "findOne", [newId]);
+          return callMongoMethod(books, 'findOne', [newId]);
         })
         .then((updatedBook) => {
           expect(!!updatedBook).toBe(true);
           // copies should be changed despite being invalid because we skipped validation on the server
-          expect(updatedBook.copies).toBe("Yes Please");
+          expect(updatedBook.copies).toBe('Yes Please');
 
-          return callMongoMethod(books, "update", [
+          return callMongoMethod(books, 'update', [
             {
               _id: newId
             },
@@ -697,19 +697,19 @@ export default function addBooksTests() {
             },
             {
               validate: false,
-              validationContext: "validateFalse4"
+              validationContext: 'validateFalse4'
             }
           ]);
         })
         .then((result) => {
           const validationErrors = books
             .simpleSchema()
-            .namedContext("validateFalse4")
+            .namedContext('validateFalse4')
             .validationErrors();
           expect(result).toBe(1);
           expect(validationErrors.length).toBe(0);
 
-          return callMongoMethod(books, "findOne", [newId]);
+          return callMongoMethod(books, 'findOne', [newId]);
         })
         .then((updatedBook) => {
           expect(!!updatedBook).toBe(true);
@@ -722,23 +722,23 @@ export default function addBooksTests() {
   }
 
   if (Meteor.isServer) {
-    it("bypassCollection2 5", async function () {
-      const id = await callMongoMethod(books, "insert", [
+    it('bypassCollection2 5', async function () {
+      const id = await callMongoMethod(books, 'insert', [
         {},
         { bypassCollection2: true }
       ]);
 
-      await callMongoMethod(books, "update", [
+      await callMongoMethod(books, 'update', [
         id,
         { $set: { copies: 2 } },
         { bypassCollection2: true }
       ]);
     });
 
-    it("everything filtered out", async function () {
+    it('everything filtered out', async function () {
       try {
-        await callMongoMethod(upsertTest, "update", [
-          { _id: "123" },
+        await callMongoMethod(upsertTest, 'update', [
+          { _id: '123' },
           {
             $set: {
               boo: 1
@@ -747,19 +747,19 @@ export default function addBooksTests() {
         ]);
       } catch (e) {
         expect(e.message).toBe(
-          "After filtering out keys not in the schema, your modifier is now empty"
+          'After filtering out keys not in the schema, your modifier is now empty'
         );
       }
     });
 
-    it("upsert works with schema that allows _id", async function () {
-      await callMongoMethod(upsertTest, "remove", [{}]);
+    it('upsert works with schema that allows _id', async function () {
+      await callMongoMethod(upsertTest, 'remove', [{}]);
 
-      const upsertTestId = await callMongoMethod(upsertTest, "insert", [
+      const upsertTestId = await callMongoMethod(upsertTest, 'insert', [
         { foo: 1 }
       ]);
 
-      await callMongoMethod(upsertTest, "update", [
+      await callMongoMethod(upsertTest, 'update', [
         { _id: upsertTestId },
         {
           $set: {
@@ -771,7 +771,7 @@ export default function addBooksTests() {
         }
       ]);
 
-      const doc = await callMongoMethod(upsertTest, "findOne", [upsertTestId]);
+      const doc = await callMongoMethod(upsertTest, 'findOne', [upsertTestId]);
       expect(doc.foo).toBe(2);
     });
   }
