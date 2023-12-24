@@ -4,7 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [4.0.0-beta.1](#400-beta.1)
+- [4.0.0-beta.2](#400-beta.2)
 - [3.5.0](#350)
 - [3.4.1](#341)
 - [3.4.0](#340)
@@ -78,9 +78,10 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## 4.0.0-beta.1
+## 4.0.0-beta.2
 
-Make collection2 compatible with Meteor 3.0 thanks to the [awesome work](https://github.com/Meteor-Community-Packages/meteor-collection2/pull/443) by @klablink  
+- Make collection2 compatible with Meteor 3.0 thanks to the [awesome work](https://github.com/Meteor-Community-Packages/meteor-collection2/pull/443) by @klablink  
+- Remove clean options https://github.com/Meteor-Community-Packages/meteor-collection2/pull/436
 
 ## 3.5.0
 
