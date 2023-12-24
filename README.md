@@ -361,26 +361,6 @@ instance for a Mongo.Collection instance. For example:
 MyCollection.simpleSchema().validate(doc);
 ```
 
-## Schema Clean Options
-
-You can set the simpl-schema clean options globally in collection2. They are merged with any options defined on the schema level.
-
-```js
-import Collection2 from 'meteor/aldeed:collection2'
-
-// The values shown are the default options used internally. Overwrite them if needed.
-Collection2.cleanOptions = {
-    filter: true,
-    autoConvert: true,
-    removeEmptyStrings: true,
-    trimStrings: true,
-    removeNullsFromArrays: true,
-}
-
-// Or you can update individual options.
-Collection2.cleanOptions.filter = false;
-```
-
 ## Passing Options
 
 In Meteor, the `update` function accepts an options argument. Collection2 changes the `insert` function signature to also accept options in the same way, as an optional second argument. Whenever this documentation says to "use X option", it's referring to this options argument. For example:

@@ -17,13 +17,6 @@ const SimpleSchema = require('simpl-schema').default;
 // Exported only for listening to events
 const Collection2 = new EventEmitter();
 
-Collection2.cleanOptions = {
-  filter: true,
-  autoConvert: true,
-  removeEmptyStrings: true,
-  trimStrings: true,
-  removeNullsFromArrays: false
-};
 
 /**
  * Mongo.Collection.prototype.attachSchema
@@ -472,8 +465,6 @@ function doValidate(collection, type, args, getAutoValues, userId, isFromTrusted
   schema.clean(doc, {
     mutate: true, // Clean the doc/modifier in place
     isModifier: !isInsertType(type),
-    // Start with some Collection2 defaults, which will usually be overwritten
-    ...Collection2.cleanOptions,
     // The extent with the schema-level defaults (from SimpleSchema constructor options)
     ...(schema._cleanOptions || {}),
     // Finally, options for this specific operation should take precedence
