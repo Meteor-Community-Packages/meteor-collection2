@@ -82,6 +82,7 @@
 
 - Make collection2 compatible with Meteor 3.0 thanks to the [awesome work](https://github.com/Meteor-Community-Packages/meteor-collection2/pull/443) by @klablink  
 - Remove clean options https://github.com/Meteor-Community-Packages/meteor-collection2/pull/436
+- Prettier is added to enforce a consistent style across the project
 
 ## 3.5.0
 
