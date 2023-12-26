@@ -1,28 +1,19 @@
 import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 
-let strategy = null;
-if (Mongo.Collection.prototype.insertAsync && Meteor.isFibersDisabled) {
-  strategy = 3;
-} else if (Mongo.Collection.prototype.insertAsync) {
-  strategy = 2;
-} else {
-  strategy = 1;
+let ASYNC_FRIENDLY = false;
+
+if (Mongo.Collection.prototype.insertAsync) {
+  ASYNC_FRIENDLY = true;
 }
 
-function getMethodNameByMeteorVersion(methodName) {
-  if (strategy === 1) {
-    return methodName;
-  }
-
-  return `${methodName}Async`;
-}
+const getMethodNameByMeteorVersion = (methodName) => ASYNC_FRIENDLY ? `${methodName}Async` : methodName ;
 
 export function callMongoMethod(collection, method, args) {
   const methodName = getMethodNameByMeteorVersion(method);
 
   return new Promise((resolve, reject) => {
-    if (strategy <= 2) {
+    if (ASYNC_FRIENDLY) {
       if (Meteor.isClient && !['findOne', 'findOneAsync'].includes(methodName)) {
         collection[methodName](...args, (error, result) => {
           if (error) {
@@ -48,10 +39,10 @@ export function callMongoMethod(collection, method, args) {
 
 export function callMeteorFetch(collection, selector) {
   return new Promise((resolve, reject) => {
-    if (strategy === 1) {
-      resolve(collection.find(selector).fetch());
-    } else {
+    if (ASYNC_FRIENDLY) {
       resolve(collection.find(selector).fetchAsync());
+    } else {
+      resolve(collection.find(selector).fetch());
     }
   });
 }
