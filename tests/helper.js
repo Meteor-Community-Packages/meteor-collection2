@@ -7,27 +7,18 @@ if (Mongo.Collection.prototype.insertAsync) {
   ASYNC_FRIENDLY = true;
 }
 
-const getMethodNameByMeteorVersion = (methodName) => ASYNC_FRIENDLY ? `${methodName}Async` : methodName ;
+const getMethodNameByMeteorVersion = (methodName) =>
+  ASYNC_FRIENDLY ? `${methodName}Async` : methodName;
 
 export function callMongoMethod(collection, method, args) {
   const methodName = getMethodNameByMeteorVersion(method);
 
   return new Promise((resolve, reject) => {
     if (ASYNC_FRIENDLY) {
-      if (Meteor.isClient && !['findOne', 'findOneAsync'].includes(methodName)) {
-        collection[methodName](...args, (error, result) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(result);
-          }
-        });
-      } else {
-        try {
-          resolve(collection[methodName](...args));
-        } catch (error) {
-          reject(error);
-        }
+      try {
+        resolve(collection[methodName](...args));
+      } catch (error) {
+        reject(error);
       }
     } else {
       collection[methodName](...args)
