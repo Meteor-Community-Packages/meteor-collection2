@@ -84,7 +84,7 @@
 - Remove clean options https://github.com/Meteor-Community-Packages/meteor-collection2/pull/436
 - Prettier is added to enforce a consistent style across the project
 - Removed `babel-polyfill`
-- Updated expect to `29.7.0`
+- Updated expect to `26.6.2`
 
 ## 3.5.0
 
