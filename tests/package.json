@@ -8,13 +8,12 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.23.1",
-    "babel-polyfill": "6.26.0",
     "jquery": "^3.5.1",
     "meteor-node-stubs": "1.0.1",
     "simpl-schema": "1.12.3"
   },
   "devDependencies": {
-    "expect": "^26.4.2",
+    "expect": "^29.7.0",
     "puppeteer": "^19.11.1"
   }
 }
