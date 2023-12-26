@@ -13,7 +13,7 @@
     "simpl-schema": "1.12.3"
   },
   "devDependencies": {
-    "expect": "^29.7.0",
+    "expect": "^26.6.2",
     "puppeteer": "^19.11.1"
   }
 }
