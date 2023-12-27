@@ -23,8 +23,8 @@ Package.onUse(function (api) {
   api.use('ejson');
   api.use('raix:eventemitter@1.0.0');
   api.use('ecmascript');
-  api.use('tmeasday:check-npm-versions@1.0.2');
-
+  api.use('aldeed:simple-schema@1.13.1');
+  
   // Allow us to detect 'insecure'.
   api.use('insecure', { weak: true });
 

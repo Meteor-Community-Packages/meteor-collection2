@@ -22,4 +22,5 @@ insecure@1.0.8-alpha300.19                # Allow all DB writes from clients (fo
 underscore@1.0.14-alpha300.19
 dynamic-import@0.7.4-alpha300.19
 
+aldeed:simple-schema@1.13.1
 aldeed:collection2

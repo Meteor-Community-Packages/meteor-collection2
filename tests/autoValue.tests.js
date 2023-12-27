@@ -1,7 +1,7 @@
 import { Meteor } from 'meteor/meteor';
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
-import SimpleSchema from 'simpl-schema';
+import SimpleSchema from "meteor/aldeed:simple-schema";
 import { callMongoMethod } from './helper';
 
 /* global describe, it */

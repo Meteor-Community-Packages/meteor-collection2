@@ -1,6 +1,6 @@
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
-import SimpleSchema from 'simpl-schema';
+import SimpleSchema from "meteor/aldeed:simple-schema";
 import addMultiTests from './multi.tests.js';
 import addBooksTests from './books.tests.js';
 import addContextTests from './context.tests.js';

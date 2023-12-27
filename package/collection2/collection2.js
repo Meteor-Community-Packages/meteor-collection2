@@ -1,18 +1,12 @@
 import { EventEmitter } from 'meteor/raix:eventemitter';
 import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
-import { checkNpmVersions } from 'meteor/tmeasday:check-npm-versions';
+import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import isEmpty from 'lodash.isempty';
 import isEqual from 'lodash.isequal';
 import isObject from 'lodash.isobject';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType } from './lib';
-
-/* global LocalCollection, Package */
-
-checkNpmVersions({ 'simpl-schema': '>=0.0.0' }, 'aldeed:collection2');
-
-const SimpleSchema = require('simpl-schema').default;
 
 // Exported only for listening to events
 const Collection2 = new EventEmitter();
