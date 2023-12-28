@@ -24,11 +24,12 @@ Package.onUse(function (api) {
   api.use('raix:eventemitter@1.0.0');
   api.use('ecmascript');
   api.use('aldeed:simple-schema@1.13.1');
-  
+
+  api.addFiles(['./collection2.js']);
+  api.export('Collection2', 'server');
+
   // Allow us to detect 'insecure'.
   api.use('insecure', { weak: true });
-
-  api.mainModule('collection2.js');
 
   api.export('Collection2');
 });
