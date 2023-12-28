@@ -78,7 +78,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## 4.0.0-beta.5
+## 4.0.0-beta.6
 
 - Make collection2 compatible with Meteor 3.0 thanks to the [awesome work](https://github.com/Meteor-Community-Packages/meteor-collection2/pull/443) by @klablink  
 - Remove clean options https://github.com/Meteor-Community-Packages/meteor-collection2/pull/436
@@ -86,6 +86,7 @@
 - Removed `babel-polyfill`
 - Updated expect to `26.6.2`
 - Use [`aldeed:simple-schema@1.13.1`](https://github.com/Meteor-Community-Packages/meteor-simple-schema/releases/tag/v1.13.1) instead of [NPM version](https://github.com/longshotlabs/simpl-schema).
+- Add static & dynamic loading
 
 ## 3.5.0
 
