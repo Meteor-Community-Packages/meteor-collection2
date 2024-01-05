@@ -16,13 +16,13 @@ Npm.depends({
 });
 
 Package.onUse(function (api) {
-  api.versionsFrom(['1.12.1', '2.3', '3.0-alpha.15']);
+  api.versionsFrom(['1.12.1', '2.3', '3.0-beta.0']);
   api.use('mongo');
   api.imply('mongo');
   api.use('minimongo');
   api.use('ejson');
   api.use('raix:eventemitter@1.0.0');
-  api.use('ecmascript');
+  api.use('ecmascript@0.16.8-alpha300.11');
   api.use('aldeed:simple-schema@1.13.1');
 
   api.addFiles(['./collection2.js']);
@@ -32,4 +32,11 @@ Package.onUse(function (api) {
   api.use('insecure', { weak: true });
 
   api.export('Collection2');
+});
+
+Package.onTest(function (api) {
+  api.use([
+    'meteortesting:mocha@3.1.0-beta300.0',
+    'aldeed:collection2@4.0.0-beta.6'
+  ])
 });
