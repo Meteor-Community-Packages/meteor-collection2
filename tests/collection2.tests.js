@@ -673,6 +673,8 @@ describe('collection2', function () {
     if (Meteor.isServer) {
       const testCollection = new Mongo.Collection('duplicate_code_collection');
       await testCollection.createIndexAsync({ name: 1 }, { unique: true });
+      // remove any inserts on previous re-runs to avoid test failing
+      await testCollection.removeAsync({});
       // first insert
       await testCollection.insertAsync({ name: 'foo' });
       try {
