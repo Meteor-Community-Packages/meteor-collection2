@@ -37,6 +37,6 @@ Package.onUse(function (api) {
 Package.onTest(function (api) {
   api.use([
     'meteortesting:mocha@3.1.0-beta300.0',
-    'aldeed:collection2@4.0.0-beta.6'
+    'aldeed:collection2@4.0.0-beta.7'
   ])
 });
