@@ -229,7 +229,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
               ? 'addValidationErrors'
               : 'addInvalidKeys';
           parsingServerError([err], validationContext, addValidationErrorsPropName);
-          error = getErrorObject(validationContext, err.message);
+          error = getErrorObject(validationContext, err.message, err.code);
           return Promise.reject(error);
         }
       } else {
@@ -284,7 +284,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
             ? 'addValidationErrors'
             : 'addInvalidKeys';
         parsingServerError([err], validationContext, addValidationErrorsPropName);
-        throw getErrorObject(validationContext, err.message);
+        throw getErrorObject(validationContext, err.message, err.code);
       }
     };
   }
@@ -575,13 +575,15 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     }
   }
   
-  function getErrorObject(context, appendToMessage = '') {
+  function getErrorObject(context, appendToMessage = '', code) {
+    debugger;
     let message;
     const invalidKeys =
       typeof context.validationErrors === 'function'
         ? context.validationErrors()
-        : context.invalidKeys();
-    if (invalidKeys.length) {
+        : context.invalidKeys?.();
+
+    if (invalidKeys?.length) {
       const firstErrorKey = invalidKeys[0].name;
       const firstErrorMessage = context.keyErrorMessage(firstErrorKey);
   
@@ -599,6 +601,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     const error = new Error(message);
     error.invalidKeys = invalidKeys;
     error.validationContext = context;
+    error.code = code;
     // If on the server, we add a sanitized error, too, in case we're
     // called from a method.
     if (Meteor.isServer) {
