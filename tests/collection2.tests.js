@@ -1,6 +1,6 @@
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
-import SimpleSchema from "meteor/aldeed:simple-schema";
+import SimpleSchema from 'meteor/aldeed:simple-schema';
 import addMultiTests from './multi.tests.js';
 import addBooksTests from './books.tests.js';
 import addContextTests from './context.tests.js';
@@ -667,6 +667,21 @@ describe('collection2', function () {
     expect(doc2 instanceof Object).toBe(true);
     expect(doc2.foo).toBe('test');
     expect(doc2.bar).toBe('test');
+  });
+
+  it('pins code when throwing out an error', async function () {
+    if (Meteor.isServer) {
+      const testCollection = new Mongo.Collection('duplicate_code_collection');
+      await testCollection.createIndexAsync({ name: 1 }, { unique: true });
+      // first insert
+      await testCollection.insertAsync({ name: 'foo' });
+      try {
+        // second insert, throws out error
+        await testCollection.insertAsync({ name: 'foo' });
+      } catch (e) {
+        expect(e.code).toBe(11000);
+      }
+    }
   });
 
   addBooksTests();
