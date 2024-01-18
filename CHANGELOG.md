@@ -78,7 +78,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## 4.0.0-beta.7
+## 4.0.0
 
 - Make collection2 compatible with Meteor 3.0 thanks to the [awesome work](https://github.com/Meteor-Community-Packages/meteor-collection2/pull/443) by @klablink  
 - Remove clean options https://github.com/Meteor-Community-Packages/meteor-collection2/pull/436
