@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [4.0.0-beta.5](#400-beta.3)
 - [3.5.0](#350)
 - [3.4.1](#341)
 - [3.4.0](#340)
@@ -76,6 +77,17 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 4.0.0
+
+- Make collection2 compatible with Meteor 3.0 thanks to the [awesome work](https://github.com/Meteor-Community-Packages/meteor-collection2/pull/443) by @klablink  
+- Remove clean options https://github.com/Meteor-Community-Packages/meteor-collection2/pull/436
+- Prettier is added to enforce a consistent style across the project
+- Removed `babel-polyfill`
+- Updated expect to `26.6.2`
+- Use [`aldeed:simple-schema@1.13.1`](https://github.com/Meteor-Community-Packages/meteor-simple-schema/releases/tag/v1.13.1) instead of [NPM version](https://github.com/longshotlabs/simpl-schema).
+- Add static & dynamic loading
+- Fix error with quave:synced-cron
 
 ## 3.5.0
 

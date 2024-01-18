@@ -18,6 +18,8 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Installation](#installation)
+- [Import using static imports](#import-using-static-imports)
+- [Import using dynamic imports](#import-using-dynamic-imports)
 - [Why Use Collection2](#why-use-collection2)
 - [Attaching a Schema to a Collection](#attaching-a-schema-to-a-collection)
   - [Attaching Multiple Schemas to the Same Collection](#attaching-multiple-schemas-to-the-same-collection)
@@ -59,10 +61,39 @@ This package requires the [simpl-schema](https://github.com/aldeed/simple-schema
 
 In your Meteor app directory, enter:
 
+### 4.0
+
+Starting 4.0 collection2 ships with built in [`aldeed:simple-schema@1.13.1`](https://github.com/Meteor-Community-Packages/meteor-simple-schema/releases/tag/v1.13.1).
+
 ```bash
 meteor add aldeed:collection2
-meteor npm install --save simpl-schema
 ```
+
+### 3.x
+
+```bash
+meteor add aldeed:collection2
+meteor npm install --save simpl-schema@1.12.3
+```
+
+## Import using static imports
+
+If you come from a previous version and want to "keep things as they were" then this is the option you should choose.
+
+```js
+import 'meteor/aldeed:collection2/static';
+```
+
+## Import using dynamic imports
+
+Dynamic imports helps to cut down on bundle size but it requires you to manually load the package for things to work.
+
+```js
+import 'meteor/aldeed:collection2/dynamic';
+
+Collection2.load();
+```
+
 
 ## Why Use Collection2
 
@@ -359,26 +390,6 @@ instance for a Mongo.Collection instance. For example:
 
 ```js
 MyCollection.simpleSchema().validate(doc);
-```
-
-## Schema Clean Options
-
-You can set the simpl-schema clean options globally in collection2. They are merged with any options defined on the schema level.
-
-```js
-import Collection2 from 'meteor/aldeed:collection2'
-
-// The values shown are the default options used internally. Overwrite them if needed.
-Collection2.cleanOptions = {
-    filter: true,
-    autoConvert: true,
-    removeEmptyStrings: true,
-    trimStrings: true,
-    removeNullsFromArrays: true,
-}
-
-// Or you can update individual options.
-Collection2.cleanOptions.filter = false;
 ```
 
 ## Passing Options
