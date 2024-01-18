@@ -576,7 +576,6 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   }
   
   function getErrorObject(context, appendToMessage = '', code) {
-    debugger;
     let message;
     const invalidKeys =
       typeof context.validationErrors === 'function'
