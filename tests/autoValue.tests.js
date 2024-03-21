@@ -1,13 +1,9 @@
-import 'meteor/aldeed:collection2/dynamic';
+/* global describe, it */
 import { Meteor } from 'meteor/meteor';
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { callMongoMethod } from './helper';
-
-/* global describe, it */
-
-Collection2.load();
 
 const collection = new Mongo.Collection('autoValueTestCollection');
 const localCollection = new Mongo.Collection('autoValueTestLocalCollection', {
@@ -29,6 +25,7 @@ const localCollection = new Mongo.Collection('autoValueTestLocalCollection', {
         type: SimpleSchema.Integer,
         optional: true,
         autoValue() {
+          console.debug('get autovalues', Meteor.isClient)
           if (Meteor.isClient) return;
           return (this.value || 0) + 1;
         }

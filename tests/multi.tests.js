@@ -140,7 +140,7 @@ export default function addMultiTests() {
       );
 
       // Check the combined schema
-      let combinedSchema = c.simpleSchema();
+      let combinedSchema = c.c2Schema();
       expect(combinedSchema._schemaKeys.includes('one')).toBe(true);
       expect(combinedSchema._schemaKeys.includes('two')).toBe(true);
       expect(combinedSchema.schema('two').type).toEqual(SimpleSchema.oneOf(String));
@@ -151,7 +151,7 @@ export default function addMultiTests() {
           two: { type: SimpleSchema.Integer }
         })
       );
-      combinedSchema = c.simpleSchema();
+      combinedSchema = c.c2Schema();
       expect(combinedSchema._schemaKeys.includes('one')).toBe(true);
       expect(combinedSchema._schemaKeys.includes('two')).toBe(true);
       expect(combinedSchema.schema('two').type).toEqual(SimpleSchema.oneOf(SimpleSchema.Integer));
@@ -188,7 +188,7 @@ export default function addMultiTests() {
 
       // Passing selector in options works only on the server because
       // client options are not sent to the server and made availabe in
-      // the deny functions, where we call .simpleSchema()
+      // the deny functions, where we call .c2Schema()
       //
       // Also synchronous only works on server
       it('insert selects the correct schema', async function () {
@@ -470,8 +470,8 @@ export default function addMultiTests() {
       });
     }
 
-    it('returns the correct schema on `MyCollection.simpleSchema(object)`', async function () {
-      const schema = products.simpleSchema({
+    it('returns the correct schema on `MyCollection.c2Schema(object)`', async function () {
+      const schema = products.c2Schema({
         title: 'Product one',
         type: 'variant'
       });
@@ -481,7 +481,7 @@ export default function addMultiTests() {
     if (Meteor.isServer) {
       // Passing selector in options works only on the server because
       // client options are not sent to the server and made availabe in
-      // the deny functions, where we call .simpleSchema()
+      // the deny functions, where we call .c2Schema()
       it('insert selects the correct extended schema', async function () {
         const productId = await callMongoMethod(extendedProducts, 'insert', [
           {

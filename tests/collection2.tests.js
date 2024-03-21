@@ -20,7 +20,7 @@ describe('collection2', function () {
       })
     );
 
-    expect(mc.simpleSchema() instanceof SimpleSchema).toBe(true);
+    expect(mc.c2Schema() instanceof SimpleSchema).toBe(true);
   });
 
   it('attach and get simpleSchema for local collection', function () {
@@ -32,7 +32,7 @@ describe('collection2', function () {
       })
     );
 
-    expect(mc.simpleSchema() instanceof SimpleSchema).toBe(true);
+    expect(mc.c2Schema() instanceof SimpleSchema).toBe(true);
   });
 
   it('handles prototype-less objects', async function () {

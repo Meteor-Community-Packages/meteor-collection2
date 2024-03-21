@@ -7,6 +7,36 @@ import isEqual from 'lodash.isequal';
 import isObject from 'lodash.isobject';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType } from './lib';
 
+const C2 = {};
+C2._validator = null;
+
+C2.init = self => {
+  self._c2 = self._c2 || Object.create(null);
+  self._c2.schemas = self._c2.schemas || [null];
+  return self;
+};
+
+C2.validator = () => {
+  const validator= C2._validator
+  if (!validator) {
+    throw new Error(`Cannot attach a schema if no validation library has been added`);
+  }
+  return validator;
+}
+
+C2.schemas = (self) => {
+  if (!self._c2) {
+    C2.init(self);
+  }
+  return self._c2.schemas;
+}
+
+Collection2.defineValidation = ({ freeze, ...validator }) => {
+  C2._validator = validator;
+  // TODO if freeze it should not be writable or deletable
+}
+
+Object.assign(Collection2, { isInsertType, isUpsertType, isUpdateType })
 
 /**
  * Mongo.Collection.prototype.attachSchema
@@ -25,52 +55,58 @@ import { flattenSelector, isInsertType, isUpdateType, isUpsertType } from './lib
  * schema object passed to its constructor.
  */
 Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
-    options = options || {};
-  
+    options = options || Object.create(null);
+
+    const self = this;
+    const validator = C2.validator();
+
     // Allow passing just the schema object
-    if (!SimpleSchema.isSimpleSchema(ss)) {
-      ss = new SimpleSchema(ss);
+    if (!validator.is(ss)) {
+      ss = validator.create(ss);
     }
   
     function attachTo(obj) {
       // we need an array to hold multiple schemas
       // position 0 is reserved for the "base" schema
-      obj._c2 = obj._c2 || {};
-      obj._c2._simpleSchemas = obj._c2._simpleSchemas || [null];
-  
+      C2.init(obj);
+
+      const allSchemas = C2.schemas(obj);
+
       if (typeof options.selector === 'object') {
         // Selector Schemas
-  
+
         // Extend selector schema with base schema
-        const baseSchema = obj._c2._simpleSchemas[0];
-        if (baseSchema) {
-          ss = extendSchema(baseSchema.schema, ss);
+        const base = allSchemas[0];
+        if (base) {
+          ss = validator.extend(base.schema, ss);
         }
   
         // Index of existing schema with identical selector
-        let schemaIndex;
+        let index;
   
         // Loop through existing schemas with selectors,
-        for (schemaIndex = obj._c2._simpleSchemas.length - 1; schemaIndex > 0; schemaIndex--) {
-          const schema = obj._c2._simpleSchemas[schemaIndex];
-          if (schema && isEqual(schema.selector, options.selector)) break;
+        for (index = allSchemas.length - 1; index > 0; index--) {
+          const current = allSchemas[index];
+          if (current && isEqual(current.selector, options.selector)) break;
         }
   
-        if (schemaIndex <= 0) {
+        if (index <= 0) {
           // We didn't find the schema in our array - push it into the array
-          obj._c2._simpleSchemas.push({
+          allSchemas.push({
             schema: ss,
             selector: options.selector
           });
-        } else {
+        }
+        else {
           // We found a schema with an identical selector in our array,
           if (options.replace === true) {
             // Replace existing selector schema with new selector schema
-            obj._c2._simpleSchemas[schemaIndex].schema = ss;
-          } else {
+            allSchemas[index].schema = ss;
+          }
+          else {
             // Extend existing selector schema with new selector schema.
-            obj._c2._simpleSchemas[schemaIndex].schema = extendSchema(
-              obj._c2._simpleSchemas[schemaIndex].schema,
+            allSchemas[index].schema = validator.extend(
+              allSchemas[index].schema,
               ss
             );
           }
@@ -79,23 +115,21 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         // Base Schema
         if (options.replace === true) {
           // Replace base schema and delete all other schemas
-          obj._c2._simpleSchemas = [
-            {
-              schema: ss,
-              selector: options.selector
-            }
-          ];
+          obj._c2.schemas = [{
+            schema: ss,
+            selector: options.selector
+          }];
         } else {
           // Set base schema if not yet set
-          if (!obj._c2._simpleSchemas[0]) {
-            obj._c2._simpleSchemas[0] = { schema: ss, selector: undefined };
-            return obj._c2._simpleSchemas[0];
+          if (!allSchemas[0]) {
+            allSchemas[0] = { schema: ss, selector: undefined };
+            return allSchemas[0];
           }
           // Extend base schema and therefore extend all schemas
-          obj._c2._simpleSchemas.forEach((schema, index) => {
-            if (obj._c2._simpleSchemas[index]) {
-              obj._c2._simpleSchemas[index].schema = extendSchema(
-                obj._c2._simpleSchemas[index].schema,
+          allSchemas.forEach((schema, i) => {
+            if (allSchemas[i]) {
+              allSchemas[i].schema = validator.extend(
+                allSchemas[i].schema,
                 ss
               );
             }
@@ -104,20 +138,20 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       }
     }
   
-    attachTo(this);
+    attachTo(self);
     // Attach the schema to the underlying LocalCollection, too
-    if (this._collection instanceof LocalCollection) {
-      this._collection._c2 = this._collection._c2 || {};
-      attachTo(this._collection);
+    if (self._collection instanceof LocalCollection) {
+      C2.init(self._collection);
+      attachTo(self._collection);
     }
   
-    defineDeny(this, options);
-    keepInsecure(this);
+    defineDeny(self, options);
+    keepInsecure(self);
   
-    Collection2.emit('schema.attached', this, ss, options);
+    Collection2.emit('schema.attached', self, ss, options);
   };
   
-  [Mongo.Collection, LocalCollection].forEach((obj) => {
+[Mongo.Collection, LocalCollection].forEach((obj) => {
     /**
      * simpleSchema
      * @description function detect the correct schema by given params. If it
@@ -129,16 +163,18 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
      * @param {Object} [query] - it could be <query> on update/upsert
      * @return {Object} Schema
      */
-    obj.prototype.simpleSchema = function (doc, options, query) {
-      if (!this._c2) return null;
-      if (this._c2._simpleSchema) return this._c2._simpleSchema;
-  
-      const schemas = this._c2._simpleSchemas;
-      if (schemas && schemas.length > 0) {
+    obj.prototype.c2Schema = function (doc, options, query) {
+      const self = this;
+      if (!self._c2) return null;
+      if (self._c2._schema) return self._c2._schema;
+
+      const allSchemas = C2.schemas(self);
+
+      if (allSchemas && allSchemas.length > 0) {
         let schema, selector, target;
         // Position 0 reserved for base schema
-        for (let i = 1; i < schemas.length; i++) {
-          schema = schemas[i];
+        for (let i = 1; i < allSchemas.length; i++) {
+          schema = allSchemas[i];
           selector = Object.keys(schema.selector)[0];
   
           // We will set this to undefined because in theory, you might want to select
@@ -163,8 +199,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
             return schema.schema;
           }
         }
-        if (schemas[0]) {
-          return schemas[0].schema;
+        if (allSchemas[0]) {
+          return allSchemas[0].schema;
         } else {
           throw new Error('No default schema');
         }
@@ -173,8 +209,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       return null;
     };
   });
-  
-  function _methodMutation(async, methodName) {
+
+function _methodMutation(async, methodName) {
     const _super = Meteor.isFibersDisabled
       ? Mongo.Collection.prototype[methodName]
       : Mongo.Collection.prototype[methodName.replace('Async', '')];
@@ -198,15 +234,15 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
           userId = Meteor.userId();
         } catch (err) {}
   
-        [args, validationContext] = doValidate(
-          this,
-          methodName,
+        [args, validationContext] = doValidate({
+          collection: this,
+          type: methodName,
           args,
-          Meteor.isServer || this._connection === null, // getAutoValues
+          getAutoValues: Meteor.isServer || this._connection === null, // getAutoValues
           userId,
-          Meteor.isServer, // isFromTrustedCode
+          isFromTrustedCode: Meteor.isServer, // isFromTrustedCode
           async
-        );
+        });
   
         if (!args) {
           // doValidate already called the callback or threw the error, so we're done.
@@ -238,7 +274,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     };
   }
   
-  function _methodMutationAsync(methodName) {
+function _methodMutationAsync(methodName) {
     const _super = Mongo.Collection.prototype[methodName];
     Mongo.Collection.prototype[methodName] = async function (...args) {
       let options = isInsertType(methodName) ? args[1] : args[2];
@@ -256,15 +292,15 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
           userId = Meteor.userId();
         } catch (err) {}
   
-        [args, validationContext] = doValidate(
-          this,
-          methodName,
+        [args, validationContext] = doValidate({
+          collection: this,
+          type: methodName,
           args,
-          Meteor.isServer || this._connection === null, // getAutoValues
+          getAutoValues: Meteor.isServer || this._connection === null, // getAutoValues
           userId,
-          Meteor.isServer, // isFromTrustedCode
-          true
-        );
+          isFromTrustedCode: Meteor.isServer, // isFromTrustedCode
+          async: true
+        });
   
         if (!args) {
           // doValidate already called the callback or threw the error, so we're done.
@@ -290,20 +326,21 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   }
   
   // Wrap DB write operation methods
-  if (Mongo.Collection.prototype.insertAsync) {
+if (Mongo.Collection.prototype.insertAsync) {
     if (Meteor.isFibersDisabled) {
       ['insertAsync', 'updateAsync'].forEach(_methodMutationAsync.bind(this));
     } else {
       ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
     }
   }
-  ['insert', 'update'].forEach(_methodMutation.bind(this, false));
+
+['insert', 'update'].forEach(_methodMutation.bind(this, false));
   
   /*
    * Private
    */
   
-  function doValidate(collection, type, args, getAutoValues, userId, isFromTrustedCode, async) {
+function doValidate({ collection, type, args = [], getAutoValues, userId, isFromTrustedCode, async }) {
     let doc, callback, error, options, selector;
   
     if (!args.length) {
@@ -340,8 +377,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       callback = options;
       options = {};
     }
-    options = options || {};
-  
+    options = options || Object.create(null);
+
     const last = args.length - 1;
   
     const hasCallback = typeof args[last] === 'function';
@@ -351,14 +388,14 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
   
     // we need to pass `doc` and `options` to `simpleSchema` method, that's why
     // schema declaration moved here
-    let schema = collection.simpleSchema(doc, options, selector);
+    let schema = collection.c2Schema(doc, options, selector);
     const isLocalCollection = collection._connection === null;
   
     // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
     if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
       getAutoValues = false;
     }
-  
+
     // Process pick/omit options if they are present
     const picks = Array.isArray(options.pick) ? options.pick : null;
     const omits = Array.isArray(options.omit) ? options.omit : null;
@@ -575,7 +612,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     }
   }
   
-  function getErrorObject(context, appendToMessage = '', code) {
+function getErrorObject(context, appendToMessage = '', code) {
     let message;
     const invalidKeys =
       typeof context.validationErrors === 'function'
@@ -609,7 +646,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     return error;
   }
   
-  function addUniqueError(context, errorMessage) {
+function addUniqueError(context, errorMessage) {
     const name = errorMessage.split('c2_')[1].split(' ')[0];
     const val = errorMessage.split('dup key:')[1].split('"')[1];
   
@@ -624,7 +661,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     ]);
   }
   
-  function parsingServerError(args, validationContext, addValidationErrorsPropName) {
+function parsingServerError(args, validationContext, addValidationErrorsPropName) {
     const error = args[0];
     // Handle our own validation errors
     if (
@@ -649,7 +686,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     }
   }
   
-  function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
+function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
     return function wrappedCallbackForParsingMongoValidationErrors(...args) {
       const error = args[0];
       if (
@@ -665,7 +702,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     };
   }
   
-  function wrapCallbackForParsingServerErrors(validationContext, cb) {
+function wrapCallbackForParsingServerErrors(validationContext, cb) {
     const addValidationErrorsPropName =
       typeof validationContext.addValidationErrors === 'function'
         ? 'addValidationErrors'
@@ -676,9 +713,9 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     };
   }
   
-  const alreadyInsecure = {};
+const alreadyInsecure = {};
   
-  function keepInsecure(c) {
+function keepInsecure(c) {
     // If insecure package is in use, we need to add allow rules that return
     // true. Otherwise, it would seemingly turn off insecure mode.
     if (Package && Package.insecure && !alreadyInsecure[c._name]) {
@@ -715,60 +752,29 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     // additional deny functions, but does not have to.
   }
   
-  const alreadyDefined = {};
+C2.alreadyDefined = {};
   
-  function defineDeny(c, options) {
-    if (!alreadyDefined[c._name]) {
-      const isLocalCollection = c._connection === null;
-  
+function defineDeny(collection, options) {
+  const validator = C2.validator();
+  if (C2.alreadyDefined[collection._name]) {
+    return false; // no definition added;
+  }
+      const isLocalCollection = collection._connection === null;
+
       // First, define deny functions to extend doc with the results of clean
       // and auto-values. This must be done with "transform: null" or we would be
       // extending a clone of doc and therefore have no effect.
       const firstDeny = {
         insert: function (userId, doc) {
           // Referenced doc is cleaned in place
-          c.simpleSchema(doc).clean(doc, {
-            mutate: true,
-            isModifier: false,
-            // We don't do these here because they are done on the client if desired
-            filter: false,
-            autoConvert: false,
-            removeEmptyStrings: false,
-            trimStrings: false,
-            extendAutoValueContext: {
-              isInsert: true,
-              isUpdate: false,
-              isUpsert: false,
-              userId,
-              isFromTrustedCode: false,
-              docId: doc._id,
-              isLocalCollection
-            }
-          });
-  
+          const schema = collection.c2Schema(doc);
+          validator.clean({ doc, schema, userId, isLocalCollection, type: 'insert' });
           return false;
         },
         update: function (userId, doc, fields, modifier) {
           // Referenced modifier is cleaned in place
-          c.simpleSchema(modifier).clean(modifier, {
-            mutate: true,
-            isModifier: true,
-            // We don't do these here because they are done on the client if desired
-            filter: false,
-            autoConvert: false,
-            removeEmptyStrings: false,
-            trimStrings: false,
-            extendAutoValueContext: {
-              isInsert: false,
-              isUpdate: true,
-              isUpsert: false,
-              userId,
-              isFromTrustedCode: false,
-              docId: doc && doc._id,
-              isLocalCollection
-            }
-          });
-  
+          const schema = collection.c2Schema(doc);
+          validator.clean({ userId, doc, fields, modifier, schema, type: 'update' });
           return false;
         },
         fetch: ['_id'],
@@ -782,7 +788,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         });
       }
   
-      c.deny(firstDeny);
+      collection.deny(firstDeny);
   
       // Second, define deny functions to validate again on the server
       // for client-initiated inserts and updates. These should be
@@ -793,10 +799,10 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       const secondDeny = {
         insert: function (userId, doc) {
           // We pass the false options because we will have done them on the client if desired
-          doValidate(
-            c,
-            'insert',
-            [
+          doValidate({
+            collection,
+            type: 'insert',
+            args: [
               doc,
               {
                 trimStrings: false,
@@ -810,10 +816,10 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
                 }
               }
             ],
-            false, // getAutoValues
+            getAutoValues: false, // getAutoValues
             userId,
-            false // isFromTrustedCode
-          );
+            isFromTrustedCode: false // isFromTrustedCode
+          });
   
           return false;
         },
@@ -821,10 +827,10 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
           // NOTE: This will never be an upsert because client-side upserts
           // are not allowed once you define allow/deny functions.
           // We pass the false options because we will have done them on the client if desired
-          doValidate(
-            c,
-            'update',
-            [
+          doValidate({
+            collection,
+            type: 'update',
+            args: [
               { _id: doc && doc._id },
               modifier,
               {
@@ -839,10 +845,10 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
                 }
               }
             ],
-            false, // getAutoValues
+            getAutoValues: false, // getAutoValues
             userId,
-            false // isFromTrustedCode
-          );
+            isFromTrustedCode: false // isFromTrustedCode
+          });
   
           return false;
         },
@@ -857,20 +863,10 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         });
       }
   
-      c.deny(secondDeny);
+      collection.deny(secondDeny);
   
       // note that we've already done this collection so that we don't do it again
       // if attachSchema is called again
-      alreadyDefined[c._name] = true;
-    }
-  }
-  
-  function extendSchema(s1, s2) {
-    if (s2.version >= 2) {
-      const ss = new SimpleSchema(s1);
-      ss.extend(s2);
-      return ss;
-    } else {
-      return new SimpleSchema([s1, s2]);
-    }
+      C2.alreadyDefined[collection._name] = true;
+      return true; // new definition added
   }
