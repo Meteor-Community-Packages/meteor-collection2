@@ -327,12 +327,12 @@ function _methodMutationAsync(methodName) {
   
   // Wrap DB write operation methods
 if (Mongo.Collection.prototype.insertAsync) {
-    if (Meteor.isFibersDisabled) {
-      ['insertAsync', 'updateAsync'].forEach(_methodMutationAsync.bind(this));
-    } else {
-      ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
-    }
+  if (Meteor.isFibersDisabled) {
+    ['insertAsync', 'updateAsync'].forEach(_methodMutationAsync.bind(this));
+  } else {
+    ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
   }
+}
 
 ['insert', 'update'].forEach(_methodMutation.bind(this, false));
   
@@ -759,114 +759,114 @@ function defineDeny(collection, options) {
   if (C2.alreadyDefined[collection._name]) {
     return false; // no definition added;
   }
-      const isLocalCollection = collection._connection === null;
+  const isLocalCollection = collection._connection === null;
 
-      // First, define deny functions to extend doc with the results of clean
-      // and auto-values. This must be done with "transform: null" or we would be
-      // extending a clone of doc and therefore have no effect.
-      const firstDeny = {
-        insert: function (userId, doc) {
-          // Referenced doc is cleaned in place
-          const schema = collection.c2Schema(doc);
-          validator.clean({ doc, schema, userId, isLocalCollection, type: 'insert' });
-          return false;
-        },
-        update: function (userId, doc, fields, modifier) {
-          // Referenced modifier is cleaned in place
-          const schema = collection.c2Schema(doc);
-          validator.clean({ userId, doc, fields, modifier, schema, type: 'update' });
-          return false;
-        },
-        fetch: ['_id'],
-        transform: null
-      };
-  
-      if (Meteor.isFibersDisabled) {
-        Object.assign(firstDeny, {
-          insertAsync: firstDeny.insert,
-          updateAsync: firstDeny.update
-        });
-      }
-  
-      collection.deny(firstDeny);
-  
-      // Second, define deny functions to validate again on the server
-      // for client-initiated inserts and updates. These should be
-      // called after the clean/auto-value functions since we're adding
-      // them after. These must *not* have "transform: null" if options.transform is true because
-      // we need to pass the doc through any transforms to be sure
-      // that custom types are properly recognized for type validation.
-      const secondDeny = {
-        insert: function (userId, doc) {
-          // We pass the false options because we will have done them on the client if desired
-          doValidate({
-            collection,
-            type: 'insert',
-            args: [
-              doc,
-              {
-                trimStrings: false,
-                removeEmptyStrings: false,
-                filter: false,
-                autoConvert: false
-              },
-              function (error) {
-                if (error) {
-                  throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
-                }
-              }
-            ],
-            getAutoValues: false, // getAutoValues
-            userId,
-            isFromTrustedCode: false // isFromTrustedCode
-          });
-  
-          return false;
-        },
-        update: function (userId, doc, fields, modifier) {
-          // NOTE: This will never be an upsert because client-side upserts
-          // are not allowed once you define allow/deny functions.
-          // We pass the false options because we will have done them on the client if desired
-          doValidate({
-            collection,
-            type: 'update',
-            args: [
-              { _id: doc && doc._id },
-              modifier,
-              {
-                trimStrings: false,
-                removeEmptyStrings: false,
-                filter: false,
-                autoConvert: false
-              },
-              function (error) {
-                if (error) {
-                  throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
-                }
-              }
-            ],
-            getAutoValues: false, // getAutoValues
-            userId,
-            isFromTrustedCode: false // isFromTrustedCode
-          });
-  
-          return false;
-        },
-        fetch: ['_id'],
-        ...(options.transform === true ? {} : { transform: null })
-      };
-  
-      if (Meteor.isFibersDisabled) {
-        Object.assign(secondDeny, {
-          insertAsync: secondDeny.insert,
-          updateAsync: secondDeny.update
-        });
-      }
-  
-      collection.deny(secondDeny);
-  
-      // note that we've already done this collection so that we don't do it again
-      // if attachSchema is called again
-      C2.alreadyDefined[collection._name] = true;
-      return true; // new definition added
+  // First, define deny functions to extend doc with the results of clean
+  // and auto-values. This must be done with "transform: null" or we would be
+  // extending a clone of doc and therefore have no effect.
+  const firstDeny = {
+    insert: function (userId, doc) {
+      // Referenced doc is cleaned in place
+      const schema = collection.c2Schema(doc);
+      validator.clean({ doc, schema, userId, isLocalCollection, type: 'insert' });
+      return false;
+    },
+    update: function (userId, doc, fields, modifier) {
+      // Referenced modifier is cleaned in place
+      const schema = collection.c2Schema(doc);
+      validator.clean({ userId, doc, fields, modifier, schema, type: 'update' });
+      return false;
+    },
+    fetch: ['_id'],
+    transform: null
+  };
+
+  if (Meteor.isFibersDisabled) {
+    Object.assign(firstDeny, {
+      insertAsync: firstDeny.insert,
+      updateAsync: firstDeny.update
+    });
   }
+
+  collection.deny(firstDeny);
+
+  // Second, define deny functions to validate again on the server
+  // for client-initiated inserts and updates. These should be
+  // called after the clean/auto-value functions since we're adding
+  // them after. These must *not* have "transform: null" if options.transform is true because
+  // we need to pass the doc through any transforms to be sure
+  // that custom types are properly recognized for type validation.
+  const secondDeny = {
+    insert: function (userId, doc) {
+      // We pass the false options because we will have done them on the client if desired
+      doValidate({
+        collection,
+        type: 'insert',
+        args: [
+          doc,
+          {
+            trimStrings: false,
+            removeEmptyStrings: false,
+            filter: false,
+            autoConvert: false
+          },
+          function (error) {
+            if (error) {
+              throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+            }
+          }
+        ],
+        getAutoValues: false, // getAutoValues
+        userId,
+        isFromTrustedCode: false // isFromTrustedCode
+      });
+
+      return false;
+    },
+    update: function (userId, doc, fields, modifier) {
+      // NOTE: This will never be an upsert because client-side upserts
+      // are not allowed once you define allow/deny functions.
+      // We pass the false options because we will have done them on the client if desired
+      doValidate({
+        collection,
+        type: 'update',
+        args: [
+          { _id: doc && doc._id },
+          modifier,
+          {
+            trimStrings: false,
+            removeEmptyStrings: false,
+            filter: false,
+            autoConvert: false
+          },
+          function (error) {
+            if (error) {
+              throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+            }
+          }
+        ],
+        getAutoValues: false, // getAutoValues
+        userId,
+        isFromTrustedCode: false // isFromTrustedCode
+      });
+
+      return false;
+    },
+    fetch: ['_id'],
+    ...(options.transform === true ? {} : { transform: null })
+  };
+
+  if (Meteor.isFibersDisabled) {
+    Object.assign(secondDeny, {
+      insertAsync: secondDeny.insert,
+      updateAsync: secondDeny.update
+    });
+  }
+
+  collection.deny(secondDeny);
+
+  // note that we've already done this collection so that we don't do it again
+  // if attachSchema is called again
+  C2.alreadyDefined[collection._name] = true;
+  return true; // new definition added
+}

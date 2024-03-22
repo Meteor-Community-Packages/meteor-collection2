@@ -35,6 +35,11 @@ Collection2.defineValidation({
       }
     })
   },
-  validate: () => {},
+  validate: ({}) => {
+
+  },
+  getErrors: () => {
+
+  },
   freeze: false
 });

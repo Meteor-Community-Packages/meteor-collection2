@@ -3,3 +3,4 @@ import './prepare';
 import './autoValue.tests'
 import './clean.tests'
 import './collection2.tests'
+// import './ajv.tests'
