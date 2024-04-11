@@ -238,66 +238,11 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     };
   }
   
-  function _methodMutationAsync(methodName) {
-    const _super = Mongo.Collection.prototype[methodName];
-    Mongo.Collection.prototype[methodName] = async function (...args) {
-      let options = isInsertType(methodName) ? args[1] : args[2];
-  
-      // Support missing options arg
-      if (!options || typeof options === 'function') {
-        options = {};
-      }
-  
-      let validationContext = {};
-      if (this._c2 && options.bypassCollection2 !== true) {
-        let userId = null;
-        try {
-          // https://github.com/aldeed/meteor-collection2/issues/175
-          userId = Meteor.userId();
-        } catch (err) {}
-  
-        [args, validationContext] = doValidate(
-          this,
-          methodName,
-          args,
-          Meteor.isServer || this._connection === null, // getAutoValues
-          userId,
-          Meteor.isServer, // isFromTrustedCode
-          true
-        );
-  
-        if (!args) {
-          // doValidate already called the callback or threw the error, so we're done.
-          // But insert should always return an ID to match core behavior.
-          return isInsertType(methodName) ? this._makeNewID() : undefined;
-        }
-      } else {
-        // We still need to adjust args because insert does not take options
-        if (methodName === 'insert' && typeof args[1] !== 'function') args.splice(1, 1);
-      }
-  
-      try {
-        return await _super.apply(this, args);
-      } catch (err) {
-        const addValidationErrorsPropName =
-          typeof validationContext.addValidationErrors === 'function'
-            ? 'addValidationErrors'
-            : 'addInvalidKeys';
-        parsingServerError([err], validationContext, addValidationErrorsPropName);
-        throw getErrorObject(validationContext, err.message, err.code);
-      }
-    };
-  }
   
   // Wrap DB write operation methods
-  if (Mongo.Collection.prototype.insertAsync) {
-    if (Meteor.isFibersDisabled) {
-      ['insertAsync', 'updateAsync'].forEach(_methodMutationAsync.bind(this));
-    } else {
-      ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
-    }
-  }
   ['insert', 'update'].forEach(_methodMutation.bind(this, false));
+  // We enable async for the async variants 
+  ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
   
   /*
    * Private
