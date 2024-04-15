@@ -1,3 +1,3 @@
-Collection2.load = function () {
-    import './main';
+Collection2.load = async () => {
+    await import('./main');
 }
