@@ -1,4 +1,4 @@
-/* global describe, it */
+import 'meteor/aldeed:collection2/static';
 import { Meteor } from 'meteor/meteor';
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
