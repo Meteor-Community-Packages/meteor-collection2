@@ -1,16 +1,17 @@
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from 'meteor/aldeed:simple-schema';
-import addMultiTests from './multi.tests.js';
-import addBooksTests from './books.tests.js';
-import addContextTests from './context.tests.js';
-import addDefaultValuesTests from './default.tests.js';
 import { Meteor } from 'meteor/meteor';
 import { callMongoMethod } from './helper';
+import { Collection2 } from 'meteor/aldeed:collection2'
+import { simpleSchemaImpl } from './libraries'
 
 /* global describe, it */
 
 describe('collection2', function () {
+  before(() => {
+    Collection2.defineValidation(simpleSchemaImpl())
+  })
   it('attach and get simpleSchema for normal collection', function () {
     const mc = new Mongo.Collection('mc', Meteor.isClient ? { connection: null } : undefined);
 
@@ -686,8 +687,5 @@ describe('collection2', function () {
     }
   });
 
-  addBooksTests();
-  addContextTests();
-  addDefaultValuesTests();
-  addMultiTests();
+
 });

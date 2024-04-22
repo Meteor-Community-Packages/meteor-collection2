@@ -4,6 +4,8 @@ import SimpleSchema from "meteor/aldeed:simple-schema";
 import { Meteor } from 'meteor/meteor';
 import { _ } from 'meteor/underscore';
 import { callMeteorFetch, callMongoMethod } from './helper';
+import { Collection2 } from 'meteor/aldeed:collection2'
+import { simpleSchemaImpl } from './libraries'
 
 /* global describe, it, beforeEach */
 
@@ -57,17 +59,20 @@ const booksSchema = new SimpleSchema({
 });
 
 const books = new Mongo.Collection('books');
-books.attachSchema(booksSchema);
-
 const upsertTest = new Mongo.Collection('upsertTest');
-upsertTest.attachSchema(
-  new SimpleSchema({
-    _id: { type: String },
-    foo: { type: Number }
-  })
-);
 
-export default function addBooksTests() {
+describe('SimpleSchema books tests', () => {
+  before(() => {
+    Collection2.defineValidation(simpleSchemaImpl())
+    books.attachSchema(booksSchema);
+    upsertTest.attachSchema(
+      new SimpleSchema({
+        _id: { type: String },
+        foo: { type: Number }
+      })
+    );
+  })
+
   describe('insert', function () {
     beforeEach(async function () {
       for (const book of await callMeteorFetch(books, {})) {
@@ -380,7 +385,7 @@ export default function addBooksTests() {
 
   if (Meteor.isServer) {
     describe('upsert', function () {
-      function getCallback(done) {
+      function getCallback (done) {
         return (result) => {
           expect(result.numberAffected).toBe(1);
 
@@ -391,7 +396,7 @@ export default function addBooksTests() {
         };
       }
 
-      function getUpdateCallback(done) {
+      function getUpdateCallback (done) {
         return (result) => {
           expect(result).toBe(1);
 
@@ -402,7 +407,7 @@ export default function addBooksTests() {
         };
       }
 
-      function getErrorCallback(done) {
+      function getErrorCallback (done) {
         return (error) => {
           expect(!!error).toBe(true);
           // expect(!!result).toBe(false)
@@ -737,4 +742,4 @@ export default function addBooksTests() {
       expect(doc.foo).toBe(2);
     });
   }
-}
+});

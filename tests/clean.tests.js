@@ -1,10 +1,12 @@
+/* eslint-env mocha */
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { Meteor } from 'meteor/meteor';
+import { Collection2 } from 'meteor/aldeed:collection2'
 import { callMongoMethod } from './helper';
+import { simpleSchemaImpl } from './libraries'
 
-/* global describe it */
 
 let collection;
 
@@ -14,7 +16,10 @@ if (Meteor.isClient) {
   collection = new Mongo.Collection('cleanTests');
 }
 
-describe('clean options', function () {
+describe('SimpleSchema clean options', function () {
+  before(() => {
+    Collection2.defineValidation(simpleSchemaImpl())
+  })
   describe('filter', function () {
     it('keeps default schema clean options', function (done) {
       const schema = new SimpleSchema(

@@ -1,10 +1,11 @@
+/* eslint-env mocha */
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { Meteor } from 'meteor/meteor';
 import { callMongoMethod } from './helper';
-
-/* global it */
+import { simpleSchemaImpl } from './libraries'
+import { Collection2 } from 'meteor/aldeed:collection2'
 
 const defaultValuesSchema = new SimpleSchema({
   bool1: {
@@ -14,10 +15,14 @@ const defaultValuesSchema = new SimpleSchema({
 });
 
 const defaultValues = new Mongo.Collection('dv');
-defaultValues.attachSchema(defaultValuesSchema);
 global.defaultValues = defaultValues;
 
-export default function addDefaultValuesTests() {
+describe('defaults tests', () => {
+  before(() => {
+    Collection2.defineValidation(simpleSchemaImpl())
+    defaultValues.attachSchema(defaultValuesSchema);
+  })
+
   if (Meteor.isServer) {
     it('defaultValues', function (done) {
       let p;
@@ -81,4 +86,4 @@ export default function addDefaultValuesTests() {
       expect(p.bool1).toBe(true);
     });
   }
-}
+});

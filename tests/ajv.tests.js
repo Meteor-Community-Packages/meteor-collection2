@@ -2,30 +2,14 @@
 import Ajv from 'ajv'
 import expect from 'expect'
 import { callMongoMethod } from './helper'
+import { ajvImpl } from './libraries'
 
 describe('using ajv', () => {
   before(() => {
-    Collection2.defineValidation({
-      name: 'ajv',
-      is: schema => schema instanceof Ajv,
-      create: schema => {
-        const instance = new Ajv()
-        instance.definition = schema
-        return instance
-      },
-      extend: (s1, s2) => {
-        // not impl
-        return s2
-      },
-      clean: ({ doc, modifier, schema, userId, isLocalCollection, type }) => {
-        // not impl
-      },
-      validate: () => {},
-      freeze: false
-    });
+    Collection2.defineValidation(ajvImpl());
   })
 
-  it('attach and get simpleSchema for normal collection', function () {
+  it('attach and get ajv for normal collection', function () {
     ;['ajvMc1', null].forEach(name => {
       const mc = new Mongo.Collection(name, Meteor.isClient ? { connection: null } : undefined);
 
