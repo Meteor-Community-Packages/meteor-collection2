@@ -23,10 +23,9 @@ Package.onUse(function (api) {
   api.use('ejson');
   api.use('ecmascript');
   api.use('raix:eventemitter@1.0.0');
-  api.use('aldeed:simple-schema@1.13.1');
+  api.use('aldeed:simple-schema@2.0.0-beta300.0 || 1.13.1');
 
   api.addFiles(['./collection2.js']);
-  api.export('Collection2', 'server');
 
   // Allow us to detect 'insecure'.
   api.use('insecure', { weak: true });
@@ -37,6 +36,6 @@ Package.onUse(function (api) {
 Package.onTest(function (api) {
   api.use([
     'meteortesting:mocha@3.1.0-beta300.0',
-    'aldeed:collection2'
+    'aldeed:collection2@4.0.2'
   ])
 });

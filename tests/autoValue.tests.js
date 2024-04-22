@@ -1,13 +1,10 @@
-import 'meteor/aldeed:collection2/dynamic';
+/* eslint-env mocha */
+import 'meteor/aldeed:collection2/static';
 import { Meteor } from 'meteor/meteor';
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { callMongoMethod } from './helper';
-
-/* global describe, it */
-
-Collection2.load();
 
 const collection = new Mongo.Collection('autoValueTestCollection');
 const localCollection = new Mongo.Collection('autoValueTestLocalCollection', {
