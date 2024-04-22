@@ -173,76 +173,103 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       return null;
     };
   });
-  
-  function _methodMutation(async, methodName) {
-    const _super = Meteor.isFibersDisabled
-      ? Mongo.Collection.prototype[methodName]
-      : Mongo.Collection.prototype[methodName.replace('Async', '')];
-  
-    if (!_super) return;
-  
-    Mongo.Collection.prototype[methodName] = function (...args) {
-      let options = isInsertType(methodName) ? args[1] : args[2];
-  
-      // Support missing options arg
-      if (!options || typeof options === 'function') {
-        options = {};
-      }
-  
-      let validationContext = {};
-      let error;
-      if (this._c2 && options.bypassCollection2 !== true) {
-        let userId = null;
-        try {
+
+  function getArgumentsAndValidationContext(methodName, args, async) {
+    let options = isInsertType(methodName) ? args[1] : args[2];
+   
+    // Support missing options arg
+    if (!options || typeof options === 'function') {
+       options = {};
+    }
+   
+    let validationContext = {};
+    if (this._c2 && options.bypassCollection2 !== true) {
+       let userId = null;
+       try {
           // https://github.com/aldeed/meteor-collection2/issues/175
-          userId = Meteor.userId();
-        } catch (err) {}
+         userId = Meteor.userId();
+       } catch (err) {}
+   
+       [args, validationContext] = doValidate(
+         this,
+         methodName,
+         args,
+         Meteor.isServer || this._connection === null, // getAutoValues
+         userId,
+         Meteor.isServer, // isFromTrustedCode
+         async
+       );
+   
+       if (!args) {
+         // doValidate already called the callback or threw the error, so we're done.
+         // But insert should always return an ID to match core behavior.
+         return isInsertType(methodName) ? this._makeNewID() : undefined;
+       }
+    } else {
+       // We still need to adjust args because insert does not take options
+       if (isInsertType(methodName) && typeof args[1] !== 'function') args.splice(1, 1);
+    }
+    
+    return [args, validationContext];
+   }
   
-        [args, validationContext] = doValidate(
-          this,
-          methodName,
-          args,
-          Meteor.isServer || this._connection === null, // getAutoValues
-          userId,
-          Meteor.isServer, // isFromTrustedCode
-          async
-        );
-  
-        if (!args) {
-          // doValidate already called the callback or threw the error, so we're done.
-          // But insert should always return an ID to match core behavior.
-          return isInsertType(methodName) ? this._makeNewID() : undefined;
-        }
-      } else {
-        // We still need to adjust args because insert does not take options
-        if (isInsertType(methodName) && typeof args[1] !== 'function') args.splice(1, 1);
-      }
-  
-      if (async && !Meteor.isFibersDisabled) {
-        try {
-          this[methodName.replace('Async', '')].isCalledFromAsync = true;
-          _super.isCalledFromAsync = true;
-          return Promise.resolve(_super.apply(this, args));
-        } catch (err) {
-          const addValidationErrorsPropName =
-            typeof validationContext.addValidationErrors === 'function'
-              ? 'addValidationErrors'
-              : 'addInvalidKeys';
-          parsingServerError([err], validationContext, addValidationErrorsPropName);
-          error = getErrorObject(validationContext, err.message, err.code);
-          return Promise.reject(error);
-        }
-      } else {
-        return _super.apply(this, args);
-      }
+   function _methodMutation(async, methodName) {
+    const _super = Meteor.isFibersDisabled
+       ? Mongo.Collection.prototype[methodName]
+       : Mongo.Collection.prototype[methodName.replace('Async', '')];
+   
+    if (!_super) return;
+    Mongo.Collection.prototype[methodName] = function (...args) {
+       [args, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, async);
+   
+       if (async && !Meteor.isFibersDisabled) {
+         try {
+           this[methodName.replace('Async', '')].isCalledFromAsync = true;
+           _super.isCalledFromAsync = true;
+           return Promise.resolve(_super.apply(this, args));
+         } catch (err) {
+           const addValidationErrorsPropName =
+             typeof validationContext.addValidationErrors === 'function'
+               ? 'addValidationErrors'
+               : 'addInvalidKeys';
+           parsingServerError([err], validationContext, addValidationErrorsPropName);
+           const error = getErrorObject(validationContext, err.message, err.code);
+           return Promise.reject(error);
+         }
+       } else {
+         return _super.apply(this, args);
+       }
     };
-  }
-  
+   }
+   
+   function _methodMutationAsync(methodName) {
+    const _super = Mongo.Collection.prototype[methodName];
+    Mongo.Collection.prototype[methodName] = async function (...args) {
+       [args, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, true);
+    
+       try {
+         return await _super.apply(this, args);
+       } catch (err) {
+         const addValidationErrorsPropName =
+           typeof validationContext.addValidationErrors === 'function'
+             ? 'addValidationErrors'
+             : 'addInvalidKeys';
+         parsingServerError([err], validationContext, addValidationErrorsPropName);
+         throw getErrorObject(validationContext, err.message, err.code);
+       }
+    };
+   }
+   
   
   // Wrap DB write operation methods
+  if (Mongo.Collection.prototype.insertAsync) {
+    if (Meteor.isFibersDisabled) {
+      ['insertAsync', 'updateAsync'].forEach(_methodMutationAsync.bind(this));
+    } else {
+      ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
+    }
+  }
   ['insert', 'update'].forEach(_methodMutation.bind(this, false));
-  // We enable async for the async variants 
-  ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
   
   /*
    * Private
