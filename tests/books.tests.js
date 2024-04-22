@@ -4,6 +4,8 @@ import SimpleSchema from "meteor/aldeed:simple-schema";
 import { Meteor } from 'meteor/meteor';
 import { _ } from 'meteor/underscore';
 import { callMeteorFetch, callMongoMethod } from './helper';
+import { Collection2 } from 'meteor/aldeed:collection2'
+import { simpleSchemaImpl } from './libraries'
 
 /* global describe, it, beforeEach */
 
@@ -57,17 +59,20 @@ const booksSchema = new SimpleSchema({
 });
 
 const books = new Mongo.Collection('books');
-books.attachSchema(booksSchema);
-
 const upsertTest = new Mongo.Collection('upsertTest');
-upsertTest.attachSchema(
-  new SimpleSchema({
-    _id: { type: String },
-    foo: { type: Number }
-  })
-);
 
-export default function addBooksTests() {
+describe('SimpleSchema books tests', () => {
+  before(() => {
+    Collection2.defineValidation(simpleSchemaImpl())
+    books.attachSchema(booksSchema);
+    upsertTest.attachSchema(
+      new SimpleSchema({
+        _id: { type: String },
+        foo: { type: Number }
+      })
+    );
+  })
+
   describe('insert', function () {
     beforeEach(async function () {
       for (const book of await callMeteorFetch(books, {})) {
@@ -89,8 +94,8 @@ export default function addBooksTests() {
             expect(!!error).toBe(true);
             // and the result will be false because "copies" is required.
             expect(result).toBe(false);
-            // The list of errors is available by calling books.simpleSchema().namedContext().validationErrors()
-            const validationErrors = books.simpleSchema().namedContext().validationErrors();
+            // The list of errors is available by calling books.c2Schema().namedContext().validationErrors()
+            const validationErrors = books.c2Schema().namedContext().validationErrors();
             expect(validationErrors.length).toBe(1);
 
             const key = validationErrors[0] || {};
@@ -122,7 +127,7 @@ export default function addBooksTests() {
           })
           .catch(async (error) => {
             const validationErrors = books
-              .simpleSchema()
+              .c2Schema()
               .namedContext('validateFalse')
               .validationErrors();
 
@@ -150,7 +155,7 @@ export default function addBooksTests() {
               }
             ]).then(async (newId) => {
               const validationErrors = books
-                .simpleSchema()
+                .c2Schema()
                 .namedContext('validateFalse2')
                 .validationErrors();
 
@@ -181,7 +186,7 @@ export default function addBooksTests() {
                 })
                 .catch(async (error) => {
                   const validationErrors = books
-                    .simpleSchema()
+                    .c2Schema()
                     .namedContext('validateFalse3')
                     .validationErrors();
 
@@ -214,7 +219,7 @@ export default function addBooksTests() {
                     }
                   ]).then(async (result) => {
                     const validationErrors = books
-                      .simpleSchema()
+                      .c2Schema()
                       .namedContext('validateFalse4')
                       .validationErrors();
                     expect(result).toBe(1);
@@ -249,8 +254,8 @@ export default function addBooksTests() {
             // and result will be false because "copies" is required.
             // TODO expect(result).toBe(false);
             // The list of errors is available
-            // by calling books.simpleSchema().namedContext().validationErrors()
-            const validationErrors = books.simpleSchema().namedContext().validationErrors();
+            // by calling books.c2Schema().namedContext().validationErrors()
+            const validationErrors = books.c2Schema().namedContext().validationErrors();
             expect(validationErrors.length).toBe(1);
 
             const key = validationErrors[0] || {};
@@ -284,7 +289,7 @@ export default function addBooksTests() {
         }
 
         let validationErrors = books
-          .simpleSchema()
+          .c2Schema()
           .namedContext('validateFalse2')
           .validationErrors();
 
@@ -316,7 +321,7 @@ export default function addBooksTests() {
         }
 
         let updatedBook;
-        validationErrors = books.simpleSchema().namedContext('validateFalse3').validationErrors();
+        validationErrors = books.c2Schema().namedContext('validateFalse3').validationErrors();
 
         // When validated: false on the server, validation should be skipped
         expect(!!error).toBe(false);
@@ -350,7 +355,7 @@ export default function addBooksTests() {
           error = e;
         }
 
-        validationErrors = books.simpleSchema().namedContext('validateFalse4').validationErrors();
+        validationErrors = books.c2Schema().namedContext('validateFalse4').validationErrors();
         expect(!!error).toBe(false);
         expect(result).toBe(1);
         expect(validationErrors.length).toBe(0);
@@ -380,34 +385,34 @@ export default function addBooksTests() {
 
   if (Meteor.isServer) {
     describe('upsert', function () {
-      function getCallback(done) {
+      function getCallback (done) {
         return (result) => {
           expect(result.numberAffected).toBe(1);
 
-          const validationErrors = books.simpleSchema().namedContext().validationErrors();
+          const validationErrors = books.c2Schema().namedContext().validationErrors();
           expect(validationErrors.length).toBe(0);
 
           done();
         };
       }
 
-      function getUpdateCallback(done) {
+      function getUpdateCallback (done) {
         return (result) => {
           expect(result).toBe(1);
 
-          const validationErrors = books.simpleSchema().namedContext().validationErrors();
+          const validationErrors = books.c2Schema().namedContext().validationErrors();
           expect(validationErrors.length).toBe(0);
 
           done();
         };
       }
 
-      function getErrorCallback(done) {
+      function getErrorCallback (done) {
         return (error) => {
           expect(!!error).toBe(true);
           // expect(!!result).toBe(false)
 
-          const validationErrors = books.simpleSchema().namedContext().validationErrors();
+          const validationErrors = books.c2Schema().namedContext().validationErrors();
           expect(validationErrors.length).toBe(1);
 
           done();
@@ -582,7 +587,7 @@ export default function addBooksTests() {
       ])
         .then(async (result) => {
           const validationErrors = books
-            .simpleSchema()
+            .c2Schema()
             .namedContext('validateFalse')
             .validationErrors();
 
@@ -610,7 +615,7 @@ export default function addBooksTests() {
           newId = _newId;
 
           const validationErrors = books
-            .simpleSchema()
+            .c2Schema()
             .namedContext('validateFalse2')
             .validationErrors();
 
@@ -639,7 +644,7 @@ export default function addBooksTests() {
         })
         .then((result) => {
           const validationErrors = books
-            .simpleSchema()
+            .c2Schema()
             .namedContext('validateFalse3')
             .validationErrors();
 
@@ -670,7 +675,7 @@ export default function addBooksTests() {
         })
         .then((result) => {
           const validationErrors = books
-            .simpleSchema()
+            .c2Schema()
             .namedContext('validateFalse4')
             .validationErrors();
           expect(result).toBe(1);
@@ -737,4 +742,4 @@ export default function addBooksTests() {
       expect(doc.foo).toBe(2);
     });
   }
-}
+});
