@@ -4,7 +4,7 @@ Package.describe({
   name: 'aldeed:collection2',
   summary:
     'Automatic validation of Meteor Mongo insert and update operations on the client and server',
-  version: '4.0.2-beta.1',
+  version: '4.0.2-beta.2',
   documentation: '../../README.md',
   git: 'https://github.com/aldeed/meteor-collection2.git'
 });
@@ -23,7 +23,7 @@ Package.onUse(function (api) {
   api.use('ejson');
   api.use('ecmascript');
   api.use('raix:eventemitter@1.0.0');
-  api.use('aldeed:simple-schema@2.0.0-beta300.0 || 1.13.1');
+  api.use('aldeed:simple-schema@2.0.0-beta300.0');
 
   api.addFiles(['./collection2.js']);
 
