@@ -16,14 +16,14 @@ Npm.depends({
 });
 
 Package.onUse(function (api) {
-  api.versionsFrom(['1.12.1', '2.3', '3.0-rc.2']);
+  api.versionsFrom(['1.12.1', '2.3', '3.0-rc.4']);
   api.use('mongo');
   api.imply('mongo');
   api.use('minimongo');
   api.use('ejson');
   api.use('ecmascript');
   api.use('raix:eventemitter@1.0.0');
-  api.use('aldeed:simple-schema@2.0.0-beta300.0');
+  api.use('aldeed:simple-schema@1.13.1 || 2.0.0-beta300.0');
 
   api.addFiles(['./collection2.js']);
 
@@ -34,8 +34,9 @@ Package.onUse(function (api) {
 });
 
 Package.onTest(function (api) {
+  api.versionsFrom(['1.12.1', '2.3', '3.0-rc.4']);
   api.use([
-    'meteortesting:mocha@3.1.0-beta300.0',
+    'meteortesting:mocha@3.1.0-rc.1',
     'aldeed:collection2@4.0.2'
   ]);
 });
