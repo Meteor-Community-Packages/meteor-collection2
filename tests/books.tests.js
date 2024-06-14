@@ -77,31 +77,27 @@ export default function addBooksTests() {
 
     if (Meteor.isClient) {
       it('required', function (done) {
-        const maybeNext = _.after(2, done);
-
-        const id = books.insert(
+        callMongoMethod(books, 'insert', [
           {
             title: 'Ulysses',
             author: 'James Joyce'
-          },
-          (error, result) => {
-            // The insert will fail, error will be set,
-            expect(!!error).toBe(true);
-            // and the result will be false because "copies" is required.
-            expect(result).toBe(false);
-            // The list of errors is available by calling books.simpleSchema().namedContext().validationErrors()
-            const validationErrors = books.simpleSchema().namedContext().validationErrors();
-            expect(validationErrors.length).toBe(1);
-
-            const key = validationErrors[0] || {};
-            expect(key.name).toBe('copies');
-            expect(key.type).toBe('required');
-            maybeNext();
           }
-        );
+        ])
+        .then((result) => {
+          done(new Error('should not get here'));
+        })
+        .catch((error) => {
+          // The insert will fail, error will be set,
+          expect(!!error).toBe(true);
+          // The list of errors is available by calling books.simpleSchema().namedContext().validationErrors()
+          const validationErrors = books.simpleSchema().namedContext().validationErrors();
 
-        expect(typeof id).toBe('string');
-        maybeNext();
+          expect(validationErrors.length).toBe(1);
+          const key = validationErrors[0] || {};
+          expect(key.name).toBe('copies');
+          expect(key.type).toBe('required');
+          done();
+        });
       });
 
       it('validate false', function (done) {

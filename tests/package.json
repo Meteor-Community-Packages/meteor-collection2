@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "test": "METEOR_PACKAGE_DIRS=../package TEST_BROWSER_DRIVER=puppeteer meteor test --once --driver-package meteortesting:mocha --raw-logs",
-    "test:watch": "METEOR_PACKAGE_DIRS=../package:../../ TEST_BROWSER_DRIVER=puppeteer TEST_WATCH=1 meteor test --driver-package meteortesting:mocha --raw-logs",
+    "test:watch": "METEOR_PACKAGE_DIRS=../package TEST_BROWSER_DRIVER=puppeteer TEST_WATCH=1 meteor test --driver-package meteortesting:mocha --raw-logs",
     "test:watch:browser": "METEOR_PACKAGE_DIRS=../package TEST_WATCH=1 meteor test --driver-package meteortesting:mocha --raw-logs"
   },
   "dependencies": {
