@@ -10,7 +10,7 @@ export function flattenSelector(selector) {
 
   const obj = {};
 
-  Object.entries(selector).forEach(([key, value]) => {
+  for (const [key, value] of Object.entries(selector) || []) {
     // Ignoring logical selectors (https://docs.mongodb.com/manual/reference/operator/query/#logical)
     if (!key.startsWith('$')) {
       if (typeof value === 'object' && value !== null) {
@@ -25,7 +25,7 @@ export function flattenSelector(selector) {
         obj[key] = value;
       }
     }
-  });
+  }
 
   return obj;
 }
