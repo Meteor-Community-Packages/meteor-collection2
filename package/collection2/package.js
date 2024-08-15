@@ -36,7 +36,7 @@ Package.onUse(function (api) {
 Package.onTest(function (api) {
   api.versionsFrom(['1.12.1', '2.3', '3.0']);
   api.use([
-    'meteortesting:mocha@3.1.0-rc.1',
-    'aldeed:collection2@4.0.2'
+    'meteortesting:mocha@3.2.0',
+    'aldeed:collection2'
   ]);
 });
