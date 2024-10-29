@@ -5,7 +5,7 @@ Package.describe({
   summary:
     'Automatic validation of Meteor Mongo insert and update operations on the client and server',
   version: '4.0.3',
-  documentation: '../../README.md',
+  documentation: 'README.md',
   git: 'https://github.com/aldeed/meteor-collection2.git'
 });
 
