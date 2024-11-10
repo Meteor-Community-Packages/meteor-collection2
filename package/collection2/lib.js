@@ -39,3 +39,29 @@ export const isUpdateType = function (type) {
 export const isUpsertType = function (type) {
   return ['upsert', 'upsertAsync'].includes(type);
 };
+
+export function isObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function isEqual(a, b) {
+  // Handle primitive types and null/undefined
+  if (a === b) return true;
+  if (a == null || b == null) return false;
+  if (typeof a !== 'object' || typeof b !== 'object') return false;
+
+  // Get object keys
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+
+  // Check if number of keys match
+  if (keysA.length !== keysB.length) return false;
+
+  // Compare each key-value pair recursively
+  return keysA.every(key => {
+    if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+    return isEqual(a[key], b[key]);
+  });
+}
+
+

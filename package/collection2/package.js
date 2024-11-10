@@ -9,12 +9,6 @@ Package.describe({
   git: 'https://github.com/aldeed/meteor-collection2.git'
 });
 
-Npm.depends({
-  'lodash.isempty': '4.4.0',
-  'lodash.isequal': '4.5.0',
-  'lodash.isobject': '3.0.2'
-});
-
 Package.onUse(function (api) {
   api.versionsFrom(['1.12.1', '2.3', '3.0']);
   api.use('mongo');

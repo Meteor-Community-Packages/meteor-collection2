@@ -2,10 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
-import isEmpty from 'lodash.isempty';
-import isEqual from 'lodash.isequal';
-import isObject from 'lodash.isobject';
-import { flattenSelector, isInsertType, isUpdateType, isUpsertType } from './lib';
+import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 
 
 /**
@@ -315,7 +312,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       throw new Error('invalid type argument');
     }
   
-    const validatedObjectWasInitiallyEmpty = isEmpty(doc);
+    const validatedObjectWasInitiallyEmpty = Object.keys(doc).length === 0;
   
     // Support missing options arg
     if (!callback && typeof options === 'function') {
@@ -491,7 +488,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     }
   
     // XXX Maybe move this into SimpleSchema
-    if (!validatedObjectWasInitiallyEmpty && isEmpty(docToValidate)) {
+    if (!validatedObjectWasInitiallyEmpty && Object.keys(docToValidate).length === 0) {
       throw new Error(
         'After filtering out keys not in the schema, your ' +
           (isUpdateType(type) ? 'modifier' : 'object') +
