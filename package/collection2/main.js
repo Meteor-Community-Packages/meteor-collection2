@@ -2,10 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
-import isEmpty from 'lodash.isempty';
-import isEqual from 'lodash.isequal';
-import isObject from 'lodash.isobject';
-import { flattenSelector, isInsertType, isUpdateType, isUpsertType } from './lib';
+import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 
 
 /**
@@ -228,13 +225,18 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
            _super.isCalledFromAsync = true;
            return Promise.resolve(_super.apply(this, args));
          } catch (err) {
-           const addValidationErrorsPropName =
-             typeof validationContext.addValidationErrors === 'function'
-               ? 'addValidationErrors'
+          if (this._c2) {
+            const addValidationErrorsPropName =
+            typeof validationContext.addValidationErrors === 'function'
+            ? 'addValidationErrors'
                : 'addInvalidKeys';
            parsingServerError([err], validationContext, addValidationErrorsPropName);
            const error = getErrorObject(validationContext, err.message, err.code);
            return Promise.reject(error);
+          } else {
+            // do not change error if collection isn't being validated by collection2
+            return Promise.reject(err);
+          }
          }
        } else {
          return _super.apply(this, args);
@@ -250,12 +252,17 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
        try {
          return await _super.apply(this, args);
        } catch (err) {
+        if (this._c2) {
          const addValidationErrorsPropName =
            typeof validationContext.addValidationErrors === 'function'
              ? 'addValidationErrors'
              : 'addInvalidKeys';
          parsingServerError([err], validationContext, addValidationErrorsPropName);
          throw getErrorObject(validationContext, err.message, err.code);
+        } else {
+          // do not change error if collection isn't being validated by collection2
+         throw err;
+        }
        }
     };
    }
@@ -305,7 +312,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       throw new Error('invalid type argument');
     }
   
-    const validatedObjectWasInitiallyEmpty = isEmpty(doc);
+    const validatedObjectWasInitiallyEmpty = Object.keys(doc).length === 0;
   
     // Support missing options arg
     if (!callback && typeof options === 'function') {
@@ -481,7 +488,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     }
   
     // XXX Maybe move this into SimpleSchema
-    if (!validatedObjectWasInitiallyEmpty && isEmpty(docToValidate)) {
+    if (!validatedObjectWasInitiallyEmpty && Object.keys(docToValidate).length === 0) {
       throw new Error(
         'After filtering out keys not in the schema, your ' +
           (isUpdateType(type) ? 'modifier' : 'object') +

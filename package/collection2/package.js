@@ -4,15 +4,9 @@ Package.describe({
   name: 'aldeed:collection2',
   summary:
     'Automatic validation of Meteor Mongo insert and update operations on the client and server',
-  version: '4.0.3',
+  version: '4.0.4',
   documentation: '../../README.md',
   git: 'https://github.com/aldeed/meteor-collection2.git'
-});
-
-Npm.depends({
-  'lodash.isempty': '4.4.0',
-  'lodash.isequal': '4.5.0',
-  'lodash.isobject': '3.0.2'
 });
 
 Package.onUse(function (api) {
