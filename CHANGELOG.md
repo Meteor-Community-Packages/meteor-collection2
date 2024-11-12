@@ -87,6 +87,9 @@
 - Return unaltered error message when collection isn't being validated and doesn't have simple schema attached thanks to @DmytroSoninLinguahouse
 - Update test application to use Meteor release number 3.0.4
 - Remove lodash dependencies
+- Updated dependencies
+- Expanded dependencies compatibility
+- Extended test suite
 
 ## 4.0.3
 
