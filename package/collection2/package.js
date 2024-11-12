@@ -16,8 +16,8 @@ Package.onUse(function (api) {
   api.use('minimongo');
   api.use('ejson');
   api.use('ecmascript');
-  api.use('raix:eventemitter@1.0.0');
-  api.use('aldeed:simple-schema@1.13.1 || 2.0.0-rc.300.10');
+  api.use('raix:eventemitter@1.0.0 || 2.0.0');
+  api.use('aldeed:simple-schema@1.13.1 || 2.0.0');
 
   api.addFiles(['./collection2.js']);
 
@@ -30,7 +30,7 @@ Package.onUse(function (api) {
 Package.onTest(function (api) {
   api.versionsFrom(['1.12.1', '2.3', '3.0']);
   api.use([
-    'meteortesting:mocha@3.1.0-rc.1',
-    'aldeed:collection2@4.0.2'
+    'meteortesting:mocha@2.1.0 || 3.2.0',
+    'aldeed:collection2'
   ]);
 });
