@@ -15,7 +15,7 @@ jobs:
     # needs: [lintcode,lintstyle,lintdocs] # we could add prior jobs for linting, if desired
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup meteor
         uses: meteorengineer/setup-meteor@v2
