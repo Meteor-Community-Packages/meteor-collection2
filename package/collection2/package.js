@@ -1,7 +1,7 @@
 
 /* global Package, Npm */
 Package.describe({
-  name: 'collection2local',
+  name: 'aldeed:collection2',
   summary:
     'Automatic validation of Meteor Mongo insert and update operations on the client and server',
   version: '4.0.4',
