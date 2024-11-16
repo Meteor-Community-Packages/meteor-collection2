@@ -4,6 +4,8 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [4.0.4](#404)
+- [4.0.3](#403)
 - [4.0.2](#402)
 - [4.0.1](#401)
 - [4.0.0](#400)
@@ -79,6 +81,19 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 4.0.4
+
+- Return unaltered error message when collection isn't being validated and doesn't have simple schema attached thanks to @DmytroSoninLinguahouse
+- Update test application to use Meteor release number 3.0.4
+- Remove lodash dependencies
+- Updated dependencies
+- Expanded dependencies compatibility
+- Extended test suite
+
+## 4.0.3
+
+- Update Meteor release to 3.0 
 
 ## 4.0.2
 

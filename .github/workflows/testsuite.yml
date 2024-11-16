@@ -9,18 +9,21 @@ jobs:
   tests:
     name: tests
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        meteor: [ '2.13.3', '3.0.4' ]
     # needs: [lintcode,lintstyle,lintdocs] # we could add prior jobs for linting, if desired
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup meteor
-        uses: meteorengineer/setup-meteor@v1
+        uses: meteorengineer/setup-meteor@v2
         with:
-          meteor-release: '2.13.3'
+          meteor-release: ${{ matrix.meteor }}
 
       - name: cache dependencies
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
