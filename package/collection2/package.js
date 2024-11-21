@@ -1,5 +1,5 @@
-/* global Package, Npm */
 
+/* global Package, Npm */
 Package.describe({
   name: 'aldeed:collection2',
   summary:
@@ -18,6 +18,7 @@ Package.onUse(function (api) {
   api.use('ecmascript');
   api.use('raix:eventemitter@1.0.0 || 2.0.0');
   api.use('aldeed:simple-schema@1.13.1 || 2.0.0');
+  api.use('zodern:types');
 
   api.addFiles(['./collection2.js']);
 
