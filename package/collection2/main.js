@@ -114,7 +114,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     Collection2.emit('schema.attached', this, ss, options);
   };
   
-  [Mongo.Collection, LocalCollection].forEach((obj) => {
+  for (const obj of [Mongo.Collection, LocalCollection]) {
     /**
      * simpleSchema
      * @description function detect the correct schema by given params. If it
@@ -129,7 +129,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     obj.prototype.simpleSchema = function (doc, options, query) {
       if (!this._c2) return null;
       if (this._c2._simpleSchema) return this._c2._simpleSchema;
-  
+
       const schemas = this._c2._simpleSchemas;
       if (schemas && schemas.length > 0) {
         let schema, selector, target;
@@ -137,7 +137,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         for (let i = 1; i < schemas.length; i++) {
           schema = schemas[i];
           selector = Object.keys(schema.selector)[0];
-  
+
           // We will set this to undefined because in theory, you might want to select
           // on a null value.
           target = undefined;
@@ -153,7 +153,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
             // on upsert/update operations
             target = query[selector];
           }
-  
+
           // we need to compare given selector with doc property or option to
           //  find the right schema
           if (target !== undefined && target === schema.selector[selector]) {
@@ -166,12 +166,12 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
           throw new Error('No default schema');
         }
       }
-  
+
       return null;
     };
-  });
+  }
 
-  function getArgumentsAndValidationContext(methodName, args, async) {
+function getArgumentsAndValidationContext(methodName, args, async) {
     let options = isInsertType(methodName) ? args[1] : args[2];
    
     // Support missing options arg
@@ -421,14 +421,12 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     };
   
     const cleanOptionsForThisOperation = {};
-    ['autoConvert', 'filter', 'removeEmptyStrings', 'removeNullsFromArrays', 'trimStrings'].forEach(
-      (prop) => {
-        if (typeof options[prop] === 'boolean') {
-          cleanOptionsForThisOperation[prop] = options[prop];
-        }
+    for (const prop of ['autoConvert', 'filter', 'removeEmptyStrings', 'removeNullsFromArrays', 'trimStrings']) {
+      if (typeof options[prop] === 'boolean') {
+        cleanOptionsForThisOperation[prop] = options[prop];
       }
-    );
-  
+    }
+
     // Preliminary cleaning on both client and server. On the server and for local
     // collections, automatic values will also be set at this point.
     schema.clean(doc, {
