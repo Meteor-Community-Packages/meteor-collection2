@@ -675,9 +675,9 @@ function getArgumentsAndValidationContext(methodName, args, async) {
   
       if (Meteor.isFibersDisabled) {
         Object.assign(allow, {
-          insertAsync: allow.insert,
-          updateAsync: allow.update,
-          removeAsync: allow.remove
+          insert: allow.insert,
+          update: allow.update,
+          remove: allow.remove
         });
       }
   
@@ -754,8 +754,8 @@ function getArgumentsAndValidationContext(methodName, args, async) {
   
       if (Meteor.isFibersDisabled) {
         Object.assign(firstDeny, {
-          insertAsync: firstDeny.insert,
-          updateAsync: firstDeny.update
+          insert: firstDeny.insert,
+          update: firstDeny.update
         });
       }
   
@@ -829,8 +829,8 @@ function getArgumentsAndValidationContext(methodName, args, async) {
   
       if (Meteor.isFibersDisabled) {
         Object.assign(secondDeny, {
-          insertAsync: secondDeny.insert,
-          updateAsync: secondDeny.update
+          insert: secondDeny.insert,
+          update: secondDeny.update
         });
       }
   
