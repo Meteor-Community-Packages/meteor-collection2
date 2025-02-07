@@ -180,7 +180,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
     }
    
     let validationContext = {};
-    let validatedArgs = [];
+    let validatedArgs = args;
     if (this._c2 && options.bypassCollection2 !== true) {
        let userId = null;
        try {
