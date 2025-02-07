@@ -180,6 +180,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
     }
    
     let validationContext = {};
+    let validatedArgs = [];
     if (this._c2 && options.bypassCollection2 !== true) {
        let userId = null;
        try {
@@ -187,7 +188,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
          userId = Meteor.userId();
        } catch (err) {}
    
-       [args, validationContext] = doValidate(
+       [validatedArgs, validationContext] = doValidate(
          this,
          methodName,
          args,
@@ -197,17 +198,17 @@ function getArgumentsAndValidationContext(methodName, args, async) {
          async
        );
    
-       if (!args) {
+       if (!validatedArgs) {
          // doValidate already called the callback or threw the error, so we're done.
          // But insert should always return an ID to match core behavior.
          return isInsertType(methodName) ? this._makeNewID() : undefined;
        }
     } else {
        // We still need to adjust args because insert does not take options
-       if (isInsertType(methodName) && typeof args[1] !== 'function') args.splice(1, 1);
+       if (isInsertType(methodName) && typeof validatedArgs[1] !== 'function') validatedArgs.splice(1, 1);
     }
     
-    return [args, validationContext];
+    return [validatedArgs, validationContext];
    }
   
    function _methodMutation(async, methodName) {
@@ -217,13 +218,13 @@ function getArgumentsAndValidationContext(methodName, args, async) {
    
     if (!_super) return;
     Mongo.Collection.prototype[methodName] = function (...args) {
-       [args, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, async);
+       const [validatedArgs, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, async);
    
        if (async && !Meteor.isFibersDisabled) {
          try {
            this[methodName.replace('Async', '')].isCalledFromAsync = true;
            _super.isCalledFromAsync = true;
-           return Promise.resolve(_super.apply(this, args));
+           return Promise.resolve(_super.apply(this, validatedArgs));
          } catch (err) {
           if (this._c2) {
             const addValidationErrorsPropName =
@@ -239,7 +240,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
           }
          }
        } else {
-         return _super.apply(this, args);
+         return _super.apply(this, validatedArgs);
        }
     };
    }
@@ -247,10 +248,10 @@ function getArgumentsAndValidationContext(methodName, args, async) {
    function _methodMutationAsync(methodName) {
     const _super = Mongo.Collection.prototype[methodName];
     Mongo.Collection.prototype[methodName] = async function (...args) {
-       [args, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, true);
+       const [validatedArgs, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, true);
     
        try {
-         return await _super.apply(this, args);
+         return await _super.apply(this, validatedArgs);
        } catch (err) {
         if (this._c2) {
          const addValidationErrorsPropName =
