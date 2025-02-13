@@ -4,6 +4,8 @@ import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 
+const meteorVersion = Meteor.release.split('@')[1].split('.');
+const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1] >= 1;
 
 /**
  * Mongo.Collection.prototype.attachSchema
@@ -674,13 +676,13 @@ function getArgumentsAndValidationContext(methodName, args, async) {
         transform: null
       };
 
-      // if (Meteor.isFibersDisabled) {
-      //   Object.assign(allow, {
-      //     insertAsync: allow.insert,
-      //     updateAsync: allow.update,
-      //     removeAsync: allow.remove
-      //   });
-      // }
+      if (Meteor.isFibersDisabled && !noAsyncAllow) {
+        Object.assign(allow, {
+          insertAsync: allow.insert,
+          updateAsync: allow.update,
+          removeAsync: allow.remove
+        });
+      }
 
       c.allow(allow);
 
@@ -753,12 +755,12 @@ function getArgumentsAndValidationContext(methodName, args, async) {
         transform: null
       };
 
-      // if (Meteor.isFibersDisabled) {
-      //   Object.assign(firstDeny, {
-      //     insertAsync: firstDeny.insert,
-      //     updateAsync: firstDeny.update
-      //   });
-      // }
+      if (Meteor.isFibersDisabled && !noAsyncAllow) {
+        Object.assign(firstDeny, {
+          insertAsync: firstDeny.insert,
+          updateAsync: firstDeny.update
+        });
+      }
 
       c.deny(firstDeny);
 
@@ -828,12 +830,12 @@ function getArgumentsAndValidationContext(methodName, args, async) {
         ...(options.transform === true ? {} : { transform: null })
       };
 
-      // if (Meteor.isFibersDisabled) {
-      //   Object.assign(secondDeny, {
-      //     insertAsync: secondDeny.insert,
-      //     updateAsync: secondDeny.update
-      //   });
-      // }
+      if (Meteor.isFibersDisabled && !noAsyncAllow) {
+        Object.assign(secondDeny, {
+          insertAsync: secondDeny.insert,
+          updateAsync: secondDeny.update
+        });
+      }
 
       c.deny(secondDeny);
 
