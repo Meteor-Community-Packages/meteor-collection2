@@ -187,7 +187,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
           // https://github.com/aldeed/meteor-collection2/issues/175
          userId = Meteor.userId();
        } catch (err) {}
-   
+
        [validatedArgs, validationContext] = doValidate(
          this,
          methodName,
@@ -197,7 +197,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
          Meteor.isServer, // isFromTrustedCode
          async
        );
-   
+
        if (!validatedArgs) {
          // doValidate already called the callback or threw the error, so we're done.
          // But insert should always return an ID to match core behavior.
@@ -207,7 +207,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
        // We still need to adjust args because insert does not take options
        if (isInsertType(methodName) && typeof validatedArgs[1] !== 'function') validatedArgs.splice(1, 1);
     }
-    
+
     return [validatedArgs, validationContext];
    }
 
@@ -219,7 +219,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
     if (!_super) return;
     Mongo.Collection.prototype[methodName] = function (...args) {
        const [validatedArgs, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, async);
-   
+
        if (async && !Meteor.isFibersDisabled) {
          try {
            this[methodName.replace('Async', '')].isCalledFromAsync = true;
@@ -249,7 +249,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
     const _super = Mongo.Collection.prototype[methodName];
     Mongo.Collection.prototype[methodName] = async function (...args) {
        const [validatedArgs, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, true);
-    
+
        try {
          return await _super.apply(this, validatedArgs);
        } catch (err) {
@@ -674,13 +674,13 @@ function getArgumentsAndValidationContext(methodName, args, async) {
         transform: null
       };
 
-      if (Meteor.isFibersDisabled) {
-        Object.assign(allow, {
-          insertAsync: allow.insert,
-          updateAsync: allow.update,
-          removeAsync: allow.remove
-        });
-      }
+      // if (Meteor.isFibersDisabled) {
+      //   Object.assign(allow, {
+      //     insertAsync: allow.insert,
+      //     updateAsync: allow.update,
+      //     removeAsync: allow.remove
+      //   });
+      // }
 
       c.allow(allow);
 
