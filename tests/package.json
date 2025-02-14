@@ -7,9 +7,9 @@
     "test:watch:browser": "METEOR_PACKAGE_DIRS=../package TEST_WATCH=1 meteor test --driver-package meteortesting:mocha --raw-logs"
   },
   "dependencies": {
-    "@babel/runtime": "^7.23.1",
-    "jquery": "^3.5.1",
-    "meteor-node-stubs": "^1.2.7"
+    "@babel/runtime": "^7.26.7",
+    "jquery": "^3.7.1",
+    "meteor-node-stubs": "^1.2.12"
   },
   "devDependencies": {
     "expect": "^26.6.2",
