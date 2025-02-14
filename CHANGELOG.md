@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [4.1.0](#410)
 - [4.0.4](#404)
 - [4.0.3](#403)
 - [4.0.2](#402)
@@ -81,6 +82,13 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 4.1.0
+
+- Added types
+- Switched to use `for of` loops instead of `forEach` in many places to increase performance.
+- Renamed arg variables to be less ambiguous
+- Fix deprecation warnings on Meteor 3.1
 
 ## 4.0.4
 
