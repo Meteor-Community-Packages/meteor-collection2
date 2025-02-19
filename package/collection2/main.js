@@ -810,7 +810,7 @@ function defineDeny(collection, options) {
     insert: function (userId, doc) {
       // We pass the false options because we will have done them on the client if desired
       doValidate({
-        collection: this,
+        collection,
         type: 'insert',
         args: [
           doc,
@@ -838,7 +838,7 @@ function defineDeny(collection, options) {
       // are not allowed once you define allow/deny functions.
       // We pass the false options because we will have done them on the client if desired
       doValidate({
-        collection: this,
+        collection,
         type: 'update',
         args: [
           { _id: doc && doc._id },

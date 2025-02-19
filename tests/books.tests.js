@@ -109,7 +109,7 @@ describe('SimpleSchema books tests', () => {
           // The insert will fail, error will be set,
           expect(!!error).toBe(true);
           // The list of errors is available by calling books.simpleSchema().namedContext().validationErrors()
-          const validationErrors = books.simpleSchema().namedContext().validationErrors();
+          const validationErrors = books.c2Schema().namedContext().validationErrors();
 
           expect(validationErrors.length).toBe(1);
           const key = validationErrors[0] || {};
