@@ -687,5 +687,53 @@ describe('collection2', function () {
     }
   });
 
+  it('return unaltered error message when collection isn\'t being validated and doesn\'t have simple schema attached', async function () {
+    if (Meteor.isServer) {
+      const testCollection = new Mongo.Collection('test_error_collection');
+      await testCollection.createIndexAsync({ name: 1 }, { unique: true });
+      await testCollection.removeAsync({});
 
+      // Test insert duplicate error
+      await testCollection.insertAsync({ name: 'foo' });
+      try {
+        await testCollection.insertAsync({ name: 'foo' });
+      } catch (e) {
+        expect(e.code).toBe(11000);
+        expect(e.name).toBe('MongoServerError');
+        // Should not have any Collection2 specific properties
+        expect(e.invalidKeys).toBe(undefined);
+        expect(e.message).toMatch(/E11000 duplicate key error/);
+      }
+
+      // Test update with invalid operation
+      try {
+        await testCollection.updateAsync(
+          { name: 'foo' },
+          { $invalidOp: { name: 'bar' } }
+        );
+      } catch (e) {
+        expect(e.name).toBe('MongoServerError');
+        // Should not be transformed into Collection2 error
+        expect(e.error).toBe(undefined);
+        expect(e.reason).toBe(undefined);
+      }
+
+      // Test upsert with invalid _id format
+      try {
+        await testCollection.upsertAsync(
+          { name: 'nonexistent' },
+          { $setOnInsert: { _id: 'invalid-id-format' } }
+        );
+      } catch (e) {
+        expect(e.name).toBe('MongoServerError');
+        // Should not have Collection2 validation context
+        expect(e.validationContext).toBe(undefined);
+      }
+    }
+  });
+
+  addBooksTests();
+  addContextTests();
+  addDefaultValuesTests();
+  addMultiTests();
 });

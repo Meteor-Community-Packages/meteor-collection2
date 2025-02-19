@@ -4,7 +4,13 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [4.0.0-beta.5](#400-beta.3)
+- [4.1.1](#411)
+- [4.1.0](#410)
+- [4.0.4](#404)
+- [4.0.3](#403)
+- [4.0.2](#402)
+- [4.0.1](#401)
+- [4.0.0](#400)
 - [3.5.0](#350)
 - [3.4.1](#341)
 - [3.4.0](#340)
@@ -77,6 +83,40 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 4.1.1
+
+- Improve types
+
+## 4.1.0
+
+- Added types
+- Switched to use `for of` loops instead of `forEach` in many places to increase performance.
+- Renamed arg variables to be less ambiguous
+- Fix deprecation warnings on Meteor 3.1
+
+## 4.0.4
+
+- Return unaltered error message when collection isn't being validated and doesn't have simple schema attached thanks to @DmytroSoninLinguahouse
+- Update test application to use Meteor release number 3.0.4
+- Remove lodash dependencies
+- Updated dependencies
+- Expanded dependencies compatibility
+- Extended test suite
+
+## 4.0.3
+
+- Update Meteor release to 3.0 
+
+## 4.0.2
+
+- Make collection2 compatible with the newly released RC
+- Move common code between `_methodMutation` and `_methodMutationAsync` into its own code
+
+## 4.0.1
+
+- Fix dynamic import https://github.com/Meteor-Community-Packages/meteor-collection2/pull/450
+
 
 ## 4.0.0
 

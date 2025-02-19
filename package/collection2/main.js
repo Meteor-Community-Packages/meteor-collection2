@@ -2,41 +2,10 @@ import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
-import isEmpty from 'lodash.isempty';
-import isEqual from 'lodash.isequal';
-import isObject from 'lodash.isobject';
-import { flattenSelector, isInsertType, isUpdateType, isUpsertType } from './lib';
+import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 
-const C2 = {};
-C2._validator = null;
-
-C2.init = self => {
-  self._c2 = self._c2 || Object.create(null);
-  self._c2.schemas = self._c2.schemas || [null];
-  return self;
-};
-
-C2.validator = () => {
-  const validator= C2._validator
-  if (!validator) {
-    throw new Error(`Cannot attach a schema if no validation library has been added`);
-  }
-  return validator;
-}
-
-C2.schemas = (self) => {
-  if (!self._c2) {
-    C2.init(self);
-  }
-  return self._c2.schemas;
-}
-
-Collection2.defineValidation = ({ freeze, ...validator }) => {
-  C2._validator = validator;
-  // TODO if freeze it should not be writable or deletable
-}
-
-Object.assign(Collection2, { isInsertType, isUpsertType, isUpdateType })
+const meteorVersion = Meteor.release.split('@')[1].split('.');
+const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1] >= 1;
 
 /**
  * Mongo.Collection.prototype.attachSchema
@@ -55,22 +24,18 @@ Object.assign(Collection2, { isInsertType, isUpsertType, isUpdateType })
  * schema object passed to its constructor.
  */
 Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
-    options = options || Object.create(null);
-
-    const self = this;
-    const validator = C2.validator();
+    options = options || {};
 
     // Allow passing just the schema object
     if (!validator.is(ss)) {
       ss = validator.create(ss);
     }
-  
+
     function attachTo(obj) {
       // we need an array to hold multiple schemas
       // position 0 is reserved for the "base" schema
-      C2.init(obj);
-
-      const allSchemas = C2.schemas(obj);
+      obj._c2 = obj._c2 || {};
+      obj._c2._simpleSchemas = obj._c2._simpleSchemas || [null];
 
       if (typeof options.selector === 'object') {
         // Selector Schemas
@@ -80,17 +45,17 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         if (base) {
           ss = validator.extend(base.schema, ss);
         }
-  
+
         // Index of existing schema with identical selector
-        let index;
-  
+        let schemaIndex;
+
         // Loop through existing schemas with selectors,
         for (index = allSchemas.length - 1; index > 0; index--) {
           const current = allSchemas[index];
           if (current && isEqual(current.selector, options.selector)) break;
         }
-  
-        if (index <= 0) {
+
+        if (schemaIndex <= 0) {
           // We didn't find the schema in our array - push it into the array
           allSchemas.push({
             schema: ss,
@@ -137,21 +102,21 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         }
       }
     }
-  
-    attachTo(self);
+
+    attachTo(this);
     // Attach the schema to the underlying LocalCollection, too
     if (self._collection instanceof LocalCollection) {
       C2.init(self._collection);
       attachTo(self._collection);
     }
-  
-    defineDeny(self, options);
-    keepInsecure(self);
-  
-    Collection2.emit('schema.attached', self, ss, options);
+
+    defineDeny(this, options);
+    keepInsecure(this);
+
+    Collection2.emit('schema.attached', this, ss, options);
   };
-  
-[Mongo.Collection, LocalCollection].forEach((obj) => {
+
+  for (const obj of [Mongo.Collection, LocalCollection]) {
     /**
      * simpleSchema
      * @description function detect the correct schema by given params. If it
@@ -163,20 +128,18 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
      * @param {Object} [query] - it could be <query> on update/upsert
      * @return {Object} Schema
      */
-    obj.prototype.c2Schema = function (doc, options, query) {
-      const self = this;
-      if (!self._c2) return null;
-      if (self._c2._schema) return self._c2._schema;
+    obj.prototype.simpleSchema = function (doc, options, query) {
+      if (!this._c2) return null;
+      if (this._c2._simpleSchema) return this._c2._simpleSchema;
 
-      const allSchemas = C2.schemas(self);
-
-      if (allSchemas && allSchemas.length > 0) {
+      const schemas = this._c2._simpleSchemas;
+      if (schemas && schemas.length > 0) {
         let schema, selector, target;
         // Position 0 reserved for base schema
         for (let i = 1; i < allSchemas.length; i++) {
           schema = allSchemas[i];
           selector = Object.keys(schema.selector)[0];
-  
+
           // We will set this to undefined because in theory, you might want to select
           // on a null value.
           target = undefined;
@@ -192,7 +155,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
             // on upsert/update operations
             target = query[selector];
           }
-  
+
           // we need to compare given selector with doc property or option to
           //  find the right schema
           if (target !== undefined && target === schema.selector[selector]) {
@@ -205,126 +168,109 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
           throw new Error('No default schema');
         }
       }
-  
+
       return null;
     };
-  });
-
-function _methodMutation(async, methodName) {
-    const _super = Meteor.isFibersDisabled
-      ? Mongo.Collection.prototype[methodName]
-      : Mongo.Collection.prototype[methodName.replace('Async', '')];
-  
-    if (!_super) return;
-  
-    Mongo.Collection.prototype[methodName] = function (...args) {
-      let options = isInsertType(methodName) ? args[1] : args[2];
-  
-      // Support missing options arg
-      if (!options || typeof options === 'function') {
-        options = {};
-      }
-  
-      let validationContext = {};
-      let error;
-      if (this._c2 && options.bypassCollection2 !== true) {
-        let userId = null;
-        try {
-          // https://github.com/aldeed/meteor-collection2/issues/175
-          userId = Meteor.userId();
-        } catch (err) {}
-  
-        [args, validationContext] = doValidate({
-          collection: this,
-          type: methodName,
-          args,
-          getAutoValues: Meteor.isServer || this._connection === null, // getAutoValues
-          userId,
-          isFromTrustedCode: Meteor.isServer, // isFromTrustedCode
-          async
-        });
-  
-        if (!args) {
-          // doValidate already called the callback or threw the error, so we're done.
-          // But insert should always return an ID to match core behavior.
-          return isInsertType(methodName) ? this._makeNewID() : undefined;
-        }
-      } else {
-        // We still need to adjust args because insert does not take options
-        if (isInsertType(methodName) && typeof args[1] !== 'function') args.splice(1, 1);
-      }
-  
-      if (async && !Meteor.isFibersDisabled) {
-        try {
-          this[methodName.replace('Async', '')].isCalledFromAsync = true;
-          _super.isCalledFromAsync = true;
-          return Promise.resolve(_super.apply(this, args));
-        } catch (err) {
-          const addValidationErrorsPropName =
-            typeof validationContext.addValidationErrors === 'function'
-              ? 'addValidationErrors'
-              : 'addInvalidKeys';
-          parsingServerError([err], validationContext, addValidationErrorsPropName);
-          error = getErrorObject(validationContext, err.message, err.code);
-          return Promise.reject(error);
-        }
-      } else {
-        return _super.apply(this, args);
-      }
-    };
   }
-  
-function _methodMutationAsync(methodName) {
+
+function getArgumentsAndValidationContext(methodName, args, async) {
+    let options = isInsertType(methodName) ? args[1] : args[2];
+
+    // Support missing options arg
+    if (!options || typeof options === 'function') {
+       options = {};
+    }
+
+    let validationContext = {};
+    let validatedArgs = args;
+    if (this._c2 && options.bypassCollection2 !== true) {
+       let userId = null;
+       try {
+          // https://github.com/aldeed/meteor-collection2/issues/175
+         userId = Meteor.userId();
+       } catch (err) {}
+
+       [validatedArgs, validationContext] = doValidate(
+         this,
+         methodName,
+         args,
+         Meteor.isServer || this._connection === null, // getAutoValues
+         userId,
+         Meteor.isServer, // isFromTrustedCode
+         async
+       );
+
+       if (!validatedArgs) {
+         // doValidate already called the callback or threw the error, so we're done.
+         // But insert should always return an ID to match core behavior.
+         return isInsertType(methodName) ? this._makeNewID() : undefined;
+       }
+    } else {
+       // We still need to adjust args because insert does not take options
+       if (isInsertType(methodName) && typeof validatedArgs[1] !== 'function') validatedArgs.splice(1, 1);
+    }
+
+    return [validatedArgs, validationContext];
+   }
+
+   function _methodMutation(async, methodName) {
+    const _super = Meteor.isFibersDisabled
+       ? Mongo.Collection.prototype[methodName]
+       : Mongo.Collection.prototype[methodName.replace('Async', '')];
+
+    if (!_super) return;
+    Mongo.Collection.prototype[methodName] = function (...args) {
+       const [validatedArgs, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, async);
+
+       if (async && !Meteor.isFibersDisabled) {
+         try {
+           this[methodName.replace('Async', '')].isCalledFromAsync = true;
+           _super.isCalledFromAsync = true;
+           return Promise.resolve(_super.apply(this, validatedArgs));
+         } catch (err) {
+          if (this._c2) {
+            const addValidationErrorsPropName =
+            typeof validationContext.addValidationErrors === 'function'
+            ? 'addValidationErrors'
+               : 'addInvalidKeys';
+           parsingServerError([err], validationContext, addValidationErrorsPropName);
+           const error = getErrorObject(validationContext, err.message, err.code);
+           return Promise.reject(error);
+          } else {
+            // do not change error if collection isn't being validated by collection2
+            return Promise.reject(err);
+          }
+         }
+       } else {
+         return _super.apply(this, validatedArgs);
+       }
+    };
+   }
+
+   function _methodMutationAsync(methodName) {
     const _super = Mongo.Collection.prototype[methodName];
     Mongo.Collection.prototype[methodName] = async function (...args) {
-      let options = isInsertType(methodName) ? args[1] : args[2];
-  
-      // Support missing options arg
-      if (!options || typeof options === 'function') {
-        options = {};
-      }
-  
-      let validationContext = {};
-      if (this._c2 && options.bypassCollection2 !== true) {
-        let userId = null;
-        try {
-          // https://github.com/aldeed/meteor-collection2/issues/175
-          userId = Meteor.userId();
-        } catch (err) {}
-  
-        [args, validationContext] = doValidate({
-          collection: this,
-          type: methodName,
-          args,
-          getAutoValues: Meteor.isServer || this._connection === null, // getAutoValues
-          userId,
-          isFromTrustedCode: Meteor.isServer, // isFromTrustedCode
-          async: true
-        });
-  
-        if (!args) {
-          // doValidate already called the callback or threw the error, so we're done.
-          // But insert should always return an ID to match core behavior.
-          return isInsertType(methodName) ? this._makeNewID() : undefined;
+       const [validatedArgs, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, true);
+
+       try {
+         return await _super.apply(this, validatedArgs);
+       } catch (err) {
+        if (this._c2) {
+         const addValidationErrorsPropName =
+           typeof validationContext.addValidationErrors === 'function'
+             ? 'addValidationErrors'
+             : 'addInvalidKeys';
+         parsingServerError([err], validationContext, addValidationErrorsPropName);
+         throw getErrorObject(validationContext, err.message, err.code);
+        } else {
+          // do not change error if collection isn't being validated by collection2
+         throw err;
         }
-      } else {
-        // We still need to adjust args because insert does not take options
-        if (methodName === 'insert' && typeof args[1] !== 'function') args.splice(1, 1);
-      }
-  
-      try {
-        return await _super.apply(this, args);
-      } catch (err) {
-        const addValidationErrorsPropName =
-          typeof validationContext.addValidationErrors === 'function'
-            ? 'addValidationErrors'
-            : 'addInvalidKeys';
-        parsingServerError([err], validationContext, addValidationErrorsPropName);
-        throw getErrorObject(validationContext, err.message, err.code);
-      }
+       }
     };
-  }
-  
+   }
+
+
   // Wrap DB write operation methods
 if (Mongo.Collection.prototype.insertAsync) {
   if (Meteor.isFibersDisabled) {
@@ -332,27 +278,25 @@ if (Mongo.Collection.prototype.insertAsync) {
   } else {
     ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
   }
-}
+  ['insert', 'update'].forEach(_methodMutation.bind(this, false));
 
-['insert', 'update'].forEach(_methodMutation.bind(this, false));
-  
   /*
    * Private
    */
-  
-function doValidate({ collection, type, args = [], getAutoValues, userId, isFromTrustedCode, async }) {
+
+  function doValidate(collection, type, args, getAutoValues, userId, isFromTrustedCode, async) {
     let doc, callback, error, options, selector;
-  
+
     if (!args.length) {
       throw new Error(type + ' requires an argument');
     }
-  
+
     // Gather arguments and cache the selector
     if (isInsertType(type)) {
       doc = args[0];
       options = args[1];
       callback = args[2];
-  
+
       // The real insert doesn't take options
       if (typeof options === 'function') {
         args = [doc, options];
@@ -369,28 +313,28 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     } else {
       throw new Error('invalid type argument');
     }
-  
-    const validatedObjectWasInitiallyEmpty = isEmpty(doc);
-  
+
+    const validatedObjectWasInitiallyEmpty = Object.keys(doc).length === 0;
+
     // Support missing options arg
     if (!callback && typeof options === 'function') {
       callback = options;
       options = {};
     }
-    options = options || Object.create(null);
+    options = options || {};
 
     const last = args.length - 1;
-  
+
     const hasCallback = typeof args[last] === 'function';
-  
+
     // If update was called with upsert:true, flag as an upsert
     const isUpsert = isUpdateType(type) && options.upsert === true;
-  
+
     // we need to pass `doc` and `options` to `simpleSchema` method, that's why
     // schema declaration moved here
     let schema = collection.c2Schema(doc, options, selector);
     const isLocalCollection = collection._connection === null;
-  
+
     // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
     if ((Meteor.isServer || isLocalCollection) && options.getAutoValues === false) {
       getAutoValues = false;
@@ -399,7 +343,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     // Process pick/omit options if they are present
     const picks = Array.isArray(options.pick) ? options.pick : null;
     const omits = Array.isArray(options.omit) ? options.omit : null;
-  
+
     if (picks && omits) {
       // Pick and omit cannot both be present in the options
       throw new Error('pick and omit options are mutually exclusive');
@@ -408,7 +352,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     } else if (omits) {
       schema = schema.omit(...omits);
     }
-  
+
     // Determine validation context
     let validationContext = options.validationContext;
     if (validationContext) {
@@ -418,7 +362,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     } else {
       validationContext = schema.namedContext();
     }
-  
+
     // Add a default callback function if we're on the client and no callback was given
     if (Meteor.isClient && !callback && !async) {
       // Client can't block, so it can't report errors by exception,
@@ -432,19 +376,19 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
         }
       };
     }
-  
+
     // If client validation is fine or is skipped but then something
     // is found to be invalid on the server, we get that error back
     // as a special Meteor.Error that we need to parse.
     if (Meteor.isClient && hasCallback) {
       callback = args[last] = wrapCallbackForParsingServerErrors(validationContext, callback);
     }
-  
+
     const schemaAllowsId = schema.allowsKey('_id');
     if (isInsertType(type) && !doc._id && schemaAllowsId) {
       doc._id = collection._makeNewID();
     }
-  
+
     // Get the docId for passing in the autoValue/custom context
     let docId;
     if (isInsertType(type)) {
@@ -453,7 +397,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
       docId =
         typeof selector === 'string' || selector instanceof Mongo.ObjectID ? selector : selector._id;
     }
-  
+
     // If _id has already been added, remove it temporarily if it's
     // not explicitly defined in the schema.
     let cachedId;
@@ -461,7 +405,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
       cachedId = doc._id;
       delete doc._id;
     }
-  
+
     const autoValueContext = {
       isInsert: isInsertType(type),
       isUpdate: isUpdateType(type) && options.upsert !== true,
@@ -471,22 +415,20 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
       docId,
       isLocalCollection
     };
-  
+
     const extendAutoValueContext = {
       ...((schema._cleanOptions || {}).extendAutoValueContext || {}),
       ...autoValueContext,
       ...options.extendAutoValueContext
     };
-  
+
     const cleanOptionsForThisOperation = {};
-    ['autoConvert', 'filter', 'removeEmptyStrings', 'removeNullsFromArrays', 'trimStrings'].forEach(
-      (prop) => {
-        if (typeof options[prop] === 'boolean') {
-          cleanOptionsForThisOperation[prop] = options[prop];
-        }
+    for (const prop of ['autoConvert', 'filter', 'removeEmptyStrings', 'removeNullsFromArrays', 'trimStrings']) {
+      if (typeof options[prop] === 'boolean') {
+        cleanOptionsForThisOperation[prop] = options[prop];
       }
-    );
-  
+    }
+
     // Preliminary cleaning on both client and server. On the server and for local
     // collections, automatic values will also be set at this point.
     schema.clean(doc, {
@@ -499,7 +441,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
       extendAutoValueContext, // This was extended separately above
       getAutoValues // Force this override
     });
-  
+
     // We clone before validating because in some cases, we need to adjust the
     // object a bit before validating it. If we adjusted `doc` itself, our
     // changes would persist into the database.
@@ -511,7 +453,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
         docToValidate[prop] = doc[prop];
       }
     }
-  
+
     // On the server, upserts are possible; SimpleSchema handles upserts pretty
     // well by default, but it will not know about the fields in the selector,
     // which are also stored in the database if an insert is performed. So we
@@ -523,7 +465,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     if (Meteor.isServer && isUpsert && isObject(selector)) {
       const set = docToValidate.$set || {};
       docToValidate.$set = flattenSelector(selector);
-  
+
       if (!schemaAllowsId) delete docToValidate.$set._id;
       Object.assign(docToValidate.$set, set);
     }
@@ -544,16 +486,16 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
         trimStrings: false
       });
     }
-  
+
     // XXX Maybe move this into SimpleSchema
-    if (!validatedObjectWasInitiallyEmpty && isEmpty(docToValidate)) {
+    if (!validatedObjectWasInitiallyEmpty && Object.keys(docToValidate).length === 0) {
       throw new Error(
         'After filtering out keys not in the schema, your ' +
           (isUpdateType(type) ? 'modifier' : 'object') +
           ' is now empty'
       );
     }
-  
+
     // Validate doc
     let isValid;
     if (options.validate === false) {
@@ -574,13 +516,13 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
         }
       });
     }
-  
+
     if (isValid) {
       // Add the ID back
       if (cachedId) {
         doc._id = cachedId;
       }
-  
+
       // Update the args to reflect the cleaned doc
       // XXX not sure if this is necessary since we mutate
       if (isInsertType(type)) {
@@ -588,12 +530,12 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
       } else {
         args[1] = doc;
       }
-  
+
       // If callback, set invalidKey when we get a mongo unique error
       if (Meteor.isServer && hasCallback) {
         args[last] = wrapCallbackForParsingMongoValidationErrors(validationContext, args[last]);
       }
-  
+
       return [args, validationContext];
     } else {
       error = getErrorObject(
@@ -611,8 +553,8 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
       }
     }
   }
-  
-function getErrorObject(context, appendToMessage = '', code) {
+
+  function getErrorObject(context, appendToMessage = '', code) {
     let message;
     const invalidKeys =
       typeof context.validationErrors === 'function'
@@ -622,7 +564,7 @@ function getErrorObject(context, appendToMessage = '', code) {
     if (invalidKeys?.length) {
       const firstErrorKey = invalidKeys[0].name;
       const firstErrorMessage = context.keyErrorMessage(firstErrorKey);
-  
+
       // If the error is in a nested key, add the full key to the error message
       // to be more helpful.
       if (firstErrorKey.indexOf('.') === -1) {
@@ -645,11 +587,11 @@ function getErrorObject(context, appendToMessage = '', code) {
     }
     return error;
   }
-  
-function addUniqueError(context, errorMessage) {
+
+  function addUniqueError(context, errorMessage) {
     const name = errorMessage.split('c2_')[1].split(' ')[0];
     const val = errorMessage.split('dup key:')[1].split('"')[1];
-  
+
     const addValidationErrorsPropName =
       typeof context.addValidationErrors === 'function' ? 'addValidationErrors' : 'addInvalidKeys';
     context[addValidationErrorsPropName]([
@@ -660,8 +602,8 @@ function addUniqueError(context, errorMessage) {
       }
     ]);
   }
-  
-function parsingServerError(args, validationContext, addValidationErrorsPropName) {
+
+  function parsingServerError(args, validationContext, addValidationErrorsPropName) {
     const error = args[0];
     // Handle our own validation errors
     if (
@@ -685,8 +627,8 @@ function parsingServerError(args, validationContext, addValidationErrorsPropName
       args[0] = getErrorObject(validationContext);
     }
   }
-  
-function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
+
+  function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
     return function wrappedCallbackForParsingMongoValidationErrors(...args) {
       const error = args[0];
       if (
@@ -701,8 +643,8 @@ function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
       return cb.apply(this, args);
     };
   }
-  
-function wrapCallbackForParsingServerErrors(validationContext, cb) {
+
+  function wrapCallbackForParsingServerErrors(validationContext, cb) {
     const addValidationErrorsPropName =
       typeof validationContext.addValidationErrors === 'function'
         ? 'addValidationErrors'
@@ -712,10 +654,10 @@ function wrapCallbackForParsingServerErrors(validationContext, cb) {
       return cb.apply(this, args);
     };
   }
-  
-const alreadyInsecure = {};
-  
-function keepInsecure(c) {
+
+  const alreadyInsecure = {};
+
+  function keepInsecure(c) {
     // If insecure package is in use, we need to add allow rules that return
     // true. Otherwise, it would seemingly turn off insecure mode.
     if (Package && Package.insecure && !alreadyInsecure[c._name]) {
@@ -732,17 +674,17 @@ function keepInsecure(c) {
         fetch: [],
         transform: null
       };
-  
-      if (Meteor.isFibersDisabled) {
+
+      if (Meteor.isFibersDisabled && !noAsyncAllow) {
         Object.assign(allow, {
           insertAsync: allow.insert,
           updateAsync: allow.update,
           removeAsync: allow.remove
         });
       }
-  
+
       c.allow(allow);
-  
+
       alreadyInsecure[c._name] = true;
     }
     // If insecure package is NOT in use, then adding the two deny functions
@@ -751,122 +693,163 @@ function keepInsecure(c) {
     // own for each operation for this collection. And the user may still add
     // additional deny functions, but does not have to.
   }
-  
-C2.alreadyDefined = {};
-  
-function defineDeny(collection, options) {
-  const validator = C2.validator();
-  if (C2.alreadyDefined[collection._name]) {
-    return false; // no definition added;
-  }
-  const isLocalCollection = collection._connection === null;
 
-  // First, define deny functions to extend doc with the results of clean
-  // and auto-values. This must be done with "transform: null" or we would be
-  // extending a clone of doc and therefore have no effect.
-  const firstDeny = {
-    insert: function (userId, doc) {
-      // Referenced doc is cleaned in place
-      const schema = collection.c2Schema(doc);
-      validator.clean({ doc, schema, userId, isLocalCollection, type: 'insert' });
-      return false;
-    },
-    update: function (userId, doc, fields, modifier) {
-      // Referenced modifier is cleaned in place
-      const schema = collection.c2Schema(doc);
-      validator.clean({ userId, doc, fields, modifier, schema, type: 'update' });
-      return false;
-    },
-    fetch: ['_id'],
-    transform: null
-  };
+  const alreadyDefined = {};
 
-  if (Meteor.isFibersDisabled) {
-    Object.assign(firstDeny, {
-      insertAsync: firstDeny.insert,
-      updateAsync: firstDeny.update
-    });
-  }
+  function defineDeny(c, options) {
+    if (!alreadyDefined[c._name]) {
+      const isLocalCollection = c._connection === null;
 
-  collection.deny(firstDeny);
-
-  // Second, define deny functions to validate again on the server
-  // for client-initiated inserts and updates. These should be
-  // called after the clean/auto-value functions since we're adding
-  // them after. These must *not* have "transform: null" if options.transform is true because
-  // we need to pass the doc through any transforms to be sure
-  // that custom types are properly recognized for type validation.
-  const secondDeny = {
-    insert: function (userId, doc) {
-      // We pass the false options because we will have done them on the client if desired
-      doValidate({
-        collection,
-        type: 'insert',
-        args: [
-          doc,
-          {
-            trimStrings: false,
-            removeEmptyStrings: false,
+      // First, define deny functions to extend doc with the results of clean
+      // and auto-values. This must be done with "transform: null" or we would be
+      // extending a clone of doc and therefore have no effect.
+      const firstDeny = {
+        insert: function (userId, doc) {
+          // Referenced doc is cleaned in place
+          c.simpleSchema(doc).clean(doc, {
+            mutate: true,
+            isModifier: false,
+            // We don't do these here because they are done on the client if desired
             filter: false,
-            autoConvert: false
-          },
-          function (error) {
-            if (error) {
-              throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
-            }
-          }
-        ],
-        getAutoValues: false, // getAutoValues
-        userId,
-        isFromTrustedCode: false // isFromTrustedCode
-      });
-
-      return false;
-    },
-    update: function (userId, doc, fields, modifier) {
-      // NOTE: This will never be an upsert because client-side upserts
-      // are not allowed once you define allow/deny functions.
-      // We pass the false options because we will have done them on the client if desired
-      doValidate({
-        collection,
-        type: 'update',
-        args: [
-          { _id: doc && doc._id },
-          modifier,
-          {
-            trimStrings: false,
+            autoConvert: false,
             removeEmptyStrings: false,
-            filter: false,
-            autoConvert: false
-          },
-          function (error) {
-            if (error) {
-              throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+            trimStrings: false,
+            extendAutoValueContext: {
+              isInsert: true,
+              isUpdate: false,
+              isUpsert: false,
+              userId,
+              isFromTrustedCode: false,
+              docId: doc._id,
+              isLocalCollection
             }
-          }
-        ],
-        getAutoValues: false, // getAutoValues
-        userId,
-        isFromTrustedCode: false // isFromTrustedCode
-      });
+          });
 
-      return false;
-    },
-    fetch: ['_id'],
-    ...(options.transform === true ? {} : { transform: null })
-  };
+          return false;
+        },
+        update: function (userId, doc, fields, modifier) {
+          // Referenced modifier is cleaned in place
+          c.simpleSchema(modifier).clean(modifier, {
+            mutate: true,
+            isModifier: true,
+            // We don't do these here because they are done on the client if desired
+            filter: false,
+            autoConvert: false,
+            removeEmptyStrings: false,
+            trimStrings: false,
+            extendAutoValueContext: {
+              isInsert: false,
+              isUpdate: true,
+              isUpsert: false,
+              userId,
+              isFromTrustedCode: false,
+              docId: doc && doc._id,
+              isLocalCollection
+            }
+          });
 
-  if (Meteor.isFibersDisabled) {
-    Object.assign(secondDeny, {
-      insertAsync: secondDeny.insert,
-      updateAsync: secondDeny.update
-    });
+          return false;
+        },
+        fetch: ['_id'],
+        transform: null
+      };
+
+      if (Meteor.isFibersDisabled && !noAsyncAllow) {
+        Object.assign(firstDeny, {
+          insertAsync: firstDeny.insert,
+          updateAsync: firstDeny.update
+        });
+      }
+
+      c.deny(firstDeny);
+
+      // Second, define deny functions to validate again on the server
+      // for client-initiated inserts and updates. These should be
+      // called after the clean/auto-value functions since we're adding
+      // them after. These must *not* have "transform: null" if options.transform is true because
+      // we need to pass the doc through any transforms to be sure
+      // that custom types are properly recognized for type validation.
+      const secondDeny = {
+        insert: function (userId, doc) {
+          // We pass the false options because we will have done them on the client if desired
+          doValidate(
+            c,
+            'insert',
+            [
+              doc,
+              {
+                trimStrings: false,
+                removeEmptyStrings: false,
+                filter: false,
+                autoConvert: false
+              },
+              function (error) {
+                if (error) {
+                  throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+                }
+              }
+            ],
+            false, // getAutoValues
+            userId,
+            false // isFromTrustedCode
+          );
+
+          return false;
+        },
+        update: function (userId, doc, fields, modifier) {
+          // NOTE: This will never be an upsert because client-side upserts
+          // are not allowed once you define allow/deny functions.
+          // We pass the false options because we will have done them on the client if desired
+          doValidate(
+            c,
+            'update',
+            [
+              { _id: doc && doc._id },
+              modifier,
+              {
+                trimStrings: false,
+                removeEmptyStrings: false,
+                filter: false,
+                autoConvert: false
+              },
+              function (error) {
+                if (error) {
+                  throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+                }
+              }
+            ],
+            false, // getAutoValues
+            userId,
+            false // isFromTrustedCode
+          );
+
+          return false;
+        },
+        fetch: ['_id'],
+        ...(options.transform === true ? {} : { transform: null })
+      };
+
+      if (Meteor.isFibersDisabled && !noAsyncAllow) {
+        Object.assign(secondDeny, {
+          insertAsync: secondDeny.insert,
+          updateAsync: secondDeny.update
+        });
+      }
+
+      c.deny(secondDeny);
+
+      // note that we've already done this collection so that we don't do it again
+      // if attachSchema is called again
+      alreadyDefined[c._name] = true;
+    }
   }
 
-  collection.deny(secondDeny);
-
-  // note that we've already done this collection so that we don't do it again
-  // if attachSchema is called again
-  C2.alreadyDefined[collection._name] = true;
-  return true; // new definition added
-}
+  function extendSchema(s1, s2) {
+    if (s2.version >= 2) {
+      const ss = new SimpleSchema(s1);
+      ss.extend(s2);
+      return ss;
+    } else {
+      return new SimpleSchema([s1, s2]);
+    }
+  }
