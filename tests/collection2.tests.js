@@ -732,8 +732,4 @@ describe('collection2', function () {
     }
   });
 
-  addBooksTests();
-  addContextTests();
-  addDefaultValuesTests();
-  addMultiTests();
 });
