@@ -27,8 +27,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     options = options || {};
 
     // Allow passing just the schema object
-    if (!SimpleSchema.isSimpleSchema(ss)) {
-      ss = new SimpleSchema(ss);
+    if (!validator.is(ss)) {
+      ss = validator.create(ss);
     }
 
     function attachTo(obj) {
@@ -41,35 +41,37 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         // Selector Schemas
 
         // Extend selector schema with base schema
-        const baseSchema = obj._c2._simpleSchemas[0];
-        if (baseSchema) {
-          ss = extendSchema(baseSchema.schema, ss);
+        const base = allSchemas[0];
+        if (base) {
+          ss = validator.extend(base.schema, ss);
         }
 
         // Index of existing schema with identical selector
         let schemaIndex;
 
         // Loop through existing schemas with selectors,
-        for (schemaIndex = obj._c2._simpleSchemas.length - 1; schemaIndex > 0; schemaIndex--) {
-          const schema = obj._c2._simpleSchemas[schemaIndex];
-          if (schema && isEqual(schema.selector, options.selector)) break;
+        for (index = allSchemas.length - 1; index > 0; index--) {
+          const current = allSchemas[index];
+          if (current && isEqual(current.selector, options.selector)) break;
         }
 
         if (schemaIndex <= 0) {
           // We didn't find the schema in our array - push it into the array
-          obj._c2._simpleSchemas.push({
+          allSchemas.push({
             schema: ss,
             selector: options.selector
           });
-        } else {
+        }
+        else {
           // We found a schema with an identical selector in our array,
           if (options.replace === true) {
             // Replace existing selector schema with new selector schema
-            obj._c2._simpleSchemas[schemaIndex].schema = ss;
-          } else {
+            allSchemas[index].schema = ss;
+          }
+          else {
             // Extend existing selector schema with new selector schema.
-            obj._c2._simpleSchemas[schemaIndex].schema = extendSchema(
-              obj._c2._simpleSchemas[schemaIndex].schema,
+            allSchemas[index].schema = validator.extend(
+              allSchemas[index].schema,
               ss
             );
           }
@@ -78,23 +80,21 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         // Base Schema
         if (options.replace === true) {
           // Replace base schema and delete all other schemas
-          obj._c2._simpleSchemas = [
-            {
-              schema: ss,
-              selector: options.selector
-            }
-          ];
+          obj._c2.schemas = [{
+            schema: ss,
+            selector: options.selector
+          }];
         } else {
           // Set base schema if not yet set
-          if (!obj._c2._simpleSchemas[0]) {
-            obj._c2._simpleSchemas[0] = { schema: ss, selector: undefined };
-            return obj._c2._simpleSchemas[0];
+          if (!allSchemas[0]) {
+            allSchemas[0] = { schema: ss, selector: undefined };
+            return allSchemas[0];
           }
           // Extend base schema and therefore extend all schemas
-          obj._c2._simpleSchemas.forEach((schema, index) => {
-            if (obj._c2._simpleSchemas[index]) {
-              obj._c2._simpleSchemas[index].schema = extendSchema(
-                obj._c2._simpleSchemas[index].schema,
+          allSchemas.forEach((schema, i) => {
+            if (allSchemas[i]) {
+              allSchemas[i].schema = validator.extend(
+                allSchemas[i].schema,
                 ss
               );
             }
@@ -105,9 +105,9 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
 
     attachTo(this);
     // Attach the schema to the underlying LocalCollection, too
-    if (this._collection instanceof LocalCollection) {
-      this._collection._c2 = this._collection._c2 || {};
-      attachTo(this._collection);
+    if (self._collection instanceof LocalCollection) {
+      C2.init(self._collection);
+      attachTo(self._collection);
     }
 
     defineDeny(this, options);
@@ -136,8 +136,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
       if (schemas && schemas.length > 0) {
         let schema, selector, target;
         // Position 0 reserved for base schema
-        for (let i = 1; i < schemas.length; i++) {
-          schema = schemas[i];
+        for (let i = 1; i < allSchemas.length; i++) {
+          schema = allSchemas[i];
           selector = Object.keys(schema.selector)[0];
 
           // We will set this to undefined because in theory, you might want to select
@@ -162,8 +162,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
             return schema.schema;
           }
         }
-        if (schemas[0]) {
-          return schemas[0].schema;
+        if (allSchemas[0]) {
+          return allSchemas[0].schema;
         } else {
           throw new Error('No default schema');
         }
@@ -272,12 +272,11 @@ function getArgumentsAndValidationContext(methodName, args, async) {
 
 
   // Wrap DB write operation methods
-  if (Mongo.Collection.prototype.insertAsync) {
-    if (Meteor.isFibersDisabled) {
-      ['insertAsync', 'updateAsync'].forEach(_methodMutationAsync.bind(this));
-    } else {
-      ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
-    }
+if (Mongo.Collection.prototype.insertAsync) {
+  if (Meteor.isFibersDisabled) {
+    ['insertAsync', 'updateAsync'].forEach(_methodMutationAsync.bind(this));
+  } else {
+    ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
   }
   ['insert', 'update'].forEach(_methodMutation.bind(this, false));
 
@@ -333,7 +332,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
 
     // we need to pass `doc` and `options` to `simpleSchema` method, that's why
     // schema declaration moved here
-    let schema = collection.simpleSchema(doc, options, selector);
+    let schema = collection.c2Schema(doc, options, selector);
     const isLocalCollection = collection._connection === null;
 
     // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions

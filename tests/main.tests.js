@@ -1,0 +1,9 @@
+import 'meteor/aldeed:collection2/static';
+import './autoValue.tests'
+import './clean.tests'
+import './collection2.tests'
+import './multi.tests.js';
+import './books.tests.js';
+import './context.tests.js';
+import './default.tests.js';
+import './ajv.tests'
