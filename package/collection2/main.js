@@ -85,33 +85,6 @@ C2._detectSchemaType = (schema) => {
     return C2._validators.zod;
   }
   
-  // Check if it's an AJV schema by looking for AJV-specific properties
-  if (schema && 
-      typeof schema === 'object' && 
-      schema.compile && 
-      schema.validate && 
-      typeof schema.compile === 'function' && 
-      typeof schema.validate === 'function') {
-    
-    // It's likely an AJV instance
-    if (!C2._validators.ajv) {
-      C2._validators.ajv = createAjvAdapter(function() {}); // Dummy constructor
-      
-      // Override the 'is' method to use property detection
-      C2._validators.ajv.is = (schema) => {
-        return schema && 
-               typeof schema === 'object' && 
-               schema.compile && 
-               schema.validate && 
-               typeof schema.compile === 'function' && 
-               typeof schema.validate === 'function';
-      };
-    }
-    
-    C2._currentValidator = C2._validators.ajv;
-    return C2._validators.ajv;
-  }
-  
   // If it's a plain object with type: "object" and properties, it's likely a JSON Schema for AJV
   if (schema && 
       typeof schema === 'object' && 
