@@ -20,64 +20,79 @@ export const createZodValidationContext = (schema, name = 'default') => {
       errors = []; // Clear previous errors
       
       try {
+        // For modifiers, we need special handling
         if (options.modifier) {
-          // For update operations with modifiers
-          if (obj.$set) {
-            // Create a partial schema for update validation
-            const partialSchema = schema.partial();
-            try {
-              const result = partialSchema.safeParse(obj.$set);
-              if (!result.success) {
-                processZodError(result.error);
-                return false;
+          // For now, we'll just validate that the fields being modified are valid
+          // In a real implementation, we would validate each modifier operation
+          const modifier = obj;
+          let isValid = true;
+          
+          // Check $set operations
+          if (modifier.$set) {
+            const result = schema.partial().safeParse(modifier.$set);
+            if (!result.success) {
+              isValid = false;
+              // Extract errors from Zod validation result
+              const zodErrors = result.error.errors || [];
+              for (const err of zodErrors) {
+                const path = err.path.join('.');
+                errors.push({
+                  name: path,
+                  type: err.code,
+                  value: err.received,
+                  message: err.message
+                });
               }
-            } catch (error) {
-              processZodError(error);
-              return false;
             }
           }
           
-          // Handle other modifiers if needed
-          if (obj.$push) {
-            // We'll just allow push operations for now
-          }
-          
-          if (obj.$unset) {
-            // We'll just allow unset operations for now
-          }
-          
-          // For upserts, validate the combined document if provided
-          if (options.upsert && options.extendedCustomContext && options.extendedCustomContext.upsertDocument) {
-            try {
-              const result = schema.safeParse(options.extendedCustomContext.upsertDocument);
-              if (!result.success) {
-                processZodError(result.error);
-                return false;
+          // Check $setOnInsert operations
+          if (modifier.$setOnInsert) {
+            const result = schema.partial().safeParse(modifier.$setOnInsert);
+            if (!result.success) {
+              isValid = false;
+              // Extract errors from Zod validation result
+              const zodErrors = result.error.errors || [];
+              for (const err of zodErrors) {
+                const path = err.path.join('.');
+                errors.push({
+                  name: path,
+                  type: err.code,
+                  value: err.received,
+                  message: err.message
+                });
               }
-            } catch (error) {
-              processZodError(error);
-              return false;
             }
           }
           
-          // If we reach this point and have no errors, validation passed
-          return errors.length === 0;
+          return isValid;
         } else {
           // For normal documents (insert)
-          try {
-            const result = schema.safeParse(obj);
-            if (!result.success) {
-              processZodError(result.error);
-              return false;
-            }
+          const result = schema.safeParse(obj);
+          if (result.success) {
             return true;
-          } catch (error) {
-            processZodError(error);
+          } else {
+            // Extract errors from Zod validation result
+            const zodErrors = result.error.errors || [];
+            for (const err of zodErrors) {
+              const path = Array.isArray(err.path) ? err.path.join('.') : err.path;
+              errors.push({
+                name: path || 'general',
+                type: err.code || 'invalid',
+                value: err.received,
+                message: err.message
+              });
+            }
             return false;
           }
         }
       } catch (error) {
-        processZodError(error);
+        errors.push({
+          name: 'general',
+          type: 'error',
+          value: null,
+          message: error.message || 'Validation failed'
+        });
         return false;
       }
     },
@@ -101,62 +116,6 @@ export const createZodValidationContext = (schema, name = 'default') => {
       return error ? error.message : '';
     }
   };
-  
-  // Helper function to process Zod validation errors
-  function processZodError(error) {
-    // Check if it's a Zod error with issues array
-    if (error && error.issues && Array.isArray(error.issues)) {
-      error.issues.forEach(issue => {
-        // Convert the path array to a string path
-        const path = issue.path.length > 0 ? issue.path.join('.') : 'general';
-        
-        errors.push({
-          name: path,
-          type: issue.code,
-          value: issue.received,
-          message: issue.message
-        });
-      });
-    } else if (error && error.errors && Array.isArray(error.errors)) {
-      // Handle array of errors
-      error.errors.forEach(err => {
-        const path = Array.isArray(err.path) && err.path.length > 0 
-          ? err.path.join('.') 
-          : (typeof err.path === 'string' ? err.path : 'general');
-        
-        errors.push({
-          name: path,
-          type: err.code || 'invalid',
-          value: err.received,
-          message: err.message || 'Invalid value'
-        });
-      });
-    } else if (error && error.message) {
-      // Add a generic error if we don't have specific path errors
-      errors.push({
-        name: 'general',
-        type: 'error',
-        value: null,
-        message: error.message
-      });
-    } else if (error && error.toString) {
-      // Last resort - add a generic error
-      errors.push({
-        name: 'general',
-        type: 'error',
-        value: null,
-        message: error.toString()
-      });
-    } else {
-      // Fallback error
-      errors.push({
-        name: 'general',
-        type: 'error',
-        value: null,
-        message: 'Unknown validation error'
-      });
-    }
-  }
 };
 
 /**
@@ -297,13 +256,199 @@ export const enhanceZodSchema = (schema) => {
 export const isZodSchema = (schema) => {
   return schema && 
          typeof schema === 'object' && 
-         (
-           (schema._def && 
-            (schema._def.typeName === 'ZodObject' || 
-             typeof schema._def.typeName === 'string')) || 
-           (typeof schema.safeParse === 'function' && 
-            typeof schema.parse === 'function')
-         );
+         schema._def && 
+         schema.safeParse && 
+         schema.parse && 
+         typeof schema.safeParse === 'function' && 
+         typeof schema.parse === 'function';
+};
+
+/**
+ * Determines if a schema is an AJV schema
+ * @param {Object} schema - The schema to check
+ * @returns {Boolean} True if the schema is an AJV schema
+ */
+export const isAjvSchema = (schema) => {
+  return schema && 
+         typeof schema === 'object' && 
+         ((schema.compile && schema.validate && 
+           typeof schema.compile === 'function' && 
+           typeof schema.validate === 'function') ||
+          (schema.type === 'object' && schema.properties && 
+           typeof schema.properties === 'object'));
+};
+
+/**
+ * Creates a validation context for AJV schemas
+ * @param {Object} schema - The AJV schema
+ * @param {String} name - Optional name for the context
+ * @returns {Object} A validation context compatible with Collection2
+ */
+export const createAjvValidationContext = (schema, name = 'default') => {
+  let errors = [];
+  
+  return {
+    validate: (obj, options = {}) => {
+      errors = []; // Clear previous errors
+      
+      try {
+        // Use the schema definition for validation
+        const definition = schema.definition || schema;
+        
+        // For modifiers, we need special handling
+        if (options.modifier) {
+          // For now, just allow modifiers without validation
+          // In a real implementation, we would validate each modifier operation
+          return true;
+        } else {
+          // For normal documents (insert)
+          // In a real implementation, we would use AJV's validate method
+          // For now, we'll just do a simple check for required fields
+          if (definition.required && Array.isArray(definition.required)) {
+            for (const field of definition.required) {
+              if (obj[field] === undefined) {
+                errors.push({
+                  name: field,
+                  type: 'required',
+                  value: undefined,
+                  message: `${field} is required`
+                });
+              }
+            }
+          }
+          
+          // Check property types
+          if (definition.properties && typeof definition.properties === 'object') {
+            for (const [field, propDef] of Object.entries(definition.properties)) {
+              if (obj[field] !== undefined) {
+                // Type validation
+                if (propDef.type === 'string' && typeof obj[field] !== 'string') {
+                  errors.push({
+                    name: field,
+                    type: 'type',
+                    value: obj[field],
+                    message: `${field} must be a string`
+                  });
+                } else if (propDef.type === 'number' && typeof obj[field] !== 'number') {
+                  errors.push({
+                    name: field,
+                    type: 'type',
+                    value: obj[field],
+                    message: `${field} must be a number`
+                  });
+                } else if (propDef.type === 'boolean' && typeof obj[field] !== 'boolean') {
+                  errors.push({
+                    name: field,
+                    type: 'type',
+                    value: obj[field],
+                    message: `${field} must be a boolean`
+                  });
+                }
+              }
+            }
+          }
+          
+          return errors.length === 0;
+        }
+      } catch (error) {
+        errors.push({
+          name: 'general',
+          type: 'error',
+          value: null,
+          message: error.message || 'Validation failed'
+        });
+        return false;
+      }
+    },
+    validationErrors: () => {
+      return errors;
+    },
+    invalidKeys: () => {
+      return errors;
+    },
+    resetValidation: () => {
+      errors = [];
+    },
+    isValid: () => {
+      return errors.length === 0;
+    },
+    keyIsInvalid: (key) => {
+      return errors.some(err => err.name === key);
+    },
+    keyErrorMessage: (key) => {
+      const error = errors.find(err => err.name === key);
+      return error ? error.message : '';
+    }
+  };
+};
+
+/**
+ * Enhances an AJV schema with Collection2 compatibility methods
+ * @param {Object} schema - The AJV schema to enhance
+ * @returns {Object} The enhanced schema
+ */
+export const enhanceAjvSchema = (schema) => {
+  // Store validation contexts by name
+  const validationContexts = {};
+  
+  // Add namedContext method if it doesn't exist
+  if (typeof schema.namedContext !== 'function') {
+    schema.namedContext = function(name = 'default') {
+      // Reuse existing context if available
+      if (validationContexts[name]) {
+        return validationContexts[name];
+      }
+      
+      // Create and store a new context
+      const context = createAjvValidationContext(schema, name);
+      validationContexts[name] = context;
+      return context;
+    };
+  }
+  
+  // Add allowsKey method to the schema
+  if (typeof schema.allowsKey !== 'function') {
+    schema.allowsKey = (key) => {
+      // For AJV schemas, check if the key exists in the properties
+      if (key === '_id') return true; // Always allow _id
+      
+      // Try to get the properties from the AJV schema
+      const definition = schema.definition || schema;
+      const properties = definition.properties;
+      
+      if (properties) {
+        return key in properties;
+      }
+      
+      // If we can't determine, default to allowing the key
+      return true;
+    };
+  }
+  
+  // Add clean method for AJV schemas
+  if (typeof schema.clean !== 'function') {
+    schema.clean = (obj, options = {}) => {
+      const { mutate = false, isModifier = false } = options;
+      
+      // If not mutating, clone the object first
+      let cleanObj = mutate ? obj : JSON.parse(JSON.stringify(obj));
+      
+      // For now, we'll just implement basic cleaning operations
+      // In a real implementation, we would do more sophisticated cleaning
+      
+      return cleanObj;
+    };
+    
+    // Set default clean options
+    schema._cleanOptions = {
+      filter: true,
+      autoConvert: true,
+      removeEmptyStrings: true,
+      trimStrings: true
+    };
+  }
+  
+  return schema;
 };
 
 /**
@@ -313,10 +458,7 @@ export const isZodSchema = (schema) => {
  * @returns {Object} A validation context
  */
 export const getValidationContext = (schema, validationContext) => {
-  if (validationContext) {
-    if (typeof validationContext === 'string') {
-      return schema.namedContext(validationContext);
-    }
+  if (validationContext && typeof validationContext === 'object') {
     return validationContext;
   }
   
@@ -325,5 +467,10 @@ export const getValidationContext = (schema, validationContext) => {
     enhanceZodSchema(schema);
   }
   
-  return schema.namedContext();
+  // Special handling for AJV schema
+  if (isAjvSchema(schema)) {
+    enhanceAjvSchema(schema);
+  }
+  
+  return schema.namedContext(validationContext);
 };

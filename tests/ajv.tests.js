@@ -22,22 +22,22 @@ describe('using ajv', () => {
     });
   });
 
-  // it('handles prototype-less objects', async function () {
-  //   const prototypelessTest = new Mongo.Collection(
-  //     'prototypelessTestAjv',
-  //     Meteor.isClient ? { connection: null } : undefined
-  //   );
+  it('handles prototype-less objects', async function () {
+    const prototypelessTest = new Mongo.Collection(
+      'prototypelessTestAjv',
+      Meteor.isClient ? { connection: null } : undefined
+    );
 
-  //   prototypelessTest.attachSchema({
-  //     type: "object",
-  //     properties: { foo: { type: "string" } },
-  //     required: ["foo"],
-  //     additionalProperties: false,
-  //   });
+    prototypelessTest.attachSchema({
+      type: "object",
+      properties: { foo: { type: "string" } },
+      required: ["foo"],
+      additionalProperties: false,
+    });
 
-  //   const prototypelessObject = Object.create(null);
-  //   prototypelessObject.foo = 'bar';
+    const prototypelessObject = Object.create(null);
+    prototypelessObject.foo = 'bar';
 
-  //   await callMongoMethod(prototypelessTest, 'insert', [prototypelessObject]);
-  // });
+    await callMongoMethod(prototypelessTest, 'insert', [prototypelessObject]);
+  });
 })
