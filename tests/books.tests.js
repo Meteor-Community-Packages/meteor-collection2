@@ -5,7 +5,6 @@ import { Meteor } from 'meteor/meteor';
 import { _ } from 'meteor/underscore';
 import { callMeteorFetch, callMongoMethod } from './helper';
 import { Collection2 } from 'meteor/aldeed:collection2'
-import { simpleSchemaImpl } from './libraries'
 
 /* global describe, it, beforeEach */
 
@@ -63,7 +62,6 @@ const upsertTest = new Mongo.Collection('upsertTest');
 
 describe('SimpleSchema books tests', () => {
   before(() => {
-    Collection2.defineValidation(simpleSchemaImpl())
     books.attachSchema(booksSchema);
     upsertTest.attachSchema(
       new SimpleSchema({

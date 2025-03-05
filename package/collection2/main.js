@@ -3,12 +3,13 @@ import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
+import { createSimpleSchemaAdapter, createZodAdapter, createAjvAdapter } from './adapters';
 
 const meteorVersion = Meteor.release.split('@')[1].split('.');
 const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1] >= 1;
 
 const C2 = {};
-C2._validator = null;
+C2._validators = {};
 
 C2.init = self => {
   self._c2 = self._c2 || Object.create(null);
@@ -17,23 +18,139 @@ C2.init = self => {
 };
 
 C2.validator = () => {
-  const validator= C2._validator
-  if (!validator) {
-    throw new Error(`Cannot attach a schema if no validation library has been added`);
-  }
-  return validator;
+  // Get the appropriate validator based on the schema type
+  return C2._getValidator();
 }
+
+// Helper function to detect schema type and return the appropriate validator
+C2._getValidator = () => {
+  // If we've already determined a validator, return it
+  if (C2._currentValidator) {
+    return C2._currentValidator;
+  }
+
+  // Try to load validators for known schema libraries
+  try {
+    // Check for SimpleSchema
+    if (typeof SimpleSchema !== 'undefined') {
+      C2._validators.SimpleSchema = C2._validators.SimpleSchema || createSimpleSchemaAdapter(SimpleSchema);
+    }
+  } catch (e) {
+    console.error('Error loading schema validators:', e);
+  }
+
+  return null;
+}
+
+// Function to detect schema type and return appropriate validator
+C2._detectSchemaType = (schema) => {
+  // First, check if it's a SimpleSchema instance
+  if (typeof SimpleSchema !== 'undefined' && SimpleSchema.isSimpleSchema && SimpleSchema.isSimpleSchema(schema)) {
+    if (!C2._validators.SimpleSchema) {
+      C2._validators.SimpleSchema = createSimpleSchemaAdapter(SimpleSchema);
+    }
+    C2._currentValidator = C2._validators.SimpleSchema;
+    return C2._validators.SimpleSchema;
+  }
+  
+  // Check if it's a Zod schema by looking for Zod-specific properties
+  if (schema && 
+      typeof schema === 'object' && 
+      schema._def && 
+      schema.safeParse && 
+      schema.parse && 
+      typeof schema.safeParse === 'function' && 
+      typeof schema.parse === 'function') {
+    
+    // It's likely a Zod schema
+    if (!C2._validators.zod) {
+      C2._validators.zod = createZodAdapter({ 
+        ZodType: function() {}, // Dummy constructor for instanceof checks
+        object: (obj) => obj // Simplified for detection purposes
+      });
+      
+      // Override the 'is' method to use property detection instead of instanceof
+      C2._validators.zod.is = (schema) => {
+        return schema && 
+               typeof schema === 'object' && 
+               schema._def && 
+               schema.safeParse && 
+               schema.parse && 
+               typeof schema.safeParse === 'function' && 
+               typeof schema.parse === 'function';
+      };
+    }
+    
+    C2._currentValidator = C2._validators.zod;
+    return C2._validators.zod;
+  }
+  
+  // Check if it's an AJV schema by looking for AJV-specific properties
+  if (schema && 
+      typeof schema === 'object' && 
+      schema.compile && 
+      schema.validate && 
+      typeof schema.compile === 'function' && 
+      typeof schema.validate === 'function') {
+    
+    // It's likely an AJV instance
+    if (!C2._validators.ajv) {
+      C2._validators.ajv = createAjvAdapter(function() {}); // Dummy constructor
+      
+      // Override the 'is' method to use property detection
+      C2._validators.ajv.is = (schema) => {
+        return schema && 
+               typeof schema === 'object' && 
+               schema.compile && 
+               schema.validate && 
+               typeof schema.compile === 'function' && 
+               typeof schema.validate === 'function';
+      };
+    }
+    
+    C2._currentValidator = C2._validators.ajv;
+    return C2._validators.ajv;
+  }
+  
+  // If it's a plain object with type: "object" and properties, it's likely a JSON Schema for AJV
+  if (schema && 
+      typeof schema === 'object' && 
+      schema.type === 'object' && 
+      schema.properties && 
+      typeof schema.properties === 'object') {
+    
+    // It's likely a JSON Schema for AJV
+    if (!C2._validators.ajv) {
+      C2._validators.ajv = createAjvAdapter(function() {}); // Dummy constructor
+      
+      // Override the 'is' method for JSON Schema detection
+      C2._validators.ajv.is = (schema) => {
+        return schema && 
+               typeof schema === 'object' && 
+               ((schema.type === 'object' && schema.properties) || 
+                schema.compile || 
+                schema.validate);
+      };
+    }
+    
+    C2._currentValidator = C2._validators.ajv;
+    return C2._validators.ajv;
+  }
+
+  // If we can't detect the schema type, default to SimpleSchema if available
+  if (C2._validators.SimpleSchema) {
+    C2._currentValidator = C2._validators.SimpleSchema;
+    return C2._validators.SimpleSchema;
+  }
+
+  throw new Error(`Cannot determine schema type. Make sure you have a supported schema library installed (SimpleSchema, Zod, or AJV).`);
+};
 
 C2.schemas = (self) => {
   if (!self._c2) {
     C2.init(self);
   }
   return self._c2.schemas;
-}
-
-Collection2.defineValidation = ({ freeze, ...validator }) => {
-  C2._validator = validator;
-  // TODO if freeze it should not be writable or deletable
 }
 
 Object.assign(Collection2, { isInsertType, isUpsertType, isUpdateType })
@@ -58,7 +175,9 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     options = options || Object.create(null);
 
     const self = this;
-    const validator = C2.validator();
+    
+    // Detect schema type and get appropriate validator
+    const validator = C2._detectSchemaType(ss);
 
     // Allow passing just the schema object
     if (!validator.is(ss)) {

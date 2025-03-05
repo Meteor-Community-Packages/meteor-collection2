@@ -4,7 +4,6 @@ import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { Meteor } from 'meteor/meteor';
 import { callMongoMethod } from './helper';
-import { simpleSchemaImpl } from './libraries'
 import { Collection2 } from 'meteor/aldeed:collection2'
 
 const defaultValuesSchema = new SimpleSchema({
@@ -19,7 +18,6 @@ global.defaultValues = defaultValues;
 
 describe('defaults tests', () => {
   before(() => {
-    Collection2.defineValidation(simpleSchemaImpl())
     defaultValues.attachSchema(defaultValuesSchema);
   })
 

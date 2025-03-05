@@ -1,4 +1,3 @@
-
 /* global Package, Npm */
 Package.describe({
   name: 'aldeed:collection2',

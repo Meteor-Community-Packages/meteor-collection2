@@ -5,7 +5,6 @@ import expect from 'expect';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { callMongoMethod } from './helper';
 import { Collection2 } from 'meteor/aldeed:collection2'
-import { simpleSchemaImpl } from './libraries'
 
 const collection = new Mongo.Collection('autoValueTestCollection');
 const localCollection = new Mongo.Collection('autoValueTestLocalCollection', {
@@ -41,7 +40,6 @@ const attach = () => {
 if (Meteor.isClient) {
   describe('autoValue on client', function () {
     before(() => {
-      Collection2.defineValidation(simpleSchemaImpl());
       attach()
     })
 
@@ -89,7 +87,6 @@ if (Meteor.isClient) {
 if (Meteor.isServer) {
   describe('autoValue on server', function () {
     before(() => {
-      Collection2.defineValidation(simpleSchemaImpl())
       attach()
     })
     it('runs function once', async function () {

@@ -4,14 +4,10 @@ import SimpleSchema from 'meteor/aldeed:simple-schema';
 import { Meteor } from 'meteor/meteor';
 import { callMongoMethod } from './helper';
 import { Collection2 } from 'meteor/aldeed:collection2'
-import { simpleSchemaImpl } from './libraries'
 
 /* global describe, it */
 
 describe('collection2', function () {
-  before(() => {
-    Collection2.defineValidation(simpleSchemaImpl())
-  })
   it('attach and get simpleSchema for normal collection', function () {
     const mc = new Mongo.Collection('mc', Meteor.isClient ? { connection: null } : undefined);
 
@@ -54,6 +50,23 @@ describe('collection2', function () {
     prototypelessObject.foo = 'bar';
 
     await callMongoMethod(prototypelessTest, 'insert', [prototypelessObject]);
+  });
+
+  it('SimpleSchema property-based detection', function() {
+    const mc = new Mongo.Collection('simpleSchemaDetection', Meteor.isClient ? { connection: null } : undefined);
+    
+    const schema = new SimpleSchema({
+      name: { type: String },
+      age: { type: Number, optional: true }
+    });
+    
+    mc.attachSchema(schema);
+    
+    expect(mc.c2Schema()).toBeDefined();
+    expect(mc.c2Schema() instanceof SimpleSchema).toBe(true);
+    
+    expect(mc.c2Schema()._schema).toBeDefined();
+    expect(mc.c2Schema()._schema.name).toBeDefined();
   });
 
   if (Meteor.isServer) {

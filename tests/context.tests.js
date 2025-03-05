@@ -5,7 +5,6 @@ import SimpleSchema from "meteor/aldeed:simple-schema";
 import { Meteor } from 'meteor/meteor';
 import { callMongoMethod } from './helper';
 import { Collection2 } from 'meteor/aldeed:collection2'
-import { simpleSchemaImpl } from './libraries'
 
 
 const contextCheckSchema = new SimpleSchema({
@@ -60,7 +59,6 @@ const contextCheck = new Mongo.Collection('contextCheck');
 
 describe('context tests', () => {
   before(() => {
-    Collection2.defineValidation(simpleSchemaImpl())
     contextCheck.attachSchema(contextCheckSchema);
   })
 

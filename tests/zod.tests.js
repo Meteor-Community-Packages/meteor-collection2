@@ -5,13 +5,8 @@ import { Meteor } from 'meteor/meteor';
 import { z } from 'zod';
 import { callMongoMethod, callMeteorFetch } from './helper';
 import { Collection2 } from 'meteor/aldeed:collection2';
-import { zodImpl } from './libraries';
 
 describe('Using Zod for validation', () => {
-  before(() => {
-    Collection2.defineValidation(zodImpl());
-  });
-
   describe('Basic validation', () => {
     let booksCollection;
 
@@ -224,6 +219,42 @@ describe('Using Zod for validation', () => {
         expect(zodNativeCollection._c2).not.toBe(undefined);
         expect(zodNativeCollection._c2.schemas[0].schema).not.toBe(undefined);
       }
+    });
+  });
+
+  describe('Zod property-based detection', () => {
+    it('attach and get zod for normal collection', function () {
+      ['zodMc1', null].forEach(name => {
+        const mc = new Mongo.Collection(name, Meteor.isClient ? { connection: null } : undefined);
+        
+        // Create a Zod schema that will be detected based on its properties
+        const schema = z.object({
+          foo: z.string(),
+        });
+        
+        mc.attachSchema(schema);
+        
+        // Check if the schema was correctly detected as a Zod schema
+        expect(mc.c2Schema()).toBeDefined();
+        expect(typeof mc.c2Schema().parse).toBe('function');
+        expect(typeof mc.c2Schema().safeParse).toBe('function');
+      });
+    });
+
+    it('handles prototype-less objects', async function () {
+      const prototypelessTest = new Mongo.Collection(
+        'prototypelessTestZod',
+        Meteor.isClient ? { connection: null } : undefined
+      );
+
+      prototypelessTest.attachSchema(z.object({
+        foo: z.string(),
+      }));
+
+      const prototypelessObject = Object.create(null);
+      prototypelessObject.foo = 'bar';
+
+      await callMongoMethod(prototypelessTest, 'insert', [prototypelessObject]);
     });
   });
 });

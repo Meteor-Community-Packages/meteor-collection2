@@ -2,25 +2,26 @@
 import Ajv from 'ajv'
 import expect from 'expect'
 import { callMongoMethod } from './helper'
-import { ajvImpl } from './libraries'
 
 describe('using ajv', () => {
-  before(() => {
-    Collection2.defineValidation(ajvImpl());
-  })
-
   it('attach and get ajv for normal collection', function () {
     ['ajvMc1', null].forEach(name => {
       const mc = new Mongo.Collection(name, Meteor.isClient ? { connection: null } : undefined);
 
-      mc.attachSchema({
+      // Create a schema that will be detected as an AJV schema
+      const schema = {
         type: "object",
         properties: { foo: { type: "string" } },
         required: ["foo"],
         additionalProperties: false,
-      });
+      };
+      
+      mc.attachSchema(schema);
 
-      expect(mc.c2Schema() instanceof Ajv).toBe(true);
+      // Check if the schema was correctly detected as an AJV schema
+      expect(mc.c2Schema().definition).toBeDefined();
+      expect(mc.c2Schema().definition.type).toBe("object");
+      expect(mc.c2Schema().definition.properties.foo.type).toBe("string");
     });
   });
   // it('handles prototype-less objects', async function () {

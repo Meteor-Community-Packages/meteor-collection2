@@ -5,8 +5,6 @@ import SimpleSchema from "meteor/aldeed:simple-schema";
 import { Meteor } from 'meteor/meteor';
 import { Collection2 } from 'meteor/aldeed:collection2'
 import { callMongoMethod } from './helper';
-import { simpleSchemaImpl } from './libraries'
-
 
 let collection;
 
@@ -17,9 +15,6 @@ if (Meteor.isClient) {
 }
 
 describe('SimpleSchema clean options', function () {
-  before(() => {
-    Collection2.defineValidation(simpleSchemaImpl())
-  })
   describe('filter', function () {
     it('keeps default schema clean options', function (done) {
       const schema = new SimpleSchema(
