@@ -21,6 +21,7 @@ describe('using ajv', () => {
       expect(mc.c2Schema().properties.foo.type).toBe("string");
     });
   });
+
   // it('handles prototype-less objects', async function () {
   //   const prototypelessTest = new Mongo.Collection(
   //     'prototypelessTestAjv',

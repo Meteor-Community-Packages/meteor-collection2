@@ -2,6 +2,7 @@ import { Meteor } from 'meteor/meteor';
 import { Collection2 } from './collection2';
 import { SimpleSchema } from 'meteor/aldeed:simple-schema';
 import { isInsertType, isUpdateType, isUpsertType } from './lib';
+import { enhanceZodSchema, createZodValidationContext } from './validators';
 
 /**
  * Schema adapters for different validation libraries
@@ -73,72 +74,8 @@ export const createZodAdapter = (z) => ({
   create: schema => {
     // If this is already a Zod schema, return it directly with namedContext
     if (schema && typeof schema === 'object' && schema._def) {
-      // We need to ensure namedContext is attached and persists
-      // Use a non-enumerable property to prevent issues with schema cloning
-      if (!schema.namedContext) {
-        // Using Object.defineProperty to ensure the method stays attached
-        Object.defineProperty(schema, 'namedContext', {
-          value: function(name = 'default') {
-            let errors = [];
-            
-            return {
-              validate: (obj, options = {}) => {
-                const { isModifier = false } = options;
-                
-                try {
-                  if (isModifier) {
-                    // For update operations with modifiers
-                    if (obj.$set) {
-                      schema.partial().parse(obj.$set);
-                    }
-                    // Handle other modifiers if needed
-                  } else {
-                    // For normal documents
-                    schema.parse(obj);
-                  }
-                  
-                  errors = []; // Clear errors if validation passes
-                  return true;
-                } catch (error) {
-                  errors = []; // Clear previous errors
-                  
-                  if (error.errors) {
-                    error.errors.forEach(err => {
-                      errors.push({
-                        name: err.path.join('.'),
-                        type: err.code,
-                        value: err.received,
-                        message: err.message
-                      });
-                    });
-                  }
-                  return false;
-                }
-              },
-              validationErrors: () => {
-                return errors;
-              },
-              resetValidation: () => {
-                errors = [];
-              },
-              isValid: () => {
-                return errors.length === 0;
-              },
-              keyIsInvalid: (key) => {
-                return errors.some(err => err.name === key);
-              },
-              keyErrorMessage: (key) => {
-                const error = errors.find(err => err.name === key);
-                return error ? error.message : '';
-              }
-            };
-          },
-          writable: false,
-          configurable: false,
-          enumerable: false // Make non-enumerable to prevent issues with schema cloning
-        });
-      }
-      return schema;
+      // Enhance the schema with Collection2 compatibility methods
+      return enhanceZodSchema(schema);
     }
     
     // For non-Zod schemas, we can't convert without the actual Zod library
@@ -152,7 +89,7 @@ export const createZodAdapter = (z) => ({
     
     // Since we don't have direct access to Zod's methods, we'll use a simplified approach
     // In a real implementation, you'd merge the schemas properly
-    return s2; // Simplified implementation - just use the second schema
+    return enhanceZodSchema(s2); // Simplified implementation - just use the second schema
   },
   validate: (obj, schema, options = {}) => {
     try {
@@ -200,11 +137,7 @@ export const createZodAdapter = (z) => ({
         type: err.code,
         value: err.received,
         message: err.message
-      })) : [{ 
-        name: 'unknown', 
-        type: 'error', 
-        message: error.message || 'Unknown validation error' 
-      }];
+      })) : [{ name: 'general', type: 'error', message: error.message }];
       
       return {
         isValid: false,
@@ -213,10 +146,16 @@ export const createZodAdapter = (z) => ({
     }
   },
   clean: ({ doc, modifier, schema, userId, isLocalCollection, type }) => {
-    // Zod doesn't have a built-in clean method, but we can implement basic functionality
-    // if needed in the future. For now, we'll just ensure we're handling the type parameter correctly.
+    // Zod schemas don't have a built-in clean method, so we use our custom implementation
     const isModifier = !isInsertType(type);
-    // No cleaning operations for now
+    const target = isModifier ? modifier : doc;
+    
+    if (typeof schema.clean === 'function') {
+      schema.clean(target, {
+        mutate: true,
+        isModifier
+      });
+    }
   },
   freeze: false
 });
