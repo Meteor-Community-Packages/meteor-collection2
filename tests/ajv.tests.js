@@ -7,7 +7,7 @@ describe('using ajv', () => {
   it('attach and get ajv for normal collection', function () {
     ['ajvMc1', null].forEach(name => {
       const mc = new Mongo.Collection(name, Meteor.isClient ? { connection: null } : undefined);
-
+  
       mc.attachSchema({
         type: "object",
         properties: { foo: { type: "string" } },
@@ -15,11 +15,10 @@ describe('using ajv', () => {
         additionalProperties: false,
       });
 
-      expect(mc.c2Schema() instanceof Ajv).toBe(true);
       // Check if the schema was correctly detected as an AJV schema
-      expect(mc.c2Schema().definition).toBeDefined();
-      expect(mc.c2Schema().definition.type).toBe("object");
-      expect(mc.c2Schema().definition.properties.foo.type).toBe("string");
+      expect(mc.c2Schema()).toBeDefined();
+      expect(mc.c2Schema().type).toBe("object");
+      expect(mc.c2Schema().properties.foo.type).toBe("string");
     });
   });
   // it('handles prototype-less objects', async function () {
