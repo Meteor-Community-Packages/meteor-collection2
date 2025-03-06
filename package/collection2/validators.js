@@ -1,4 +1,5 @@
 import { Meteor } from 'meteor/meteor';
+import { isZodSchema, isAjvSchema } from './schemaDetectors';
 
 /**
  * Schema validators for different validation libraries
@@ -246,36 +247,6 @@ export const enhanceZodSchema = (schema) => {
   }
   
   return schema;
-};
-
-/**
- * Determines if a schema is a Zod schema
- * @param {Object} schema - The schema to check
- * @returns {Boolean} True if the schema is a Zod schema
- */
-export const isZodSchema = (schema) => {
-  return schema && 
-         typeof schema === 'object' && 
-         schema._def && 
-         schema.safeParse && 
-         schema.parse && 
-         typeof schema.safeParse === 'function' && 
-         typeof schema.parse === 'function';
-};
-
-/**
- * Determines if a schema is an AJV schema
- * @param {Object} schema - The schema to check
- * @returns {Boolean} True if the schema is an AJV schema
- */
-export const isAjvSchema = (schema) => {
-  return schema && 
-         typeof schema === 'object' && 
-         ((schema.compile && schema.validate && 
-           typeof schema.compile === 'function' && 
-           typeof schema.validate === 'function') ||
-          (schema.type === 'object' && schema.properties && 
-           typeof schema.properties === 'object'));
 };
 
 /**

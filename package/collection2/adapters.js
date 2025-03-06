@@ -2,7 +2,8 @@ import { Meteor } from 'meteor/meteor';
 import { Collection2 } from './collection2';
 import { SimpleSchema } from 'meteor/aldeed:simple-schema';
 import { isInsertType, isUpdateType, isUpsertType } from './lib';
-import { enhanceZodSchema, createZodValidationContext } from './validators';
+import { enhanceZodSchema } from './validators';
+import { isSimpleSchema, isZodSchema, isAjvSchema } from './schemaDetectors';
 
 /**
  * Schema adapters for different validation libraries
@@ -17,7 +18,7 @@ import { enhanceZodSchema, createZodValidationContext } from './validators';
  */
 export const createSimpleSchemaAdapter = (SimpleSchema) => ({
   name: 'SimpleSchema',
-  is: schema => SimpleSchema.isSimpleSchema(schema),
+  is: schema => isSimpleSchema(schema),
   create: schema => new SimpleSchema(schema),
   extend: (s1, s2) => {
     if (s2.version >= 2) {
@@ -61,16 +62,7 @@ export const createSimpleSchemaAdapter = (SimpleSchema) => ({
  */
 export const createZodAdapter = (z) => ({
   name: 'zod',
-  is: schema => {
-    // Property-based detection for Zod schemas
-    return schema && 
-           typeof schema === 'object' && 
-           schema._def && 
-           schema.safeParse && 
-           schema.parse && 
-           typeof schema.safeParse === 'function' && 
-           typeof schema.parse === 'function';
-  },
+  is: schema => isZodSchema(schema),
   create: schema => {
     // If this is already a Zod schema, return it directly with namedContext
     if (schema && typeof schema === 'object' && schema._def) {
@@ -166,16 +158,7 @@ export const createZodAdapter = (z) => ({
  */
 export const createAjvAdapter = (Ajv) => ({
   name: 'ajv',
-  is: schema => {
-    // Property-based detection for AJV instances
-    return schema && 
-           typeof schema === 'object' && 
-           ((schema.compile && schema.validate && 
-             typeof schema.compile === 'function' && 
-             typeof schema.validate === 'function') ||
-            (schema.type === 'object' && schema.properties && 
-             typeof schema.properties === 'object'));
-  },
+  is: schema => isAjvSchema(schema),
   create: schema => {
     // If this is already an AJV instance, return it
     if (schema && typeof schema === 'object' && schema.compile && schema.validate) {

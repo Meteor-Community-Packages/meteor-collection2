@@ -3,8 +3,9 @@ import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
+import { isSimpleSchema, isZodSchema, isAjvSchema, detectSchemaType } from './schemaDetectors';
 import { createSimpleSchemaAdapter, createZodAdapter, createAjvAdapter } from './adapters';
-import { getValidationContext, isZodSchema, enhanceZodSchema } from './validators';
+import { getValidationContext } from './validators';
 
 const meteorVersion = Meteor.release.split('@')[1].split('.');
 const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1] >= 1;
@@ -43,81 +44,49 @@ C2._getValidator = () => {
   return null;
 }
 
-// Function to detect schema type and return appropriate validator
-C2._detectSchemaType = (schema) => {
-  // First, check if it's a SimpleSchema instance
-  if (typeof SimpleSchema !== 'undefined' && SimpleSchema.isSimpleSchema && SimpleSchema.isSimpleSchema(schema)) {
-    if (!C2._validators.SimpleSchema) {
-      C2._validators.SimpleSchema = createSimpleSchemaAdapter(SimpleSchema);
-    }
-    C2._currentValidator = C2._validators.SimpleSchema;
-    return C2._validators.SimpleSchema;
-  }
+/**
+ * @private
+ * @param {SimpleSchema|Object} schema
+ * @returns {Object} Schema validator
+ */
+C2._detectSchemaType = function(schema) {
+  // Use the centralized schema detection functions
+  const schemaType = detectSchemaType(schema);
   
-  // Check if it's a Zod schema by looking for Zod-specific properties
-  if (schema && 
-      typeof schema === 'object' && 
-      schema._def && 
-      schema.safeParse && 
-      schema.parse && 
-      typeof schema.safeParse === 'function' && 
-      typeof schema.parse === 'function') {
-    
-    // It's likely a Zod schema
-    if (!C2._validators.zod) {
-      C2._validators.zod = createZodAdapter({ 
-        ZodType: function() {}, // Dummy constructor for instanceof checks
-        object: (obj) => obj // Simplified for detection purposes
-      });
+  switch (schemaType) {
+    case 'SimpleSchema':
+      if (!C2._validators.SimpleSchema) {
+        C2._validators.SimpleSchema = createSimpleSchemaAdapter(SimpleSchema);
+      }
+      C2._currentValidator = C2._validators.SimpleSchema;
+      return C2._validators.SimpleSchema;
       
-      // Override the 'is' method to use property detection instead of instanceof
-      C2._validators.zod.is = (schema) => {
-        return schema && 
-               typeof schema === 'object' && 
-               schema._def && 
-               schema.safeParse && 
-               schema.parse && 
-               typeof schema.safeParse === 'function' && 
-               typeof schema.parse === 'function';
-      };
-    }
-    
-    C2._currentValidator = C2._validators.zod;
-    return C2._validators.zod;
-  }
-  
-  // If it's a plain object with type: "object" and properties, it's likely a JSON Schema for AJV
-  if (schema && 
-      typeof schema === 'object' && 
-      schema.type === 'object' && 
-      schema.properties && 
-      typeof schema.properties === 'object') {
-    
-    // It's likely a JSON Schema for AJV
-    if (!C2._validators.ajv) {
-      C2._validators.ajv = createAjvAdapter(function() {}); // Dummy constructor
+    case 'zod':
+      if (!C2._validators.zod) {
+        C2._validators.zod = createZodAdapter({ 
+          ZodType: function() {}, // Dummy constructor for instanceof checks
+          object: (obj) => obj // Simplified for detection purposes
+        });
+      }
+      C2._currentValidator = C2._validators.zod;
+      return C2._validators.zod;
       
-      // Override the 'is' method for JSON Schema detection
-      C2._validators.ajv.is = (schema) => {
-        return schema && 
-               typeof schema === 'object' && 
-               ((schema.type === 'object' && schema.properties) || 
-                schema.compile || 
-                schema.validate);
-      };
-    }
-    
-    C2._currentValidator = C2._validators.ajv;
-    return C2._validators.ajv;
+    case 'ajv':
+      if (!C2._validators.ajv) {
+        C2._validators.ajv = createAjvAdapter(function() {}); // Dummy constructor
+      }
+      C2._currentValidator = C2._validators.ajv;
+      return C2._validators.ajv;
+      
+    default:
+      // If we can't detect the schema type, default to SimpleSchema if available
+      if (C2._validators.SimpleSchema) {
+        C2._currentValidator = C2._validators.SimpleSchema;
+        return C2._validators.SimpleSchema;
+      }
+      
+      throw new Error(`Cannot determine schema type. Make sure you have a supported schema library installed (SimpleSchema, Zod, or AJV).`);
   }
-
-  // If we can't detect the schema type, default to SimpleSchema if available
-  if (C2._validators.SimpleSchema) {
-    C2._currentValidator = C2._validators.SimpleSchema;
-    return C2._validators.SimpleSchema;
-  }
-
-  throw new Error(`Cannot determine schema type. Make sure you have a supported schema library installed (SimpleSchema, Zod, or AJV).`);
 };
 
 C2.schemas = (self) => {
