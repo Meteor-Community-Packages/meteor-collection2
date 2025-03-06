@@ -3,7 +3,7 @@ import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
-import { isSimpleSchema, isZodSchema, isAjvSchema, detectSchemaType } from './schemaDetectors';
+import { detectSchemaType } from './schemaDetectors';
 import { createSimpleSchemaAdapter, createZodAdapter, createAjvAdapter } from './adapters';
 import { getValidationContext } from './validators';
 
