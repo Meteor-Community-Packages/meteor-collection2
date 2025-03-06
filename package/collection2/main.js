@@ -686,38 +686,18 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
   }
 
   function getErrorObject(context, appendToMessage = '', code) {
-    let message;
-    const invalidKeys =
-      typeof context.validationErrors === 'function'
-        ? context.validationErrors()
-        : context.invalidKeys?.();
-
-    if (invalidKeys?.length) {
-      const firstErrorKey = invalidKeys[0].name;
-      const firstErrorMessage = context.keyErrorMessage(firstErrorKey);
-
-      // If the error is in a nested key, add the full key to the error message
-      // to be more helpful.
-      if (firstErrorKey.indexOf('.') === -1) {
-        message = firstErrorMessage;
-      } else {
-        message = `${firstErrorMessage} (${firstErrorKey})`;
-      }
-    } else {
-      message = 'Failed validation';
+    // Get the current validator from Collection2
+    const validator = C2._currentValidator;
+    
+    // If the validator has a getErrorObject method, use it
+    if (validator && typeof validator.getErrorObject === 'function') {
+      return validator.getErrorObject(context, appendToMessage, code);
     }
-    message = `${message} ${appendToMessage}`.trim();
-    const error = new Error(message);
-    error.invalidKeys = invalidKeys;
-    error.validationContext = context;
-    error.code = code;
-    error.name = 'ValidationError'; // Set the name to ValidationError consistently
-    // If on the server, we add a sanitized error, too, in case we're
-    // called from a method.
-    if (Meteor.isServer) {
-      error.sanitizedError = new Meteor.Error(400, message, EJSON.stringify(error.invalidKeys));
-    }
-    return error;
+    
+    // If we get here, it means we couldn't find a validator or the validator doesn't have a getErrorObject method
+    // This indicates a problem with schema detection or adapter implementation
+    throw new Error('No validator found or validator does not implement getErrorObject method. ' +
+                   'This indicates a problem with schema detection or adapter implementation.');
   }
 
   function addUniqueError(context, errorMessage) {

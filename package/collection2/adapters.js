@@ -53,6 +53,40 @@ export const createSimpleSchemaAdapter = (SimpleSchema) => ({
   },
   validate: () => {},
   getErrors: () => {},
+  getErrorObject: (context, appendToMessage = '', code) => {
+    let message;
+    const invalidKeys = 
+      typeof context.validationErrors === 'function'
+        ? context.validationErrors()
+        : context.invalidKeys();
+
+    if (invalidKeys?.length) {
+      const firstErrorKey = invalidKeys[0].name;
+      const firstErrorMessage = context.keyErrorMessage(firstErrorKey);
+
+      // If the error is in a nested key, add the full key to the error message
+      // to be more helpful.
+      if (firstErrorKey.indexOf('.') === -1) {
+        message = firstErrorMessage;
+      } else {
+        message = `${firstErrorMessage} (${firstErrorKey})`;
+      }
+    } else {
+      message = 'Failed validation';
+    }
+    message = `${message} ${appendToMessage}`.trim();
+    const error = new Error(message);
+    error.invalidKeys = invalidKeys;
+    error.validationContext = context;
+    error.code = code;
+    error.name = 'ValidationError'; // Set the name to ValidationError consistently
+    // If on the server, we add a sanitized error, too, in case we're
+    // called from a method.
+    if (Meteor.isServer) {
+      error.sanitizedError = new Meteor.Error(400, message, EJSON.stringify(error.invalidKeys));
+    }
+    return error;
+  },
   freeze: false
 });
 
@@ -149,6 +183,57 @@ export const createZodAdapter = (z) => ({
       });
     }
   },
+  getErrorObject: (context, appendToMessage = '', code) => {
+    let message;
+    const invalidKeys = 
+      typeof context.validationErrors === 'function'
+        ? context.validationErrors()
+        : context.invalidKeys();
+
+    if (invalidKeys?.length) {
+      const firstErrorKey = invalidKeys[0].name;
+      const firstErrorMessage = context.keyErrorMessage(firstErrorKey);
+
+      // For Zod errors, include the error code and received value if available
+      const firstError = invalidKeys[0];
+      if (firstError.type && firstError.value !== undefined) {
+        if (firstErrorKey.indexOf('.') === -1) {
+          message = `${firstErrorMessage} (${firstError.type}: received ${JSON.stringify(firstError.value)})`;
+        } else {
+          message = `${firstErrorMessage} (${firstErrorKey}, ${firstError.type}: received ${JSON.stringify(firstError.value)})`;
+        }
+      } else {
+        // Fallback to standard message format
+        if (firstErrorKey.indexOf('.') === -1) {
+          message = firstErrorMessage;
+        } else {
+          message = `${firstErrorMessage} (${firstErrorKey})`;
+        }
+      }
+    } else {
+      message = 'Failed validation';
+    }
+    
+    message = `${message} ${appendToMessage}`.trim();
+    const error = new Error(message);
+    error.invalidKeys = invalidKeys;
+    error.validationContext = context;
+    error.code = code;
+    error.name = 'ValidationError'; // Set the name to ValidationError consistently
+    
+    // Add Zod-specific error details
+    if (invalidKeys?.length && invalidKeys[0].zodError) {
+      error.zodError = invalidKeys[0].zodError;
+    }
+    
+    // If on the server, we add a sanitized error, too, in case we're
+    // called from a method.
+    if (Meteor.isServer) {
+      error.sanitizedError = new Meteor.Error(400, message, EJSON.stringify(error.invalidKeys));
+    }
+    
+    return error;
+  },
   freeze: false
 });
 
@@ -190,5 +275,56 @@ export const createAjvAdapter = (Ajv) => ({
     // No cleaning operations for now
   },
   validate: () => {},
+  getErrorObject: (context, appendToMessage = '', code) => {
+    let message;
+    const invalidKeys = 
+      typeof context.validationErrors === 'function'
+        ? context.validationErrors()
+        : context.invalidKeys();
+
+    if (invalidKeys?.length) {
+      const firstErrorKey = invalidKeys[0].name;
+      const firstErrorMessage = context.keyErrorMessage(firstErrorKey);
+
+      // For AJV errors, include schema keyword and params if available
+      const firstError = invalidKeys[0];
+      if (firstError.keyword && firstError.params) {
+        if (firstErrorKey.indexOf('.') === -1) {
+          message = `${firstErrorMessage} (${firstError.keyword}: ${JSON.stringify(firstError.params)})`;
+        } else {
+          message = `${firstErrorMessage} (${firstErrorKey}, ${firstError.keyword}: ${JSON.stringify(firstError.params)})`;
+        }
+      } else {
+        // Fallback to standard message format
+        if (firstErrorKey.indexOf('.') === -1) {
+          message = firstErrorMessage;
+        } else {
+          message = `${firstErrorMessage} (${firstErrorKey})`;
+        }
+      }
+    } else {
+      message = 'Failed validation';
+    }
+    
+    message = `${message} ${appendToMessage}`.trim();
+    const error = new Error(message);
+    error.invalidKeys = invalidKeys;
+    error.validationContext = context;
+    error.code = code;
+    error.name = 'ValidationError'; // Set the name to ValidationError consistently
+    
+    // Add AJV-specific error details
+    if (invalidKeys?.length && invalidKeys[0].ajvError) {
+      error.ajvError = invalidKeys[0].ajvError;
+    }
+    
+    // If on the server, we add a sanitized error, too, in case we're
+    // called from a method.
+    if (Meteor.isServer) {
+      error.sanitizedError = new Meteor.Error(400, message, EJSON.stringify(error.invalidKeys));
+    }
+    
+    return error;
+  },
   freeze: false
 });
