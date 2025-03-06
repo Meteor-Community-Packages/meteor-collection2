@@ -270,5 +270,55 @@ describe('Using Zod for validation', () => {
 
       await callMongoMethod(prototypelessTest, 'insert', [prototypelessObject]);
     });
+
+    it('returns proper errors', async function () {
+      const testCollection = new Mongo.Collection(
+        'testCollectionZod',
+        Meteor.isClient ? { connection: null } : undefined
+      );
+
+      const BaseArticleSchema = z.object({
+        _id: z.string().optional(),
+        title: z.string()
+          .min(1, 'Title is required')
+          .max(200, 'Title cannot be longer than 200 characters'),
+        description: z.string()
+          .min(1, 'Description is required'),
+        createdAt: z.date().optional(),
+        modifiedAt: z.date().optional()
+      });
+
+      testCollection.attachSchema(BaseArticleSchema);
+
+      try {
+        // This should fail validation - missing required title field
+        await callMongoMethod(testCollection, 'insert', [{ description: 'Test Description' }]);
+        // If we get here, the test failed
+        expect(false).toBe(true, 'Expected validation error but none was thrown');
+      } catch (error) {
+        console.log('Error message:', error.message);
+        
+        // Verify the error message contains the expected type information
+        // The test should pass with either format of error message
+        const isTypeError = error.message.includes('Field \'title\' has invalid type');
+        const isRequiredError = error.message.includes('Field \'title\' is required');
+        
+        expect(isTypeError || isRequiredError).toBe(true, 'Error should mention either invalid type or required field');
+        expect(error.message).toContain('expected string');
+        
+        // Also test with a wrong type
+        try {
+          await callMongoMethod(testCollection, 'insert', [{ 
+            title: 123, // Number instead of string
+            description: 'Test Description' 
+          }]);
+          expect(false).toBe(true, 'Expected validation error but none was thrown');
+        } catch (typeError) {
+          console.log('Type error message:', typeError.message);
+          expect(typeError.message).toContain('Field \'title\' has invalid type');
+          expect(typeError.message).toContain('expected string');
+        }
+      }
+    });
   });
 });

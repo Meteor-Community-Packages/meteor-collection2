@@ -184,34 +184,49 @@ export const createZodAdapter = (z) => ({
     }
   },
   getErrorObject: (context, appendToMessage = '', code) => {
-    let message;
-    const invalidKeys = 
-      typeof context.validationErrors === 'function'
-        ? context.validationErrors()
-        : context.invalidKeys();
-
-    if (invalidKeys?.length) {
-      const firstErrorKey = invalidKeys[0].name;
-      const firstErrorMessage = context.keyErrorMessage(firstErrorKey);
-
-      // For Zod errors, include the error code and received value if available
-      const firstError = invalidKeys[0];
-      if (firstError.type && firstError.value !== undefined) {
-        if (firstErrorKey.indexOf('.') === -1) {
-          message = `${firstErrorMessage} (${firstError.type}: received ${JSON.stringify(firstError.value)})`;
-        } else {
-          message = `${firstErrorMessage} (${firstErrorKey}, ${firstError.type}: received ${JSON.stringify(firstError.value)})`;
-        }
+    const invalidKeys = context.validationErrors();
+    
+    if (!invalidKeys || invalidKeys.length === 0) {
+      return new Error('Unknown validation error');
+    }
+    
+    const firstErrorKey = invalidKeys[0].name;
+    const firstErrorMessage = invalidKeys[0].message;
+    let message = firstErrorMessage;
+    
+    // Special handling for required/missing fields (invalid_type with undefined value)
+    if (invalidKeys[0].type === 'invalid_type' && invalidKeys[0].value === undefined) {
+      // Get the expected type directly from the error
+      const expectedType = invalidKeys[0].expected || 'string';
+      message = `Field '${firstErrorKey}' is required but was not provided. Please provide a value of type ${expectedType}.`;
+    } 
+    // Special handling for other type errors
+    else if (invalidKeys[0].type === 'invalid_type') {
+      // Get the expected type directly from the error
+      const expectedType = invalidKeys[0].expected || 'string';
+      const receivedValue = invalidKeys[0].value;
+      
+      message = `Field '${firstErrorKey}' has invalid type: expected ${expectedType}, received ${receivedValue}`;
+    }
+    // Special handling for string length errors
+    else if (invalidKeys[0].type === 'too_small' && firstErrorKey) {
+      message = `Field '${firstErrorKey}' ${firstErrorMessage}`;
+    }
+    // Special handling for regex pattern errors
+    else if (invalidKeys[0].type === 'invalid_string' && invalidKeys[0].validation === 'regex') {
+      message = `Field '${firstErrorKey}' does not match required pattern`;
+    }
+    // General case with error type and value
+    else if (invalidKeys[0].type && invalidKeys[0].value !== undefined) {
+      message = `${firstErrorMessage} for field '${firstErrorKey}' (${invalidKeys[0].type}: received ${JSON.stringify(invalidKeys[0].value)})`;
+    } 
+    // Fallback to standard message format
+    else {
+      if (firstErrorKey.indexOf('.') === -1) {
+        message = `${firstErrorMessage} for field '${firstErrorKey}'`;
       } else {
-        // Fallback to standard message format
-        if (firstErrorKey.indexOf('.') === -1) {
-          message = firstErrorMessage;
-        } else {
-          message = `${firstErrorMessage} (${firstErrorKey})`;
-        }
+        message = `${firstErrorMessage} (${firstErrorKey})`;
       }
-    } else {
-      message = 'Failed validation';
     }
     
     message = `${message} ${appendToMessage}`.trim();
@@ -220,18 +235,11 @@ export const createZodAdapter = (z) => ({
     error.validationContext = context;
     error.code = code;
     error.name = 'ValidationError'; // Set the name to ValidationError consistently
-    
-    // Add Zod-specific error details
-    if (invalidKeys?.length && invalidKeys[0].zodError) {
-      error.zodError = invalidKeys[0].zodError;
-    }
-    
     // If on the server, we add a sanitized error, too, in case we're
     // called from a method.
     if (Meteor.isServer) {
       error.sanitizedError = new Meteor.Error(400, message, EJSON.stringify(error.invalidKeys));
     }
-    
     return error;
   },
   freeze: false

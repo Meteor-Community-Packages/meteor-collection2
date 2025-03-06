@@ -37,11 +37,27 @@ export const createZodValidationContext = (schema, name = 'default') => {
               const zodErrors = result.error.errors || [];
               for (const err of zodErrors) {
                 const path = err.path.join('.');
+                
+                // Extract expected type from Zod error
+                let expectedType = 'valid type';
+                if (err.code === 'invalid_type') {
+                  // For type errors, Zod provides the expected type
+                  expectedType = err.expected;
+                } else if (err.code === 'too_small' || err.code === 'too_big') {
+                  // For string length errors
+                  expectedType = 'string';
+                } else if (err.code === 'invalid_string') {
+                  // For string validation errors (regex, email, etc.)
+                  expectedType = `string (${err.validation})`;
+                }
+                
                 errors.push({
                   name: path,
                   type: err.code,
                   value: err.received,
-                  message: err.message
+                  expected: expectedType,
+                  message: err.message,
+                  zodError: err
                 });
               }
             }
@@ -56,11 +72,27 @@ export const createZodValidationContext = (schema, name = 'default') => {
               const zodErrors = result.error.errors || [];
               for (const err of zodErrors) {
                 const path = err.path.join('.');
+                
+                // Extract expected type from Zod error
+                let expectedType = 'valid type';
+                if (err.code === 'invalid_type') {
+                  // For type errors, Zod provides the expected type
+                  expectedType = err.expected;
+                } else if (err.code === 'too_small' || err.code === 'too_big') {
+                  // For string length errors
+                  expectedType = 'string';
+                } else if (err.code === 'invalid_string') {
+                  // For string validation errors (regex, email, etc.)
+                  expectedType = `string (${err.validation})`;
+                }
+                
                 errors.push({
                   name: path,
                   type: err.code,
                   value: err.received,
-                  message: err.message
+                  expected: expectedType,
+                  message: err.message,
+                  zodError: err
                 });
               }
             }
@@ -77,11 +109,27 @@ export const createZodValidationContext = (schema, name = 'default') => {
             const zodErrors = result.error.errors || [];
             for (const err of zodErrors) {
               const path = Array.isArray(err.path) ? err.path.join('.') : err.path;
+              
+              // Extract expected type from Zod error
+              let expectedType = 'valid type';
+              if (err.code === 'invalid_type') {
+                // For type errors, Zod provides the expected type
+                expectedType = err.expected;
+              } else if (err.code === 'too_small' || err.code === 'too_big') {
+                // For string length errors
+                expectedType = 'string';
+              } else if (err.code === 'invalid_string') {
+                // For string validation errors (regex, email, etc.)
+                expectedType = `string (${err.validation})`;
+              }
+              
               errors.push({
                 name: path || 'general',
                 type: err.code || 'invalid',
                 value: err.received,
-                message: err.message
+                expected: expectedType,
+                message: err.message,
+                zodError: err
               });
             }
             return false;
