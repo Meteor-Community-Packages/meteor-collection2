@@ -4,12 +4,12 @@
  */
 
 // Import adapters
-import { createSimpleSchemaAdapter } from './adapters/simpleSchema';
-import { createZodAdapter } from './adapters/zod';
-import { createAjvAdapter } from './adapters/ajv';
+import { createSimpleSchemaAdapter as simpleSchemaAdapter } from './adapters/simpleSchema';
+import { createZodAdapter as zodAdapter } from './adapters/zod';
+import { createAjvAdapter as ajvAdapter } from './adapters/ajv';
 
 // Re-export adapters
-export { createSimpleSchemaAdapter, createZodAdapter, createAjvAdapter };
-export const SimpleSchemaAdapter = createSimpleSchemaAdapter;
-export const ZodAdapter = createZodAdapter;
-export const AjvAdapter = createAjvAdapter;
+export { simpleSchemaAdapter, zodAdapter, ajvAdapter };
+export const SimpleSchemaAdapter = simpleSchemaAdapter;
+export const ZodAdapter = zodAdapter;
+export const AjvAdapter = ajvAdapter;

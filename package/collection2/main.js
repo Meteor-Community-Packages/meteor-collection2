@@ -4,7 +4,7 @@ import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 import { detectSchemaType } from './schemaDetectors';
-import { createSimpleSchemaAdapter, createZodAdapter, createAjvAdapter } from './adapters';
+import { simpleSchemaAdapter, zodAdapter, ajvAdapter } from './adapters';
 
 const meteorVersion = Meteor.release.split('@')[1].split('.');
 const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1] >= 1;
@@ -34,9 +34,8 @@ C2._getValidator = () => {
   try {
     // Check for SimpleSchema
     if (typeof SimpleSchema !== 'undefined') {
-      C2._validators.SimpleSchema = C2._validators.SimpleSchema || createSimpleSchemaAdapter(SimpleSchema);
-      // Attach createValidationContext to the SimpleSchema library
-      C2._validators.SimpleSchema.attachToLibrary(SimpleSchema);
+      C2._validators.SimpleSchema = C2._validators.SimpleSchema || simpleSchemaAdapter(SimpleSchema);
+      // No need to attach anything to the SimpleSchema library anymore
     }
   } catch (e) {
     console.error('Error loading schema validators:', e);
@@ -57,14 +56,14 @@ C2._detectSchemaType = function(schema) {
   switch (schemaType) {
     case 'SimpleSchema':
       if (!C2._validators.SimpleSchema) {
-        C2._validators.SimpleSchema = createSimpleSchemaAdapter(SimpleSchema);
+        C2._validators.SimpleSchema = simpleSchemaAdapter(SimpleSchema);
       }
       C2._currentValidator = C2._validators.SimpleSchema;
       return C2._validators.SimpleSchema;
       
     case 'zod':
       if (!C2._validators.zod) {
-        C2._validators.zod = createZodAdapter({ 
+        C2._validators.zod = zodAdapter({ 
           ZodType: function() {}, // Dummy constructor for instanceof checks
           object: (obj) => obj // Simplified for detection purposes
         });
@@ -80,7 +79,7 @@ C2._detectSchemaType = function(schema) {
       
     case 'ajv':
       if (!C2._validators.ajv) {
-        C2._validators.ajv = createAjvAdapter(function() {}); // Dummy constructor
+        C2._validators.ajv = ajvAdapter(function() {}); // Dummy constructor
       }
       
       // Ensure the schema has necessary methods by enhancing it
