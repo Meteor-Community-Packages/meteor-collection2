@@ -9,6 +9,7 @@ import { createZodAdapter } from './adapters/zod';
 import { createAjvAdapter } from './adapters/ajv';
 
 // Re-export adapters
+export { createSimpleSchemaAdapter, createZodAdapter, createAjvAdapter };
 export const SimpleSchemaAdapter = createSimpleSchemaAdapter;
 export const ZodAdapter = createZodAdapter;
 export const AjvAdapter = createAjvAdapter;

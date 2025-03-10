@@ -164,19 +164,9 @@ export const createZodAdapter = (z) => ({
     const enhancedSchema = enhanceZodSchema(schema);
     return enhancedSchema.namedContext(validationContext);
   },
-  attachToLibrary: (ZodLib) => {
-    if (!ZodLib.createValidationContext) {
-      ZodLib.createValidationContext = function(schema, validationContext) {
-        if (validationContext && typeof validationContext === 'object') {
-          return validationContext;
-        }
-        
-        // Ensure the schema is enhanced with Collection2 compatibility methods
-        const enhancedSchema = enhanceZodSchema(schema);
-        return enhancedSchema.namedContext(validationContext);
-      };
-    }
-    return ZodLib;
+  enhance: (schema) => {
+    // Enhance the schema with Collection2 compatibility methods
+    return enhanceZodSchema(schema);
   },
   freeze: false
 });

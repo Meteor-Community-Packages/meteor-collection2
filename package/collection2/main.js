@@ -58,17 +58,7 @@ C2._detectSchemaType = function(schema) {
     case 'SimpleSchema':
       if (!C2._validators.SimpleSchema) {
         C2._validators.SimpleSchema = createSimpleSchemaAdapter(SimpleSchema);
-        // Attach createValidationContext to the SimpleSchema library
-        C2._validators.SimpleSchema.attachToLibrary(SimpleSchema);
       }
-      
-      // Ensure the schema has createValidationContext method
-      if (!schema.createValidationContext) {
-        schema.createValidationContext = function(validationContext) {
-          return schema.namedContext(validationContext);
-        };
-      }
-      
       C2._currentValidator = C2._validators.SimpleSchema;
       return C2._validators.SimpleSchema;
       
@@ -80,13 +70,9 @@ C2._detectSchemaType = function(schema) {
         });
       }
       
-      // Ensure the schema has createValidationContext method
-      if (!schema.createValidationContext) {
-        schema.createValidationContext = function(validationContext) {
-          // Ensure the schema is enhanced with Collection2 compatibility methods
-          const enhancedSchema = C2._validators.zod.is(schema) ? schema : C2._validators.zod.enhance(schema);
-          return enhancedSchema.namedContext(validationContext);
-        };
+      // Ensure the schema has necessary methods by enhancing it
+      if (C2._validators.zod.enhance && typeof C2._validators.zod.enhance === 'function') {
+        schema = C2._validators.zod.enhance(schema);
       }
       
       C2._currentValidator = C2._validators.zod;
@@ -97,13 +83,9 @@ C2._detectSchemaType = function(schema) {
         C2._validators.ajv = createAjvAdapter(function() {}); // Dummy constructor
       }
       
-      // Ensure the schema has createValidationContext method
-      if (!schema.createValidationContext) {
-        schema.createValidationContext = function(validationContext) {
-          // Ensure the schema is enhanced with Collection2 compatibility methods
-          const enhancedSchema = C2._validators.ajv.is(schema) ? schema : C2._validators.ajv.enhance(schema);
-          return enhancedSchema.namedContext(validationContext);
-        };
+      // Ensure the schema has necessary methods by enhancing it
+      if (C2._validators.ajv.enhance && typeof C2._validators.ajv.enhance === 'function') {
+        schema = C2._validators.ajv.enhance(schema);
       }
       
       C2._currentValidator = C2._validators.ajv;
@@ -521,8 +503,8 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
         validationContext = schema.namedContext(validationContext);
       }
     } else {
-      // Use the schema's createValidationContext method directly
-      validationContext = schema.createValidationContext();
+      // For backward compatibility, check if schema has namedContext method
+      validationContext = schema.namedContext();
     }
 
     // Add a default callback function if we're on the client and no callback was given

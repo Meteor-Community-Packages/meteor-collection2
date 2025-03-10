@@ -159,21 +159,11 @@ export const createAjvAdapter = () => ({
     return enhancedSchema.namedContext(validationContext);
   },
   
-  // Attach createValidationContext method to the schema library
-  attachToLibrary: (AjvLib) => {
-    if (!AjvLib.createValidationContext) {
-      AjvLib.createValidationContext = function(schema, validationContext) {
-        if (validationContext && typeof validationContext === 'object') {
-          return validationContext;
-        }
-        
-        // Ensure the schema is enhanced with Collection2 compatibility methods
-        const enhancedSchema = enhanceAjvSchema(schema);
-        return enhancedSchema.namedContext(validationContext);
-      };
-    }
-    return AjvLib;
+  // Enhance a schema with Collection2 compatibility methods
+  enhance: (schema) => {
+    return enhanceAjvSchema(schema);
   },
+  
   freeze: false,
   
   // Add validation context handling directly to the adapter
