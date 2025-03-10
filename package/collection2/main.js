@@ -4,7 +4,9 @@ import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 import { detectSchemaType } from './schemaDetectors';
-import { simpleSchemaAdapter, zodAdapter, ajvAdapter } from './adapters';
+import { createSimpleSchemaAdapter as simpleSchemaAdapter } from './adapters/simpleSchema';
+import { createZodAdapter as zodAdapter } from './adapters/zod';
+import { createAjvAdapter as ajvAdapter } from './adapters/ajv';
 
 const meteorVersion = Meteor.release.split('@')[1].split('.');
 const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1] >= 1;
