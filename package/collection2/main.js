@@ -4,7 +4,7 @@ import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 import { detectSchemaType } from './schemaDetectors';
-import { createSimpleSchemaAdapter, createZodAdapter, createAjvAdapter, getValidationContextFromAdapter } from './adapters';
+import { createSimpleSchemaAdapter, createZodAdapter, createAjvAdapter } from './adapters';
 
 const meteorVersion = Meteor.release.split('@')[1].split('.');
 const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1] >= 1;
@@ -35,6 +35,8 @@ C2._getValidator = () => {
     // Check for SimpleSchema
     if (typeof SimpleSchema !== 'undefined') {
       C2._validators.SimpleSchema = C2._validators.SimpleSchema || createSimpleSchemaAdapter(SimpleSchema);
+      // Attach createValidationContext to the SimpleSchema library
+      C2._validators.SimpleSchema.attachToLibrary(SimpleSchema);
     }
   } catch (e) {
     console.error('Error loading schema validators:', e);
@@ -56,7 +58,17 @@ C2._detectSchemaType = function(schema) {
     case 'SimpleSchema':
       if (!C2._validators.SimpleSchema) {
         C2._validators.SimpleSchema = createSimpleSchemaAdapter(SimpleSchema);
+        // Attach createValidationContext to the SimpleSchema library
+        C2._validators.SimpleSchema.attachToLibrary(SimpleSchema);
       }
+      
+      // Ensure the schema has createValidationContext method
+      if (!schema.createValidationContext) {
+        schema.createValidationContext = function(validationContext) {
+          return schema.namedContext(validationContext);
+        };
+      }
+      
       C2._currentValidator = C2._validators.SimpleSchema;
       return C2._validators.SimpleSchema;
       
@@ -67,6 +79,16 @@ C2._detectSchemaType = function(schema) {
           object: (obj) => obj // Simplified for detection purposes
         });
       }
+      
+      // Ensure the schema has createValidationContext method
+      if (!schema.createValidationContext) {
+        schema.createValidationContext = function(validationContext) {
+          // Ensure the schema is enhanced with Collection2 compatibility methods
+          const enhancedSchema = C2._validators.zod.is(schema) ? schema : C2._validators.zod.enhance(schema);
+          return enhancedSchema.namedContext(validationContext);
+        };
+      }
+      
       C2._currentValidator = C2._validators.zod;
       return C2._validators.zod;
       
@@ -74,6 +96,16 @@ C2._detectSchemaType = function(schema) {
       if (!C2._validators.ajv) {
         C2._validators.ajv = createAjvAdapter(function() {}); // Dummy constructor
       }
+      
+      // Ensure the schema has createValidationContext method
+      if (!schema.createValidationContext) {
+        schema.createValidationContext = function(validationContext) {
+          // Ensure the schema is enhanced with Collection2 compatibility methods
+          const enhancedSchema = C2._validators.ajv.is(schema) ? schema : C2._validators.ajv.enhance(schema);
+          return enhancedSchema.namedContext(validationContext);
+        };
+      }
+      
       C2._currentValidator = C2._validators.ajv;
       return C2._validators.ajv;
       
@@ -489,8 +521,8 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
         validationContext = schema.namedContext(validationContext);
       }
     } else {
-      // Use the getValidationContextFromAdapter helper to handle different schema types
-      validationContext = getValidationContextFromAdapter(schema);
+      // Use the schema's createValidationContext method directly
+      validationContext = schema.createValidationContext();
     }
 
     // Add a default callback function if we're on the client and no callback was given

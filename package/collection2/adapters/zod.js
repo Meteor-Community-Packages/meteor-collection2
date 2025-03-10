@@ -155,9 +155,6 @@ export const createZodAdapter = (z) => ({
     }
     return error;
   },
-  freeze: false,
-  
-  // Add validation context handling directly to the adapter
   getValidationContext: (schema, validationContext) => {
     if (validationContext && typeof validationContext === 'object') {
       return validationContext;
@@ -166,7 +163,22 @@ export const createZodAdapter = (z) => ({
     // Ensure the schema is enhanced with Collection2 compatibility methods
     const enhancedSchema = enhanceZodSchema(schema);
     return enhancedSchema.namedContext(validationContext);
-  }
+  },
+  attachToLibrary: (ZodLib) => {
+    if (!ZodLib.createValidationContext) {
+      ZodLib.createValidationContext = function(schema, validationContext) {
+        if (validationContext && typeof validationContext === 'object') {
+          return validationContext;
+        }
+        
+        // Ensure the schema is enhanced with Collection2 compatibility methods
+        const enhancedSchema = enhanceZodSchema(schema);
+        return enhancedSchema.namedContext(validationContext);
+      };
+    }
+    return ZodLib;
+  },
+  freeze: false
 });
 
 /**

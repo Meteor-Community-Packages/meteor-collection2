@@ -88,5 +88,19 @@ export const createSimpleSchemaAdapter = (SimpleSchema) => ({
     }
     
     return schema.namedContext(validationContext);
+  },
+  
+  // Attach createValidationContext method to the schema library
+  attachToLibrary: (SimpleSchemaLib) => {
+    if (!SimpleSchemaLib.createValidationContext) {
+      SimpleSchemaLib.createValidationContext = function(schema, validationContext) {
+        if (validationContext && typeof validationContext === 'object') {
+          return validationContext;
+        }
+        
+        return schema.namedContext(validationContext);
+      };
+    }
+    return SimpleSchemaLib;
   }
 });
