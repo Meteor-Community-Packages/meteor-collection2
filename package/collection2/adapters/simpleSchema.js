@@ -79,5 +79,14 @@ export const createSimpleSchemaAdapter = (SimpleSchema) => ({
     }
     return error;
   },
-  freeze: false
+  freeze: false,
+  
+  // Add validation context handling directly to the adapter
+  getValidationContext: (schema, validationContext) => {
+    if (validationContext && typeof validationContext === 'object') {
+      return validationContext;
+    }
+    
+    return schema.namedContext(validationContext);
+  }
 });

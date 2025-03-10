@@ -4,8 +4,7 @@ import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 import { detectSchemaType } from './schemaDetectors';
-import { createSimpleSchemaAdapter, createZodAdapter, createAjvAdapter } from './adapters';
-import { getValidationContext } from './validators';
+import { createSimpleSchemaAdapter, createZodAdapter, createAjvAdapter, getValidationContextFromAdapter } from './adapters';
 
 const meteorVersion = Meteor.release.split('@')[1].split('.');
 const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1] >= 1;
@@ -490,8 +489,8 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
         validationContext = schema.namedContext(validationContext);
       }
     } else {
-      // Use the getValidationContext helper to handle different schema types
-      validationContext = getValidationContext(schema);
+      // Use the getValidationContextFromAdapter helper to handle different schema types
+      validationContext = getValidationContextFromAdapter(schema);
     }
 
     // Add a default callback function if we're on the client and no callback was given
