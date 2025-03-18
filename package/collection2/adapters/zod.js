@@ -364,6 +364,11 @@ const enhanceZodSchema = (schema) => {
       // Try to get the shape from the Zod schema
       const shape = schema._def?.shape?.();
       if (shape) {
+        // If unknownKeys is set to 'ignore' or 'passthrough', allow any key
+        if (schema._def.unknownKeys === 'ignore' || schema._def.unknownKeys === 'passthrough') {
+          return true;
+        }
+        
         return key in shape;
       }
       

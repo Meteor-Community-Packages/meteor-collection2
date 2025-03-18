@@ -321,4 +321,90 @@ describe('Using Zod for validation', () => {
       }
     });
   });
+
+  describe('Zod schemas with unknownKeys property', () => {
+    let productsCollection;
+
+    beforeEach(() => {
+      // Create a fresh collection for each test
+      productsCollection = new Mongo.Collection(null);
+    });
+
+    it('should handle Zod schemas with unknownKeys property', function () {
+      // Define a simple Zod schema
+      const ProductType = {
+        PHYSICAL: 'PHYSICAL',
+        DIGITAL: 'DIGITAL',
+        SERVICE: 'SERVICE'
+      };
+
+      // Helper schemas
+      const hasId = z.object({ _id: z.string() });
+      const hasDates = z.object({ 
+        createdAt: z.date(),
+        updatedAt: z.date().optional()
+      });
+      const hasUser = z.object({ 
+        createdBy: z.string()
+      });
+
+      // Create the product schema
+      const productInsertSchema = z.object({
+        name: z.string(),
+        type: z.enum([ProductType.PHYSICAL, ProductType.DIGITAL, ProductType.SERVICE]),
+        categoryIds: z.array(z.string()).optional(),
+      });
+
+      // Merge schemas to create the full product schema
+      const productSchema = productInsertSchema
+        .merge(hasId)
+        .merge(hasDates)
+        .merge(hasUser);
+
+      // Try to attach the schema - this should not throw an error
+      expect(() => {
+        productsCollection.attachSchema(productSchema);
+      }).not.toThrow();
+
+      // Test with passthrough explicitly set
+      const passthroughSchema = productSchema.passthrough();
+      
+      expect(() => {
+        const passthroughCollection = new Mongo.Collection(null);
+        passthroughCollection.attachSchema(passthroughSchema);
+      }).not.toThrow();
+    });
+
+    if (Meteor.isServer) {
+      it('should validate documents with Zod schema containing unknownKeys', async function () {
+        // Define a simple Zod schema with passthrough
+        const schema = z.object({
+          title: z.string(),
+          price: z.number(),
+        }).passthrough();
+
+        productsCollection.attachSchema(schema);
+
+        // Should allow insert with extra fields
+        const id = await callMongoMethod(productsCollection, 'insert', [{
+          title: 'Test Product',
+          price: 19.99,
+          extraField: 'This should be allowed'
+        }]);
+
+        expect(id).toBeTruthy();
+
+        // Should still validate required fields
+        try {
+          await callMongoMethod(productsCollection, 'insert', [{
+            price: 29.99,
+            extraField: 'Missing title should fail'
+          }]);
+          expect(false).toBe(true, 'Expected validation error but none was thrown');
+        } catch (error) {
+          expect(error.message).toContain('title');
+        }
+      });
+    }
+  });
 });
