@@ -407,4 +407,91 @@ describe('Using Zod for validation', () => {
       });
     }
   });
+
+  describe('Zod schemas with brand types', () => {
+    let brandedCollection;
+
+    beforeEach(() => {
+      // Create a fresh collection for each test
+      brandedCollection = new Mongo.Collection(
+        `branded_${new Date().getTime()}`,
+        Meteor.isClient ? { connection: null } : undefined
+      );
+    });
+
+    it('should handle Zod schemas with branded types', function () {
+      // Define branded types
+      const EmailSchema = z.string().email().brand('Email');
+      const UsernameSchema = z.string().min(3).max(20).brand('Username');
+      const UserIdSchema = z.string().uuid().brand('UserId');
+
+      // Create a schema using branded types
+      const userSchema = z.object({
+        _id: UserIdSchema.optional(),
+        email: EmailSchema,
+        username: UsernameSchema,
+        createdAt: z.date().optional()
+      });
+
+      // Attach the schema to the collection
+      expect(() => {
+        brandedCollection.attachSchema(userSchema);
+      }).not.toThrow();
+
+      // Verify the schema was attached correctly
+      expect(brandedCollection.c2Schema()).toBeDefined();
+    });
+
+    if (Meteor.isServer) {
+      it('should validate documents with branded types correctly', async function () {
+        // Define branded types
+        const EmailSchema = z.string().email().brand('Email');
+        const UsernameSchema = z.string().min(3).max(20).brand('Username');
+
+        // Create a schema using branded types
+        const userSchema = z.object({
+          email: EmailSchema,
+          username: UsernameSchema
+        });
+
+        brandedCollection.attachSchema(userSchema);
+
+        // Should allow insert with valid data
+        try {
+          const id = await callMongoMethod(brandedCollection, 'insert', [{
+            email: 'test@example.com',
+            username: 'testuser'
+          }]);
+          expect(typeof id).toBe('string');
+        } catch (error) {
+          console.error('Failed to insert with branded types:', error);
+          expect(false).toBe(true, 'Insert with valid branded types should succeed');
+        }
+
+        // Should fail validation with invalid email
+        try {
+          await callMongoMethod(brandedCollection, 'insert', [{
+            email: 'invalid-email',
+            username: 'testuser'
+          }]);
+          expect(false).toBe(true, 'Expected validation error for invalid email but none was thrown');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('email');
+        }
+
+        // Should fail validation with invalid username (too short)
+        try {
+          await callMongoMethod(brandedCollection, 'insert', [{
+            email: 'test@example.com',
+            username: 'ab'  // Less than min length of 3
+          }]);
+          expect(false).toBe(true, 'Expected validation error for short username but none was thrown');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('username');
+        }
+      });
+    }
+  });
 });
