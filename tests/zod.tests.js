@@ -153,7 +153,7 @@ describe('Using Zod for validation', () => {
         }
         
         // Verify the update worked
-        const updated = await callMongoMethod(booksCollection, 'findOne', [id]);
+        const updated = await callMongoMethod(booksCollection, 'findOne', [{ _id: id }]);
         expect(updated.copies).toBe(5);
         expect(updated.title).toBe('Updated Title');
         
@@ -592,7 +592,7 @@ describe('Using Zod for validation', () => {
             expect(typeof id).toBe('string');
             
             // Verify the document was inserted correctly
-            const insertedDoc = await callMongoMethod(extendedSchemaCollection, 'findOne', [id]);
+            const insertedDoc = await callMongoMethod(extendedSchemaCollection, 'findOne', [{ _id: id }]);
             expect(insertedDoc.title).toBe(validDoc.title);
             expect(insertedDoc.priority).toBe(validDoc.priority);
             expect(insertedDoc.assignee).toBe(validDoc.assignee);
@@ -779,7 +779,7 @@ describe('Using Zod for validation', () => {
           expect(typeof id).toBe('string');
           
           // Verify the document was inserted correctly with all nested objects
-          const insertedDoc = await callMongoMethod(nestedSchemaCollection, 'findOne', [id]);
+          const insertedDoc = await callMongoMethod(nestedSchemaCollection, 'findOne', [{ _id: id }]);
           expect(insertedDoc.title).toBe(validDoc.title);
           expect(insertedDoc.metadata.createdBy).toBe(validDoc.metadata.createdBy);
           expect(insertedDoc.details.description).toBe(validDoc.details.description);
@@ -787,6 +787,379 @@ describe('Using Zod for validation', () => {
         } catch (error) {
           console.error('Failed to insert with nested schema:', error);
           console.log('Insert test skipped, but nested schema validation is working correctly');
+        }
+      });
+    }
+  });
+
+  describe('Zod array operations', () => {
+    let arrayCollection;
+
+    beforeEach(() => {
+      // Create a fresh collection for each test
+      arrayCollection = new Mongo.Collection(
+        `array_ops_${new Date().getTime()}`,
+        Meteor.isClient ? { connection: null } : undefined
+      );
+      
+      // Define a schema with array fields
+      const arraySchema = z.object({
+        title: z.string().min(2).max(100),
+        tags: z.array(z.string()).optional(),
+        comments: z.array(
+          z.object({
+            text: z.string().min(1),
+            author: z.string(),
+            createdAt: z.date()
+          })
+        ).optional(),
+        ratings: z.array(z.number().int().min(1).max(5)).optional()
+      });
+      
+      // Attach the schema to the collection
+      arrayCollection.attachSchema(arraySchema);
+    });
+    
+    if (Meteor.isServer) {
+      it('should validate arrays on insert', async function () {
+        // Test valid insert with arrays
+        const id = await callMongoMethod(arrayCollection, 'insert', [{
+          title: 'Array Test Document',
+          tags: ['tag1', 'tag2'],
+          comments: [{
+            text: 'Valid comment',
+            author: 'user1',
+            createdAt: new Date()
+          }],
+          ratings: [3, 4, 5]
+        }]);
+        
+        // Verify the document was inserted correctly
+        const doc = await callMongoMethod(arrayCollection, 'findOne', [{ _id: id }]);
+        expect(doc.tags).toContain('tag1');
+        expect(doc.comments[0].text).toBe('Valid comment');
+        expect(doc.ratings).toContain(4);
+        
+        // Test invalid insert - wrong type in array
+        try {
+          await callMongoMethod(arrayCollection, 'insert', [{
+            title: 'Invalid Array Test',
+            tags: ['valid', 123], // 123 should be a string
+            comments: [{
+              text: 'Valid comment',
+              author: 'user1',
+              createdAt: new Date()
+            }]
+          }]);
+          throw new Error('Expected validation error for invalid tag type');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('tags');
+          expect(error.message).toContain('string');
+        }
+        
+        // Test invalid insert - invalid object in array
+        try {
+          await callMongoMethod(arrayCollection, 'insert', [{
+            title: 'Invalid Array Test',
+            comments: [{
+              // Missing text field
+              author: 'user1',
+              createdAt: new Date()
+            }]
+          }]);
+          throw new Error('Expected validation error for missing required field');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('text');
+        }
+        
+        // Test invalid insert - out of range value in array
+        try {
+          await callMongoMethod(arrayCollection, 'insert', [{
+            title: 'Invalid Array Test',
+            ratings: [1, 10, 3] // 10 is out of range (1-5)
+          }]);
+          throw new Error('Expected validation error for out of range value');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('ratings');
+        }
+      });
+      
+      it('should validate arrays on update with $set', async function () {
+        // Insert a document with initial arrays
+        const id = await callMongoMethod(arrayCollection, 'insert', [{
+          title: 'Array Update Test',
+          tags: ['initial'],
+          comments: [{
+            text: 'Initial comment',
+            author: 'user1',
+            createdAt: new Date()
+          }],
+          ratings: [3]
+        }]);
+        
+        // Test valid update with $set for entire arrays
+        await callMongoMethod(arrayCollection, 'update', [
+          { _id: id },
+          { $set: { 
+            tags: ['updated', 'tags'],
+            ratings: [1, 2, 3]
+          }}
+        ]);
+        
+        // Verify the arrays were updated
+        let doc = await callMongoMethod(arrayCollection, 'findOne', [{ _id: id }]);
+        expect(doc.tags).toContain('updated');
+        expect(doc.tags).toContain('tags');
+        expect(doc.ratings).toEqual([1, 2, 3]);
+        
+        // Test invalid update - wrong type in array
+        try {
+          await callMongoMethod(arrayCollection, 'update', [
+            { _id: id },
+            { $set: { tags: ['valid', 123] }} // 123 should be a string
+          ]);
+          throw new Error('Expected validation error for invalid tag type');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('tags');
+          expect(error.message).toContain('string');
+        }
+        
+        // Test invalid update - invalid object in array
+        try {
+          await callMongoMethod(arrayCollection, 'update', [
+            { _id: id },
+            { $set: { comments: [{
+              // Missing text field
+              author: 'user2',
+              createdAt: new Date()
+            }]}}
+          ]);
+          throw new Error('Expected validation error for missing required field');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('text');
+        }
+        
+        // Test invalid update - out of range value in array
+        try {
+          await callMongoMethod(arrayCollection, 'update', [
+            { _id: id },
+            { $set: { ratings: [10, 2, 3] }} // 10 is out of range (1-5)
+          ]);
+          throw new Error('Expected validation error for out of range value');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('ratings');
+        }
+      });
+      
+      it('should validate $push operations correctly', async function () {
+        // Insert a document with initial arrays
+        const id = await callMongoMethod(arrayCollection, 'insert', [{
+          title: 'Array Test Document',
+          tags: ['initial', 'test'],
+          comments: [{
+            text: 'Initial comment',
+            author: 'user1',
+            createdAt: new Date()
+          }],
+          ratings: [4, 5]
+        }]);
+        
+        // Test valid $push for simple array (tags)
+        await callMongoMethod(arrayCollection, 'update', [
+          { _id: id },
+          { $push: { tags: 'valid-tag' } }
+        ]);
+        
+        // Verify the tag was added
+        let doc = await callMongoMethod(arrayCollection, 'findOne', [{ _id: id }]);
+        expect(doc.tags).toContain('valid-tag');
+        
+        // Test valid $push for object array (comments)
+        const newComment = {
+          text: 'New comment',
+          author: 'user2',
+          createdAt: new Date()
+        };
+        
+        await callMongoMethod(arrayCollection, 'update', [
+          { _id: id },
+          { $push: { comments: newComment } }
+        ]);
+        
+        // Verify the comment was added
+        doc = await callMongoMethod(arrayCollection, 'findOne', [{ _id: id }]);
+        expect(doc.comments.length).toBe(2);
+        expect(doc.comments[1].text).toBe('New comment');
+        
+        // Test invalid $push for simple array (wrong type)
+        try {
+          await callMongoMethod(arrayCollection, 'update', [
+            { _id: id },
+            { $push: { tags: 123 } } // Should be a string
+          ]);
+          throw new Error('Expected validation error for invalid tag type');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          // Check for proper error message format as per memory
+          expect(error.message).toContain('tags');
+          expect(error.message).toContain('string');
+        }
+        
+        // Test invalid $push for object array (missing required field)
+        try {
+          await callMongoMethod(arrayCollection, 'update', [
+            { _id: id },
+            { $push: { comments: { 
+              // Missing 'text' field
+              author: 'user3',
+              createdAt: new Date()
+            } } }
+          ]);
+          throw new Error('Expected validation error for missing required field');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('comments');
+          expect(error.message).toContain('text');
+        }
+        
+        // Test invalid $push for object array (wrong field type)
+        try {
+          await callMongoMethod(arrayCollection, 'update', [
+            { _id: id },
+            { $push: { comments: { 
+              text: 'Valid text',
+              author: 123, // Should be a string
+              createdAt: new Date()
+            } } }
+          ]);
+          throw new Error('Expected validation error for invalid field type');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('author');
+          expect(error.message).toContain('string');
+        }
+        
+        // Test invalid $push for number array (out of range)
+        try {
+          await callMongoMethod(arrayCollection, 'update', [
+            { _id: id },
+            { $push: { ratings: 10 } } // Should be between 1 and 5
+          ]);
+          throw new Error('Expected validation error for out of range value');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('ratings');
+        }
+      });
+      
+      it('should validate $addToSet operations correctly', async function () {
+        // Insert a document with initial arrays
+        const id = await callMongoMethod(arrayCollection, 'insert', [{
+          title: 'AddToSet Test Document',
+          tags: ['initial', 'test'],
+          comments: [{
+            text: 'Initial comment',
+            author: 'user1',
+            createdAt: new Date()
+          }],
+          ratings: [3, 4]
+        }]);
+        
+        // Test valid $addToSet for simple array (tags)
+        await callMongoMethod(arrayCollection, 'update', [
+          { _id: id },
+          { $addToSet: { tags: 'unique-tag' } }
+        ]);
+        
+        // Verify the tag was added
+        let doc = await callMongoMethod(arrayCollection, 'findOne', [{ _id: id }]);
+        expect(doc.tags).toContain('unique-tag');
+        
+        // Test $addToSet with duplicate (should not add)
+        await callMongoMethod(arrayCollection, 'update', [
+          { _id: id },
+          { $addToSet: { tags: 'unique-tag' } }
+        ]);
+        
+        // Verify no duplicate was added
+        doc = await callMongoMethod(arrayCollection, 'findOne', [{ _id: id }]);
+        expect(doc.tags.filter(tag => tag === 'unique-tag').length).toBe(1);
+        
+        // Test valid $addToSet for object array (comments)
+        const uniqueComment = {
+          text: 'Unique comment',
+          author: 'user2',
+          createdAt: new Date()
+        };
+        
+        await callMongoMethod(arrayCollection, 'update', [
+          { _id: id },
+          { $addToSet: { comments: uniqueComment } }
+        ]);
+        
+        // Verify the comment was added
+        doc = await callMongoMethod(arrayCollection, 'findOne', [{ _id: id }]);
+        expect(doc.comments.length).toBe(2);
+        
+        // Test invalid $addToSet for simple array (wrong type)
+        try {
+          await callMongoMethod(arrayCollection, 'update', [
+            { _id: id },
+            { $addToSet: { tags: 123 } } // Should be a string
+          ]);
+          throw new Error('Expected validation error for invalid tag type');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('tags');
+          expect(error.message).toContain('string');
+        }
+        
+        // Test invalid $addToSet for object array (missing required field)
+        try {
+          await callMongoMethod(arrayCollection, 'update', [
+            { _id: id },
+            { $addToSet: { comments: { 
+              // Missing 'text' field
+              author: 'user3',
+              createdAt: new Date()
+            } } }
+          ]);
+          throw new Error('Expected validation error for missing required field');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('comments');
+          expect(error.message).toContain('text');
+        }
+        
+        // Test $addToSet with $each modifier
+        await callMongoMethod(arrayCollection, 'update', [
+          { _id: id },
+          { $addToSet: { tags: { $each: ['tag1', 'tag2', 'tag3'] } } }
+        ]);
+        
+        // Verify all tags were added
+        doc = await callMongoMethod(arrayCollection, 'findOne', [{ _id: id }]);
+        expect(doc.tags).toContain('tag1');
+        expect(doc.tags).toContain('tag2');
+        expect(doc.tags).toContain('tag3');
+        
+        // Test invalid $addToSet with $each (invalid item in array)
+        try {
+          await callMongoMethod(arrayCollection, 'update', [
+            { _id: id },
+            { $addToSet: { ratings: { $each: [1, 2, 'invalid', 4] } } } // 'invalid' should be a number
+          ]);
+          throw new Error('Expected validation error for invalid item in $each array');
+        } catch (error) {
+          expect(error.name).toBe('ValidationError');
+          expect(error.message).toContain('ratings');
+          expect(error.message).toContain('number');
         }
       });
     }
