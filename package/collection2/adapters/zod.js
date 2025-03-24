@@ -188,94 +188,12 @@ const createZodValidationContext = (schema, name = 'default') => {
       errors = []; // Clear previous errors
       
       try {
-        // For modifiers, we need special handling
-        if (options.modifier) {
-          // For now, we'll just validate that the fields being modified are valid
-          // In a real implementation, we would validate each modifier operation
-          const modifier = obj;
-          let isValid = true;
-          
-          // Check $set operations
-          if (modifier.$set) {
-            const result = schema.partial().safeParse(modifier.$set);
-            if (!result.success) {
-              isValid = false;
-              // Extract errors from Zod validation result
-              const zodErrors = result.error.errors || [];
-              for (const err of zodErrors) {
-                const path = err.path.join('.');
-                
-                // Extract expected type from Zod error
-                let expectedType = 'valid type';
-                if (err.code === 'invalid_type') {
-                  // For type errors, Zod provides the expected type
-                  expectedType = err.expected;
-                } else if (err.code === 'too_small' || err.code === 'too_big') {
-                  // For string length errors
-                  expectedType = 'string';
-                } else if (err.code === 'invalid_string') {
-                  // For string validation errors (regex, email, etc.)
-                  expectedType = `string (${err.validation})`;
-                }
-                
-                errors.push({
-                  name: path,
-                  type: err.code,
-                  value: err.received,
-                  expected: expectedType,
-                  message: err.message,
-                  zodError: err
-                });
-              }
-            }
-          }
-          
-          // Check $setOnInsert operations
-          if (modifier.$setOnInsert) {
-            const result = schema.partial().safeParse(modifier.$setOnInsert);
-            if (!result.success) {
-              isValid = false;
-              // Extract errors from Zod validation result
-              const zodErrors = result.error.errors || [];
-              for (const err of zodErrors) {
-                const path = err.path.join('.');
-                
-                // Extract expected type from Zod error
-                let expectedType = 'valid type';
-                if (err.code === 'invalid_type') {
-                  // For type errors, Zod provides the expected type
-                  expectedType = err.expected;
-                } else if (err.code === 'too_small' || err.code === 'too_big') {
-                  // For string length errors
-                  expectedType = 'string';
-                } else if (err.code === 'invalid_string') {
-                  // For string validation errors (regex, email, etc.)
-                  expectedType = `string (${err.validation})`;
-                }
-                
-                errors.push({
-                  name: path,
-                  type: err.code,
-                  value: err.received,
-                  expected: expectedType,
-                  message: err.message,
-                  zodError: err
-                });
-              }
-            }
-          }
-          
-          return isValid;
-        } else {
-          // For normal documents (insert)
-          const result = schema.safeParse(obj);
-          if (result.success) {
-            return true;
-          } else {
-            // Extract errors from Zod validation result
+        // Helper function to process validation errors from Zod
+        const processZodErrors = (result, isArray = false) => {
+          if (!result.success) {
             const zodErrors = result.error.errors || [];
             for (const err of zodErrors) {
-              const path = Array.isArray(err.path) ? err.path.join('.') : err.path;
+              const path = isArray ? (Array.isArray(err.path) ? err.path.join('.') : err.path) : err.path.join('.');
               
               // Extract expected type from Zod error
               let expectedType = 'valid type';
@@ -299,6 +217,42 @@ const createZodValidationContext = (schema, name = 'default') => {
                 zodError: err
               });
             }
+            return false;
+          }
+          return true;
+        };
+
+        // For modifiers, we need special handling
+        if (options.modifier) {
+          // For now, we'll just validate that the fields being modified are valid
+          // In a real implementation, we would validate each modifier operation
+          const modifier = obj;
+          let isValid = true;
+          
+          // Check $set operations
+          if (modifier.$set) {
+            const result = schema.partial().safeParse(modifier.$set);
+            if (!processZodErrors(result)) {
+              isValid = false;
+            }
+          }
+          
+          // Check $setOnInsert operations
+          if (modifier.$setOnInsert) {
+            const result = schema.partial().safeParse(modifier.$setOnInsert);
+            if (!processZodErrors(result)) {
+              isValid = false;
+            }
+          }
+          
+          return isValid;
+        } else {
+          // For normal documents (insert)
+          const result = schema.safeParse(obj);
+          if (result.success) {
+            return true;
+          } else {
+            processZodErrors(result, true);
             return false;
           }
         }
