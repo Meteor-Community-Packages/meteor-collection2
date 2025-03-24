@@ -28,7 +28,10 @@ export const createZodAdapter = (z) => ({
     
     // Since we don't have direct access to Zod's methods, we'll use a simplified approach
     // In a real implementation, you'd merge the schemas properly
-    return enhanceZodSchema(s2); // Simplified implementation - just use the second schema
+    const mergedSchema = s1.merge(s2);
+    
+    // Ensure the merged schema has all the Collection2 compatibility methods
+    return enhanceZodSchema(mergedSchema);
   },
   validate: (obj, schema, options = {}) => {
     try {
