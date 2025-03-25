@@ -4,6 +4,24 @@ import { isInsertType } from '../lib';
 import { isZodSchema } from '../schemaDetectors';
 
 /**
+ * Formats Zod validation errors into a consistent structure
+ * @param {Object} error - The Zod error object
+ * @returns {Array} Formatted error objects
+ */
+const formatZodErrors = (error) => {
+  if (!error || !error.errors) {
+    return [{ name: 'general', type: 'error', message: error?.message || 'Unknown validation error' }];
+  }
+  
+  return error.errors.map(err => ({
+    name: err.path.join('.'),
+    type: err.code,
+    value: err.received,
+    message: err.message
+  }));
+};
+
+/**
  * Zod adapter
  * @returns {Object} Zod adapter implementation
  */
@@ -41,16 +59,9 @@ export const createZodAdapter = (z) => ({
         if (result.success) {
           return { isValid: true };
         } else {
-          // Format errors
-          const formattedErrors = result.error.errors.map(err => ({
-            name: err.path.join('.'),
-            type: err.code,
-            value: err.received,
-            message: err.message
-          }));
           return {
             isValid: false,
-            errors: formattedErrors
+            errors: formatZodErrors(result.error)
           };
         }
       } else {
@@ -59,31 +70,17 @@ export const createZodAdapter = (z) => ({
         if (result.success) {
           return { isValid: true };
         } else {
-          // Format errors
-          const formattedErrors = result.error.errors.map(err => ({
-            name: err.path.join('.'),
-            type: err.code,
-            value: err.received,
-            message: err.message
-          }));
           return {
             isValid: false,
-            errors: formattedErrors
+            errors: formatZodErrors(result.error)
           };
         }
       }
     } catch (error) {
       // Handle any unexpected errors
-      const formattedErrors = error.errors ? error.errors.map(err => ({
-        name: err.path.join('.'),
-        type: err.code,
-        value: err.received,
-        message: err.message
-      })) : [{ name: 'general', type: 'error', message: error.message }];
-      
       return {
         isValid: false,
-        errors: formattedErrors
+        errors: formatZodErrors(error)
       };
     }
   },
@@ -240,6 +237,23 @@ const createZodValidationContext = (schema, name = 'default') => {
           // Check $setOnInsert operations
           if (modifier.$setOnInsert) {
             const result = schema.partial().safeParse(modifier.$setOnInsert);
+            if (!processZodErrors(result)) {
+              isValid = false;
+            }
+          }
+
+          // Check $push operations
+          if (modifier.$push) {
+            console.log("$push", modifier, schema.partial())
+            const result = schema.partial().safeParse(modifier.$push);
+            if (!processZodErrors(result)) {
+              isValid = false;
+            }
+          }
+
+          // Check $addToSet operations
+          if (modifier.$addToSet) {
+            const result = schema.partial().safeParse(modifier.$addToSet);
             if (!processZodErrors(result)) {
               isValid = false;
             }
