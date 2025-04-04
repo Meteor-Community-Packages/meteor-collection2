@@ -372,6 +372,12 @@ const getArrayElementSchema = (schema, fieldPath) => {
       }
     }
     
+    // Check if the field is an optional type
+    if (currentDef.typeName === 'ZodOptional') {
+      // Unwrap the optional type
+      currentDef = currentDef.innerType._def;
+    }
+    
     // Check if the field is an array
     if (currentDef.typeName === 'ZodArray') {
       // Return the array element schema
