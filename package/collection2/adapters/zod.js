@@ -118,7 +118,6 @@ export const createZodAdapter = (z) => ({
       // Get the expected type directly from the error
       const expectedType = invalidKeys[0].expected || 'string';
       const receivedValue = invalidKeys[0].value;
-      
       message = `Field '${firstErrorKey}' has invalid type: expected ${expectedType}, received ${receivedValue}`;
     }
     // Special handling for string length errors
@@ -244,19 +243,55 @@ const createZodValidationContext = (schema, name = 'default') => {
 
           // Check $push operations
           if (modifier.$push) {
-            console.log("$push", modifier, schema.partial())
-            const result = schema.partial().safeParse(modifier.$push);
-            if (!processZodErrors(result)) {
-              isValid = false;
-            }
+            // For each field in $push
+            Object.entries(modifier.$push).forEach(([field, value]) => {
+              // Get the array element schema for this field
+              const elementSchema = getArrayElementSchema(schema, field);
+              
+              if (elementSchema) {
+                // Validate the value against the array element schema
+                if (!validateArrayElement(elementSchema, value, processZodErrors)) {
+                  isValid = false;
+                }
+              } else {
+                // If we can't find a schema for this field, check if the field is allowed
+                if (!schema.allowsKey(field)) {
+                  errors.push({
+                    name: field,
+                    type: 'field_not_allowed',
+                    value: value,
+                    message: `Field '${field}' is not allowed by the schema`
+                  });
+                  isValid = false;
+                }
+              }
+            });
           }
 
           // Check $addToSet operations
           if (modifier.$addToSet) {
-            const result = schema.partial().safeParse(modifier.$addToSet);
-            if (!processZodErrors(result)) {
-              isValid = false;
-            }
+            // For each field in $addToSet
+            Object.entries(modifier.$addToSet).forEach(([field, value]) => {
+              // Get the array element schema for this field
+              const elementSchema = getArrayElementSchema(schema, field);
+              if (elementSchema) {
+                // Validate the value against the array element schema
+                if (!validateArrayElement(elementSchema, value, processZodErrors)) {
+                  isValid = false;
+                }
+              } else {
+                // If we can't find a schema for this field, check if the field is allowed
+                if (!schema.allowsKey(field)) {
+                  errors.push({
+                    name: field,
+                    type: 'field_not_allowed',
+                    value: value,
+                    message: `Field '${field}' is not allowed by the schema`
+                  });
+                  isValid = false;
+                }
+              }
+            });
           }
           
           return isValid;
@@ -300,6 +335,83 @@ const createZodValidationContext = (schema, name = 'default') => {
       return error ? error.message : '';
     }
   };
+};
+
+/**
+ * Extracts the array element schema from a Zod schema for a specific field path
+ * @param {Object} schema - The Zod schema
+ * @param {String} fieldPath - The field path (e.g., 'comments' or 'nested.array')
+ * @returns {Object|null} The array element schema or null if not found/not an array
+ */
+const getArrayElementSchema = (schema, fieldPath) => {
+  try {
+    // Get the shape from the schema definition
+    const shape = schema._def?.shape?.();
+    if (!shape) return null;
+    // Handle nested paths (e.g., 'nested.array')
+    const parts = fieldPath.split('.');
+    let currentShape = shape;
+    let currentDef = null;
+    
+    // Navigate through the nested structure
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      if (!currentShape[part]) return null;
+      
+      currentDef = currentShape[part]._def;
+      
+      // If we're not at the last part, we need to get the nested shape
+      if (i < parts.length - 1) {
+        // For objects, get the nested shape
+        if (currentDef.typeName === 'ZodObject') {
+          currentShape = currentDef.shape();
+        } else {
+          // Not an object, can't navigate further
+          return null;
+        }
+      }
+    }
+    
+    // Check if the field is an array
+    if (currentDef.typeName === 'ZodArray') {
+      // Return the array element schema
+      return currentDef.type;
+    }
+    
+    return null; // Not an array
+  } catch (error) {
+    console.error('Error extracting array element schema:', error);
+    return null;
+  }
+};
+
+/**
+ * Validates a value against an array element schema
+ * @param {Object} schema - The array element schema
+ * @param {*} value - The value to validate
+ * @param {Function} processErrors - Function to process validation errors
+ * @returns {Boolean} True if valid, false otherwise
+ */
+const validateArrayElement = (elementSchema, value, processErrors) => {
+  if (!elementSchema) return true; // No schema to validate against
+  
+  // Handle $each operator
+  if (value && typeof value === 'object' && value.$each) {
+    // Validate each element in the array
+    let isValid = true;
+    for (const item of value.$each) {
+      const result = elementSchema.safeParse(item);
+      if (!result.success) {
+        processErrors(result);
+        isValid = false;
+      }
+    }
+    return isValid;
+  }
+  
+  // Handle direct value
+  const result = elementSchema.safeParse(value);
+  return result.success ? true : !processErrors(result);
 };
 
 /**
