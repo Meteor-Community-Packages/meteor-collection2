@@ -171,170 +171,335 @@ export const createZodAdapter = (z) => ({
 });
 
 /**
+ * ZodValidationContext class for handling Zod schema validation
+ * Provides a Collection2-compatible validation context
+ */
+class ZodValidationContext {
+  /**
+   * Create a new ZodValidationContext
+   * @param {Object} schema - The Zod schema
+   * @param {String} name - Optional name for the context
+   */
+  constructor(schema, name = 'default') {
+    this.schema = schema;
+    this.name = name;
+    this.errors = [];
+  }
+
+  /**
+   * Validate an object against the schema
+   * @param {Object} obj - The object to validate
+   * @param {Object} options - Validation options
+   * @returns {Boolean} True if valid, false otherwise
+   */
+  validate(obj, options = {}) {
+    this.errors = []; // Clear previous errors
+    
+    try {
+      // For modifiers, we need special handling
+      if (options.modifier) {
+        // For now, we'll just validate that the fields being modified are valid
+        // In a real implementation, we would validate each modifier operation
+        const modifier = obj;
+        let isValid = true;
+        
+        // Check $set operations
+        if (modifier.$set) {
+          const result = this.schema.partial().safeParse(modifier.$set);
+          if (!this._processZodErrors(result)) {
+            isValid = false;
+          }
+        }
+        
+        // Check $setOnInsert operations
+        if (modifier.$setOnInsert) {
+          const result = this.schema.partial().safeParse(modifier.$setOnInsert);
+          if (!this._processZodErrors(result)) {
+            isValid = false;
+          }
+        }
+
+        // Check $push operations
+        if (modifier.$push) {
+          // For each field in $push
+          Object.entries(modifier.$push).forEach(([field, value]) => {
+            // Get the array element schema for this field
+            const elementSchema = getArrayElementSchema(this.schema, field);
+            
+            if (elementSchema) {
+              // Handle $each operator
+              if (value && typeof value === 'object' && value.$each) {
+                for (const item of value.$each) {
+                  const result = elementSchema.safeParse(item);
+                  if (!result.success) {
+                    isValid = false;
+                    // Add validation error for each invalid item
+                    const err = result.error.errors[0] || {};
+                    const errorPath = err.path ? err.path.join('.') : '';
+                    const fieldName = errorPath ? `${field}.${errorPath}` : field;
+                    
+                    // Create a more specific error message for missing fields
+                    let errorMessage = '';
+                    if (err.code === 'invalid_type' && err.received === undefined) {
+                      errorMessage = `Field '${errorPath || 'text'}' is required but was not provided in array field '${field}'`;
+                    } else {
+                      errorMessage = `Invalid value for array field '${field}': ${err.message || 'validation failed'}`;
+                    }
+                    
+                    this.errors.push({
+                      name: fieldName,
+                      type: 'ValidationError',
+                      value: item,
+                      expected: err.expected || 'valid type',
+                      message: errorMessage
+                    });
+                  }
+                }
+              } else {
+                // Handle direct value
+                const result = elementSchema.safeParse(value);
+                if (!result.success) {
+                  isValid = false;
+                  // Add validation error for invalid value
+                  const err = result.error.errors[0] || {};
+                  const errorPath = err.path ? err.path.join('.') : '';
+                  const fieldName = errorPath ? `${field}.${errorPath}` : field;
+                  
+                  // Create a more specific error message for missing fields
+                  let errorMessage = '';
+                  if (err.code === 'invalid_type' && err.received === undefined) {
+                    errorMessage = `Field '${errorPath || 'text'}' is required but was not provided in array field '${field}'`;
+                  } else {
+                    errorMessage = `Invalid value for array field '${field}': ${err.message || 'validation failed'}`;
+                  }
+                  
+                  this.errors.push({
+                    name: fieldName,
+                    type: 'ValidationError',
+                    value: value,
+                    expected: err.expected || 'valid type',
+                    message: errorMessage
+                  });
+                }
+              }
+            } else {
+              // If we can't find a schema for this field, check if the field is allowed
+              if (!this.schema.allowsKey(field)) {
+                this.errors.push({
+                  name: field,
+                  type: 'ValidationError',
+                  value: value,
+                  message: `Field '${field}' is not allowed by the schema`
+                });
+                isValid = false;
+              }
+            }
+          });
+        }
+
+        // Check $addToSet operations
+        if (modifier.$addToSet) {
+          // For each field in $addToSet
+          Object.entries(modifier.$addToSet).forEach(([field, value]) => {
+            // Get the array element schema for this field
+            const elementSchema = getArrayElementSchema(this.schema, field);
+            if (elementSchema) {
+              // Handle $each operator
+              if (value && typeof value === 'object' && value.$each) {
+                for (const item of value.$each) {
+                  const result = elementSchema.safeParse(item);
+                  if (!result.success) {
+                    isValid = false;
+                    // Add validation error for each invalid item
+                    const err = result.error.errors[0] || {};
+                    const errorPath = err.path ? err.path.join('.') : '';
+                    const fieldName = errorPath ? `${field}.${errorPath}` : field;
+                    
+                    // Create a more specific error message for missing fields
+                    let errorMessage = '';
+                    if (err.code === 'invalid_type' && err.received === undefined) {
+                      errorMessage = `Field '${errorPath || 'text'}' is required but was not provided in array field '${field}'`;
+                    } else {
+                      errorMessage = `Invalid value for array field '${field}': ${err.message || 'validation failed'}`;
+                    }
+                    
+                    this.errors.push({
+                      name: fieldName,
+                      type: 'ValidationError',
+                      value: item,
+                      expected: err.expected || 'valid type',
+                      message: errorMessage
+                    });
+                  }
+                }
+              } else {
+                // Handle direct value
+                const result = elementSchema.safeParse(value);
+                if (!result.success) {
+                  isValid = false;
+                  // Add validation error for invalid value
+                  const err = result.error.errors[0] || {};
+                  const errorPath = err.path ? err.path.join('.') : '';
+                  const fieldName = errorPath ? `${field}.${errorPath}` : field;
+                  
+                  // Create a more specific error message for missing fields
+                  let errorMessage = '';
+                  if (err.code === 'invalid_type' && err.received === undefined) {
+                    errorMessage = `Field '${errorPath || 'text'}' is required but was not provided in array field '${field}'`;
+                  } else {
+                    errorMessage = `Invalid value for array field '${field}': ${err.message || 'validation failed'}`;
+                  }
+                  
+                  this.errors.push({
+                    name: fieldName,
+                    type: 'ValidationError',
+                    value: value,
+                    expected: err.expected || 'valid type',
+                    message: errorMessage
+                  });
+                }
+              }
+            } else {
+              // If we can't find a schema for this field, check if the field is allowed
+              if (!this.schema.allowsKey(field)) {
+                this.errors.push({
+                  name: field,
+                  type: 'ValidationError',
+                  value: value,
+                  message: `Field '${field}' is not allowed by the schema`
+                });
+                isValid = false;
+              }
+            }
+          });
+        }
+        
+        return isValid;
+      } else {
+        // For normal documents (insert)
+        const result = this.schema.safeParse(obj);
+        if (result.success) {
+          return true;
+        } else {
+          this._processZodErrors(result, true);
+          return false;
+        }
+      }
+    } catch (error) {
+      this.errors.push({
+        name: 'general',
+        type: 'ValidationError',
+        value: null,
+        message: error.message || 'Validation failed'
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Process Zod validation errors
+   * @private
+   * @param {Object} result - The Zod validation result
+   * @param {Boolean} isArray - Whether the validation is for an array
+   * @returns {Boolean} True if valid, false otherwise
+   */
+  _processZodErrors(result, isArray = false) {
+    if (!result.success) {
+      // Set the error name to ValidationError for consistent error handling
+      if (result.error) {
+        result.error.name = 'ValidationError';
+      }
+      
+      const zodErrors = result.error.errors || [];
+      for (const err of zodErrors) {
+        const path = isArray ? (Array.isArray(err.path) ? err.path.join('.') : err.path) : err.path.join('.');
+        
+        // Extract expected type from Zod error
+        let expectedType = 'valid type';
+        if (err.code === 'invalid_type') {
+          // For type errors, Zod provides the expected type
+          expectedType = err.expected;
+        } else if (err.code === 'too_small' || err.code === 'too_big') {
+          // For string length errors
+          expectedType = 'string';
+        } else if (err.code === 'invalid_string') {
+          // For string validation errors (regex, email, etc.)
+          expectedType = `string (${err.validation})`;
+        }
+        
+        this.errors.push({
+          name: path || 'general',
+          type: 'ValidationError', // Set the error type to ValidationError
+          value: err.received,
+          expected: expectedType,
+          message: err.message,
+          zodError: err
+        });
+      }
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Get all validation errors
+   * @returns {Array} Array of validation errors
+   */
+  validationErrors() {
+    return this.errors;
+  }
+
+  /**
+   * Get all invalid keys (alias for validationErrors)
+   * @returns {Array} Array of validation errors
+   */
+  invalidKeys() {
+    return this.errors;
+  }
+
+  /**
+   * Reset validation state
+   */
+  resetValidation() {
+    this.errors = [];
+  }
+
+  /**
+   * Check if the validation is valid
+   * @returns {Boolean} True if valid, false otherwise
+   */
+  isValid() {
+    return this.errors.length === 0;
+  }
+
+  /**
+   * Check if a specific key is invalid
+   * @param {String} key - The key to check
+   * @returns {Boolean} True if the key is invalid, false otherwise
+   */
+  keyIsInvalid(key) {
+    return this.errors.some(err => err.name === key);
+  }
+
+  /**
+   * Get the error message for a specific key
+   * @param {String} key - The key to get the error message for
+   * @returns {String} The error message or empty string if no error
+   */
+  keyErrorMessage(key) {
+    const error = this.errors.find(err => err.name === key);
+    return error ? error.message : '';
+  }
+}
+
+/**
  * Creates a validation context for Zod schemas
  * @param {Object} schema - The Zod schema
  * @param {String} name - Optional name for the context
  * @returns {Object} A validation context compatible with Collection2
  */
 const createZodValidationContext = (schema, name = 'default') => {
-  let errors = [];
-  
-  return {
-    validate: (obj, options = {}) => {
-      errors = []; // Clear previous errors
-      
-      try {
-        // Helper function to process validation errors from Zod
-        const processZodErrors = (result, isArray = false) => {
-          if (!result.success) {
-            const zodErrors = result.error.errors || [];
-            for (const err of zodErrors) {
-              const path = isArray ? (Array.isArray(err.path) ? err.path.join('.') : err.path) : err.path.join('.');
-              
-              // Extract expected type from Zod error
-              let expectedType = 'valid type';
-              if (err.code === 'invalid_type') {
-                // For type errors, Zod provides the expected type
-                expectedType = err.expected;
-              } else if (err.code === 'too_small' || err.code === 'too_big') {
-                // For string length errors
-                expectedType = 'string';
-              } else if (err.code === 'invalid_string') {
-                // For string validation errors (regex, email, etc.)
-                expectedType = `string (${err.validation})`;
-              }
-              
-              errors.push({
-                name: path || 'general',
-                type: err.code || 'invalid',
-                value: err.received,
-                expected: expectedType,
-                message: err.message,
-                zodError: err
-              });
-            }
-            return false;
-          }
-          return true;
-        };
-
-        // For modifiers, we need special handling
-        if (options.modifier) {
-          // For now, we'll just validate that the fields being modified are valid
-          // In a real implementation, we would validate each modifier operation
-          const modifier = obj;
-          let isValid = true;
-          
-          // Check $set operations
-          if (modifier.$set) {
-            const result = schema.partial().safeParse(modifier.$set);
-            if (!processZodErrors(result)) {
-              isValid = false;
-            }
-          }
-          
-          // Check $setOnInsert operations
-          if (modifier.$setOnInsert) {
-            const result = schema.partial().safeParse(modifier.$setOnInsert);
-            if (!processZodErrors(result)) {
-              isValid = false;
-            }
-          }
-
-          // Check $push operations
-          if (modifier.$push) {
-            // For each field in $push
-            Object.entries(modifier.$push).forEach(([field, value]) => {
-              // Get the array element schema for this field
-              const elementSchema = getArrayElementSchema(schema, field);
-              
-              if (elementSchema) {
-                // Validate the value against the array element schema
-                if (!validateArrayElement(elementSchema, value, processZodErrors)) {
-                  isValid = false;
-                }
-              } else {
-                // If we can't find a schema for this field, check if the field is allowed
-                if (!schema.allowsKey(field)) {
-                  errors.push({
-                    name: field,
-                    type: 'field_not_allowed',
-                    value: value,
-                    message: `Field '${field}' is not allowed by the schema`
-                  });
-                  isValid = false;
-                }
-              }
-            });
-          }
-
-          // Check $addToSet operations
-          if (modifier.$addToSet) {
-            // For each field in $addToSet
-            Object.entries(modifier.$addToSet).forEach(([field, value]) => {
-              // Get the array element schema for this field
-              const elementSchema = getArrayElementSchema(schema, field);
-              if (elementSchema) {
-                // Validate the value against the array element schema
-                if (!validateArrayElement(elementSchema, value, processZodErrors)) {
-                  isValid = false;
-                }
-              } else {
-                // If we can't find a schema for this field, check if the field is allowed
-                if (!schema.allowsKey(field)) {
-                  errors.push({
-                    name: field,
-                    type: 'field_not_allowed',
-                    value: value,
-                    message: `Field '${field}' is not allowed by the schema`
-                  });
-                  isValid = false;
-                }
-              }
-            });
-          }
-          
-          return isValid;
-        } else {
-          // For normal documents (insert)
-          const result = schema.safeParse(obj);
-          if (result.success) {
-            return true;
-          } else {
-            processZodErrors(result, true);
-            return false;
-          }
-        }
-      } catch (error) {
-        errors.push({
-          name: 'general',
-          type: 'error',
-          value: null,
-          message: error.message || 'Validation failed'
-        });
-        return false;
-      }
-    },
-    validationErrors: () => {
-      return errors;
-    },
-    invalidKeys: () => {
-      return errors;
-    },
-    resetValidation: () => {
-      errors = [];
-    },
-    isValid: () => {
-      return errors.length === 0;
-    },
-    keyIsInvalid: (key) => {
-      return errors.some(err => err.name === key);
-    },
-    keyErrorMessage: (key) => {
-      const error = errors.find(err => err.name === key);
-      return error ? error.message : '';
-    }
-  };
+  return new ZodValidationContext(schema, name);
 };
 
 /**
@@ -389,35 +554,6 @@ const getArrayElementSchema = (schema, fieldPath) => {
     console.error('Error extracting array element schema:', error);
     return null;
   }
-};
-
-/**
- * Validates a value against an array element schema
- * @param {Object} schema - The array element schema
- * @param {*} value - The value to validate
- * @param {Function} processErrors - Function to process validation errors
- * @returns {Boolean} True if valid, false otherwise
- */
-const validateArrayElement = (elementSchema, value, processErrors) => {
-  if (!elementSchema) return true; // No schema to validate against
-  
-  // Handle $each operator
-  if (value && typeof value === 'object' && value.$each) {
-    // Validate each element in the array
-    let isValid = true;
-    for (const item of value.$each) {
-      const result = elementSchema.safeParse(item);
-      if (!result.success) {
-        processErrors(result);
-        isValid = false;
-      }
-    }
-    return isValid;
-  }
-  
-  // Handle direct value
-  const result = elementSchema.safeParse(value);
-  return result.success ? true : !processErrors(result);
 };
 
 /**
