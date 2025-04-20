@@ -429,7 +429,7 @@ class ZodValidationContext {
         
         this.errors.push({
           name: path || 'general',
-          type: 'ValidationError', // Set the error type to ValidationError
+          type: err.code, // Use the original Zod error code instead of hardcoding 'ValidationError'
           value: err.received,
           expected: expectedType,
           message: err.message,
