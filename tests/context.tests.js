@@ -1,10 +1,11 @@
+/* eslint-env mocha */
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { Meteor } from 'meteor/meteor';
 import { callMongoMethod } from './helper';
+import { Collection2 } from 'meteor/aldeed:collection2'
 
-/* global it */
 
 const contextCheckSchema = new SimpleSchema({
   foo: {
@@ -54,9 +55,13 @@ const contextCheckSchema = new SimpleSchema({
 });
 
 const contextCheck = new Mongo.Collection('contextCheck');
-contextCheck.attachSchema(contextCheckSchema);
 
-export default function addContextTests() {
+
+describe('context tests', () => {
+  before(() => {
+    contextCheck.attachSchema(contextCheckSchema);
+  })
+
   it('AutoValue Context', async function () {
     const testId = await callMongoMethod(contextCheck, 'insert', [{}]);
 
@@ -101,4 +106,4 @@ export default function addContextTests() {
     ctx = await callMongoMethod(contextCheck, 'findOne', [testId]);
     expect(ctx.context.docId).toBe(testId);
   });
-}
+});
