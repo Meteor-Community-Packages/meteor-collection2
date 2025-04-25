@@ -409,12 +409,13 @@ describe('Using Zod for validation', () => {
   });
 
   describe('Zod schemas with brand types', () => {
+    let brandedCollectionCounter = 0;
     let brandedCollection;
 
     beforeEach(() => {
-      // Create a fresh collection for each test
+      // Create a fresh collection for each test using an incrementing counter
       brandedCollection = new Mongo.Collection(
-        `branded_${new Date().getTime()}`,
+        `branded_test_${brandedCollectionCounter++}`,
         Meteor.isClient ? { connection: null } : undefined
       );
     });
