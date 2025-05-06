@@ -84,6 +84,10 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+## 4.1.2
+
+- Add a case to Meteor version resolution to account for an option when running Meteor from local checkout.
+
 ## 4.1.1
 
 - Improve types
