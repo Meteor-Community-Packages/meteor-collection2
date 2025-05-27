@@ -84,6 +84,10 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+## 4.1.3
+
+- Fixed Meteor version resolution for pre-releases.
+
 ## 4.1.2
 
 - Add a case to Meteor version resolution to account for an option when running Meteor from local checkout.
