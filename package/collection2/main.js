@@ -5,7 +5,7 @@ import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 
 const meteorVersion = Meteor.release === 'none' ? [3, 1] : Meteor.release.split('@')[1].split('.');
-const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1] >= 1;
+const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1].split('-')[0] >= 1;
 
 /**
  * Mongo.Collection.prototype.attachSchema
