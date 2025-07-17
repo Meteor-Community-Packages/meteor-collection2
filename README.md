@@ -91,7 +91,7 @@ Dynamic imports helps to cut down on bundle size but it requires you to manually
 ```js
 import 'meteor/aldeed:collection2/dynamic';
 
-Collection2.load();
+await Collection2.load();
 ```
 
 
