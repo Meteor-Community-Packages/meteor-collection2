@@ -13,6 +13,6 @@
   },
   "devDependencies": {
     "expect": "^26.6.2",
-    "puppeteer": "^19.11.1"
+    "puppeteer": "^24.14.0"
   }
 }
