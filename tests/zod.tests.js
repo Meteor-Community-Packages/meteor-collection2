@@ -533,7 +533,8 @@ describe('Using Zod for validation', () => {
       expect(combinedSchema).toBeDefined();
       
       // Check if the schema has properties from both schemas
-      const schemaShape = combinedSchema._def.shape();
+      // In Zod v4, shape is a property, not a function
+      const schemaShape = combinedSchema._def.shape;
       expect(schemaShape).toHaveProperty('title');
       expect(schemaShape).toHaveProperty('description');
       expect(schemaShape).toHaveProperty('createdAt');
