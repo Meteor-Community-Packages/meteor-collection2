@@ -4,6 +4,9 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [4.1.4](#414)
+- [4.1.3](#413)
+- [4.1.2](#412)
 - [4.1.1](#411)
 - [4.1.0](#410)
 - [4.0.4](#404)
@@ -83,6 +86,18 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 4.1.4
+
+- Actual release of 4.1.3
+
+## 4.1.3
+
+- Fixed Meteor version resolution for pre-releases.
+
+## 4.1.2
+
+- Add a case to Meteor version resolution to account for an option when running Meteor from local checkout.
 
 ## 4.1.1
 

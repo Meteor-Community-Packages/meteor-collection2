@@ -8,8 +8,8 @@ import { createSimpleSchemaAdapter as simpleSchemaAdapter } from './adapters/sim
 import { createZodAdapter as zodAdapter } from './adapters/zod';
 import { createAjvAdapter as ajvAdapter } from './adapters/ajv';
 
-const meteorVersion = Meteor.release.split('@')[1].split('.');
-const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1] >= 1;
+const meteorVersion = Meteor.release === 'none' ? [3, 1] : Meteor.release.split('@')[1].split('.');
+const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1].split('-')[0] >= 1;
 
 const C2 = {};
 C2._validators = {};
