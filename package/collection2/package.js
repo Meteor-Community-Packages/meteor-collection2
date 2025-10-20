@@ -1,10 +1,9 @@
-
 /* global Package, Npm */
 Package.describe({
   name: 'aldeed:collection2',
   summary:
     'Automatic validation of Meteor Mongo insert and update operations on the client and server',
-  version: '4.1.4',
+  version: '4.2.0-beta.1',
   documentation: '../../README.md',
   git: 'https://github.com/aldeed/meteor-collection2.git'
 });

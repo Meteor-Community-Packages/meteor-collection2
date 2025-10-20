@@ -3,9 +3,114 @@ import { Mongo } from 'meteor/mongo';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
+import { detectSchemaType } from './schemaDetectors';
+import { createSimpleSchemaAdapter as simpleSchemaAdapter } from './adapters/simpleSchema';
+import { createZodAdapter as zodAdapter } from './adapters/zod';
+import { createAjvAdapter as ajvAdapter } from './adapters/ajv';
 
 const meteorVersion = Meteor.release === 'none' ? ["3", "1"] : Meteor.release.split('@')[1].split('.');
 const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1].split('-')[0] >= 1;
+
+const C2 = {};
+C2._validators = {};
+
+C2.init = self => {
+  self._c2 = self._c2 || Object.create(null);
+  self._c2.schemas = self._c2.schemas || [null];
+  return self;
+};
+
+C2.validator = () => {
+  // Get the appropriate validator based on the schema type
+  return C2._getValidator();
+}
+
+// Helper function to detect schema type and return the appropriate validator
+C2._getValidator = () => {
+  // If we've already determined a validator, return it
+  if (C2._currentValidator) {
+    return C2._currentValidator;
+  }
+
+  // Try to load validators for known schema libraries
+  try {
+    // Check for SimpleSchema
+    if (typeof SimpleSchema !== 'undefined') {
+      C2._validators.SimpleSchema = C2._validators.SimpleSchema || simpleSchemaAdapter(SimpleSchema);
+      // No need to attach anything to the SimpleSchema library anymore
+    }
+  } catch (e) {
+    console.error('Error loading schema validators:', e);
+  }
+
+  return null;
+}
+
+/**
+ * @private
+ * @param {SimpleSchema|Object} schema
+ * @returns {Object} Schema validator
+ */
+C2._detectSchemaType = function(schema) {
+  // Use the centralized schema detection functions
+  const schemaType = detectSchemaType(schema);
+  
+  switch (schemaType) {
+    case 'SimpleSchema':
+      if (!C2._validators.SimpleSchema) {
+        C2._validators.SimpleSchema = simpleSchemaAdapter(SimpleSchema);
+      }
+      C2._currentValidator = C2._validators.SimpleSchema;
+      return C2._validators.SimpleSchema;
+      
+    case 'zod':
+      if (!C2._validators.zod) {
+        C2._validators.zod = zodAdapter({ 
+          ZodType: function() {}, // Dummy constructor for instanceof checks
+          object: (obj) => obj // Simplified for detection purposes
+        });
+      }
+      
+      // Ensure the schema has necessary methods by enhancing it
+      if (C2._validators.zod.enhance && typeof C2._validators.zod.enhance === 'function') {
+        schema = C2._validators.zod.enhance(schema);
+      }
+      
+      C2._currentValidator = C2._validators.zod;
+      return C2._validators.zod;
+      
+    case 'ajv':
+      if (!C2._validators.ajv) {
+        C2._validators.ajv = ajvAdapter(function() {}); // Dummy constructor
+      }
+      
+      // Ensure the schema has necessary methods by enhancing it
+      if (C2._validators.ajv.enhance && typeof C2._validators.ajv.enhance === 'function') {
+        schema = C2._validators.ajv.enhance(schema);
+      }
+      
+      C2._currentValidator = C2._validators.ajv;
+      return C2._validators.ajv;
+      
+    default:
+      // If we can't detect the schema type, default to SimpleSchema if available
+      if (C2._validators.SimpleSchema) {
+        C2._currentValidator = C2._validators.SimpleSchema;
+        return C2._validators.SimpleSchema;
+      }
+      
+      throw new Error(`Cannot determine schema type. Make sure you have a supported schema library installed (SimpleSchema, Zod, or AJV).`);
+  }
+};
+
+C2.schemas = (self) => {
+  if (!self._c2) {
+    C2.init(self);
+  }
+  return self._c2.schemas;
+}
+
+Object.assign(Collection2, { isInsertType, isUpsertType, isUpdateType })
 
 /**
  * Mongo.Collection.prototype.attachSchema
@@ -24,52 +129,60 @@ const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1].split('-')[0] >= 
  * schema object passed to its constructor.
  */
 Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
-    options = options || {};
+    options = options || Object.create(null);
+
+    const self = this;
+    
+    // Detect schema type and get appropriate validator
+    const validator = C2._detectSchemaType(ss);
 
     // Allow passing just the schema object
-    if (!SimpleSchema.isSimpleSchema(ss)) {
-      ss = new SimpleSchema(ss);
+    if (!validator.is(ss)) {
+      ss = validator.create(ss);
     }
 
     function attachTo(obj) {
       // we need an array to hold multiple schemas
       // position 0 is reserved for the "base" schema
-      obj._c2 = obj._c2 || {};
-      obj._c2._simpleSchemas = obj._c2._simpleSchemas || [null];
+      C2.init(obj);
+
+      const allSchemas = C2.schemas(obj);
 
       if (typeof options.selector === 'object') {
         // Selector Schemas
 
         // Extend selector schema with base schema
-        const baseSchema = obj._c2._simpleSchemas[0];
-        if (baseSchema) {
-          ss = extendSchema(baseSchema.schema, ss);
+        const base = allSchemas[0];
+        if (base) {
+          ss = validator.extend(base.schema, ss);
         }
 
         // Index of existing schema with identical selector
-        let schemaIndex;
-
+        let index;
+  
         // Loop through existing schemas with selectors,
-        for (schemaIndex = obj._c2._simpleSchemas.length - 1; schemaIndex > 0; schemaIndex--) {
-          const schema = obj._c2._simpleSchemas[schemaIndex];
-          if (schema && isEqual(schema.selector, options.selector)) break;
+        for (index = allSchemas.length - 1; index > 0; index--) {
+          const current = allSchemas[index];
+          if (current && isEqual(current.selector, options.selector)) break;
         }
-
-        if (schemaIndex <= 0) {
+  
+        if (index <= 0) {
           // We didn't find the schema in our array - push it into the array
-          obj._c2._simpleSchemas.push({
+          allSchemas.push({
             schema: ss,
             selector: options.selector
           });
-        } else {
+        }
+        else {
           // We found a schema with an identical selector in our array,
           if (options.replace === true) {
             // Replace existing selector schema with new selector schema
-            obj._c2._simpleSchemas[schemaIndex].schema = ss;
-          } else {
+            allSchemas[index].schema = ss;
+          }
+          else {
             // Extend existing selector schema with new selector schema.
-            obj._c2._simpleSchemas[schemaIndex].schema = extendSchema(
-              obj._c2._simpleSchemas[schemaIndex].schema,
+            allSchemas[index].schema = validator.extend(
+              allSchemas[index].schema,
               ss
             );
           }
@@ -78,23 +191,21 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         // Base Schema
         if (options.replace === true) {
           // Replace base schema and delete all other schemas
-          obj._c2._simpleSchemas = [
-            {
-              schema: ss,
-              selector: options.selector
-            }
-          ];
+          obj._c2.schemas = [{
+            schema: ss,
+            selector: options.selector
+          }];
         } else {
           // Set base schema if not yet set
-          if (!obj._c2._simpleSchemas[0]) {
-            obj._c2._simpleSchemas[0] = { schema: ss, selector: undefined };
-            return obj._c2._simpleSchemas[0];
+          if (!allSchemas[0]) {
+            allSchemas[0] = { schema: ss, selector: undefined };
+            return allSchemas[0];
           }
           // Extend base schema and therefore extend all schemas
-          obj._c2._simpleSchemas.forEach((schema, index) => {
-            if (obj._c2._simpleSchemas[index]) {
-              obj._c2._simpleSchemas[index].schema = extendSchema(
-                obj._c2._simpleSchemas[index].schema,
+          allSchemas.forEach((schema, i) => {
+            if (allSchemas[i]) {
+              allSchemas[i].schema = validator.extend(
+                allSchemas[i].schema,
                 ss
               );
             }
@@ -102,18 +213,18 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         }
       }
     }
-
-    attachTo(this);
+  
+    attachTo(self);
     // Attach the schema to the underlying LocalCollection, too
-    if (this._collection instanceof LocalCollection) {
-      this._collection._c2 = this._collection._c2 || {};
-      attachTo(this._collection);
+    if (self._collection instanceof LocalCollection) {
+      C2.init(self._collection);
+      attachTo(self._collection);
     }
-
-    defineDeny(this, options);
-    keepInsecure(this);
-
-    Collection2.emit('schema.attached', this, ss, options);
+  
+    defineDeny(self, options);
+    keepInsecure(self);
+  
+    Collection2.emit('schema.attached', self, ss, options);
   };
 
   for (const obj of [Mongo.Collection, LocalCollection]) {
@@ -128,16 +239,18 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
      * @param {Object} [query] - it could be <query> on update/upsert
      * @return {Object} Schema
      */
-    obj.prototype.simpleSchema = function (doc, options, query) {
-      if (!this._c2) return null;
-      if (this._c2._simpleSchema) return this._c2._simpleSchema;
+    obj.prototype.c2Schema = function (doc, options, query) {
+      const self = this;
+      if (!self._c2) return null;
+      if (self._c2._schema) return self._c2._schema;
 
-      const schemas = this._c2._simpleSchemas;
-      if (schemas && schemas.length > 0) {
+      const allSchemas = C2.schemas(self);
+
+      if (allSchemas && allSchemas.length > 0) {
         let schema, selector, target;
         // Position 0 reserved for base schema
-        for (let i = 1; i < schemas.length; i++) {
-          schema = schemas[i];
+        for (let i = 1; i < allSchemas.length; i++) {
+          schema = allSchemas[i];
           selector = Object.keys(schema.selector)[0];
 
           // We will set this to undefined because in theory, you might want to select
@@ -162,8 +275,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
             return schema.schema;
           }
         }
-        if (schemas[0]) {
-          return schemas[0].schema;
+        if (allSchemas[0]) {
+          return allSchemas[0].schema;
         } else {
           throw new Error('No default schema');
         }
@@ -190,15 +303,15 @@ function getArgumentsAndValidationContext(methodName, args, async) {
          userId = Meteor.userId();
        } catch (err) {}
 
-       [validatedArgs, validationContext] = doValidate(
-         this,
-         methodName,
+       [validatedArgs, validationContext] = doValidate({
+         collection: this,
+         type: methodName,
          args,
-         Meteor.isServer || this._connection === null, // getAutoValues
+         getAutoValues: Meteor.isServer || this._connection === null, // getAutoValues
          userId,
-         Meteor.isServer, // isFromTrustedCode
+         isFromTrustedCode: Meteor.isServer, // isFromTrustedCode
          async
-       );
+       });
 
        if (!validatedArgs) {
          // doValidate already called the callback or threw the error, so we're done.
@@ -219,35 +332,65 @@ function getArgumentsAndValidationContext(methodName, args, async) {
        : Mongo.Collection.prototype[methodName.replace('Async', '')];
 
     if (!_super) return;
+  
     Mongo.Collection.prototype[methodName] = function (...args) {
-       const [validatedArgs, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, async);
-
-       if (async && !Meteor.isFibersDisabled) {
-         try {
-           this[methodName.replace('Async', '')].isCalledFromAsync = true;
-           _super.isCalledFromAsync = true;
-           return Promise.resolve(_super.apply(this, validatedArgs));
-         } catch (err) {
-          if (this._c2) {
-            const addValidationErrorsPropName =
+      let options = isInsertType(methodName) ? args[1] : args[2];
+  
+      // Support missing options arg
+      if (!options || typeof options === 'function') {
+        options = {};
+      }
+  
+      let validationContext = {};
+      let error;
+      if (this._c2 && options.bypassCollection2 !== true) {
+        let userId = null;
+        try {
+          // https://github.com/aldeed/meteor-collection2/issues/175
+          userId = Meteor.userId();
+        } catch (err) {}
+  
+        [args, validationContext] = doValidate({
+          collection: this,
+          type: methodName,
+          args,
+          getAutoValues: Meteor.isServer || this._connection === null, // getAutoValues
+          userId,
+          isFromTrustedCode: Meteor.isServer, // isFromTrustedCode
+          async
+        });
+  
+        if (!args) {
+          // doValidate already called the callback or threw the error, so we're done.
+          // But insert should always return an ID to match core behavior.
+          return isInsertType(methodName) ? this._makeNewID() : undefined;
+        }
+      } else {
+        // We still need to adjust args because insert does not take options
+        if (isInsertType(methodName) && typeof args[1] !== 'function') args.splice(1, 1);
+      }
+  
+      if (async && !Meteor.isFibersDisabled) {
+        try {
+          this[methodName.replace('Async', '')].isCalledFromAsync = true;
+          _super.isCalledFromAsync = true;
+          return Promise.resolve(_super.apply(this, args));
+        } catch (err) {
+          const addValidationErrorsPropName =
             typeof validationContext.addValidationErrors === 'function'
-            ? 'addValidationErrors'
-               : 'addInvalidKeys';
-           parsingServerError([err], validationContext, addValidationErrorsPropName);
-           const error = getErrorObject(validationContext, err.message, err.code);
-           return Promise.reject(error);
-          } else {
-            // do not change error if collection isn't being validated by collection2
-            return Promise.reject(err);
-          }
-         }
-       } else {
-         return _super.apply(this, validatedArgs);
-       }
+              ? 'addValidationErrors'
+              : 'addInvalidKeys';
+          parsingServerError([err], validationContext, addValidationErrorsPropName);
+          error = getErrorObject(validationContext, err.message, err.code);
+          return Promise.reject(error);
+        }
+      } else {
+        return _super.apply(this, args);
+      }
     };
-   }
-
-   function _methodMutationAsync(methodName) {
+  }
+  
+  function _methodMutationAsync(methodName) {
     const _super = Mongo.Collection.prototype[methodName];
     Mongo.Collection.prototype[methodName] = async function (...args) {
        const [validatedArgs, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, true);
@@ -272,20 +415,20 @@ function getArgumentsAndValidationContext(methodName, args, async) {
 
 
   // Wrap DB write operation methods
-  if (Mongo.Collection.prototype.insertAsync) {
-    if (Meteor.isFibersDisabled) {
-      ['insertAsync', 'updateAsync'].forEach(_methodMutationAsync.bind(this));
-    } else {
-      ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
-    }
+if (Mongo.Collection.prototype.insertAsync) {
+  if (Meteor.isFibersDisabled) {
+    ['insertAsync', 'updateAsync'].forEach(_methodMutationAsync.bind(this));
+  } else {
+    ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
   }
   ['insert', 'update'].forEach(_methodMutation.bind(this, false));
+} 
 
-  /*
-   * Private
-   */
-
-  function doValidate(collection, type, args, getAutoValues, userId, isFromTrustedCode, async) {
+/*
+ * Private
+ */
+  
+function doValidate({ collection, type, args = [], getAutoValues, userId, isFromTrustedCode, async }) {
     let doc, callback, error, options, selector;
 
     if (!args.length) {
@@ -314,15 +457,15 @@ function getArgumentsAndValidationContext(methodName, args, async) {
     } else {
       throw new Error('invalid type argument');
     }
-
+  
     const validatedObjectWasInitiallyEmpty = Object.keys(doc).length === 0;
-
+  
     // Support missing options arg
     if (!callback && typeof options === 'function') {
       callback = options;
       options = {};
     }
-    options = options || {};
+    options = options || Object.create(null);
 
     const last = args.length - 1;
 
@@ -333,7 +476,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
 
     // we need to pass `doc` and `options` to `simpleSchema` method, that's why
     // schema declaration moved here
-    let schema = collection.simpleSchema(doc, options, selector);
+    let schema = collection.c2Schema(doc, options, selector);
     const isLocalCollection = collection._connection === null;
 
     // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
@@ -361,6 +504,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
         validationContext = schema.namedContext(validationContext);
       }
     } else {
+      // For backward compatibility, check if schema has namedContext method
       validationContext = schema.namedContext();
     }
 
@@ -556,37 +700,18 @@ function getArgumentsAndValidationContext(methodName, args, async) {
   }
 
   function getErrorObject(context, appendToMessage = '', code) {
-    let message;
-    const invalidKeys =
-      typeof context.validationErrors === 'function'
-        ? context.validationErrors()
-        : context.invalidKeys?.();
-
-    if (invalidKeys?.length) {
-      const firstErrorKey = invalidKeys[0].name;
-      const firstErrorMessage = context.keyErrorMessage(firstErrorKey);
-
-      // If the error is in a nested key, add the full key to the error message
-      // to be more helpful.
-      if (firstErrorKey.indexOf('.') === -1) {
-        message = firstErrorMessage;
-      } else {
-        message = `${firstErrorMessage} (${firstErrorKey})`;
-      }
-    } else {
-      message = 'Failed validation';
+    // Get the current validator from Collection2
+    const validator = C2._currentValidator;
+    
+    // If the validator has a getErrorObject method, use it
+    if (validator && typeof validator.getErrorObject === 'function') {
+      return validator.getErrorObject(context, appendToMessage, code);
     }
-    message = `${message} ${appendToMessage}`.trim();
-    const error = new Error(message);
-    error.invalidKeys = invalidKeys;
-    error.validationContext = context;
-    error.code = code;
-    // If on the server, we add a sanitized error, too, in case we're
-    // called from a method.
-    if (Meteor.isServer) {
-      error.sanitizedError = new Meteor.Error(400, message, EJSON.stringify(error.invalidKeys));
-    }
-    return error;
+    
+    // If we get here, it means we couldn't find a validator or the validator doesn't have a getErrorObject method
+    // This indicates a problem with schema detection or adapter implementation
+    throw new Error('No validator found or validator does not implement getErrorObject method. ' +
+                   'This indicates a problem with schema detection or adapter implementation.');
   }
 
   function addUniqueError(context, errorMessage) {
@@ -694,66 +819,35 @@ function getArgumentsAndValidationContext(methodName, args, async) {
     // own for each operation for this collection. And the user may still add
     // additional deny functions, but does not have to.
   }
+  
+C2.alreadyDefined = {};
+  
+function defineDeny(collection, options) {
+  const validator = C2.validator();
+  if (C2.alreadyDefined[collection._name]) {
+    return false; // no definition added;
+  }
+  const isLocalCollection = collection._connection === null;
 
-  const alreadyDefined = {};
-
-  function defineDeny(c, options) {
-    if (!alreadyDefined[c._name]) {
-      const isLocalCollection = c._connection === null;
-
-      // First, define deny functions to extend doc with the results of clean
-      // and auto-values. This must be done with "transform: null" or we would be
-      // extending a clone of doc and therefore have no effect.
-      const firstDeny = {
-        insert: function (userId, doc) {
-          // Referenced doc is cleaned in place
-          c.simpleSchema(doc).clean(doc, {
-            mutate: true,
-            isModifier: false,
-            // We don't do these here because they are done on the client if desired
-            filter: false,
-            autoConvert: false,
-            removeEmptyStrings: false,
-            trimStrings: false,
-            extendAutoValueContext: {
-              isInsert: true,
-              isUpdate: false,
-              isUpsert: false,
-              userId,
-              isFromTrustedCode: false,
-              docId: doc._id,
-              isLocalCollection
-            }
-          });
-
-          return false;
-        },
-        update: function (userId, doc, fields, modifier) {
-          // Referenced modifier is cleaned in place
-          c.simpleSchema(modifier).clean(modifier, {
-            mutate: true,
-            isModifier: true,
-            // We don't do these here because they are done on the client if desired
-            filter: false,
-            autoConvert: false,
-            removeEmptyStrings: false,
-            trimStrings: false,
-            extendAutoValueContext: {
-              isInsert: false,
-              isUpdate: true,
-              isUpsert: false,
-              userId,
-              isFromTrustedCode: false,
-              docId: doc && doc._id,
-              isLocalCollection
-            }
-          });
-
-          return false;
-        },
-        fetch: ['_id'],
-        transform: null
-      };
+  // First, define deny functions to extend doc with the results of clean
+  // and auto-values. This must be done with "transform: null" or we would be
+  // extending a clone of doc and therefore have no effect.
+  const firstDeny = {
+    insert: function (userId, doc) {
+      // Referenced doc is cleaned in place
+      const schema = collection.c2Schema(doc);
+      validator.clean({ doc, schema, userId, isLocalCollection, type: 'insert' });
+      return false;
+    },
+    update: function (userId, doc, fields, modifier) {
+      // Referenced modifier is cleaned in place
+      const schema = collection.c2Schema(doc);
+      validator.clean({ userId, doc, fields, modifier, schema, type: 'update' });
+      return false;
+    },
+    fetch: ['_id'],
+    transform: null
+  };
 
       if (Meteor.isFibersDisabled && !noAsyncAllow) {
         Object.assign(firstDeny, {
@@ -762,73 +856,73 @@ function getArgumentsAndValidationContext(methodName, args, async) {
         });
       }
 
-      c.deny(firstDeny);
+  collection.deny(firstDeny);
 
-      // Second, define deny functions to validate again on the server
-      // for client-initiated inserts and updates. These should be
-      // called after the clean/auto-value functions since we're adding
-      // them after. These must *not* have "transform: null" if options.transform is true because
-      // we need to pass the doc through any transforms to be sure
-      // that custom types are properly recognized for type validation.
-      const secondDeny = {
-        insert: function (userId, doc) {
-          // We pass the false options because we will have done them on the client if desired
-          doValidate(
-            c,
-            'insert',
-            [
-              doc,
-              {
-                trimStrings: false,
-                removeEmptyStrings: false,
-                filter: false,
-                autoConvert: false
-              },
-              function (error) {
-                if (error) {
-                  throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
-                }
-              }
-            ],
-            false, // getAutoValues
-            userId,
-            false // isFromTrustedCode
-          );
+  // Second, define deny functions to validate again on the server
+  // for client-initiated inserts and updates. These should be
+  // called after the clean/auto-value functions since we're adding
+  // them after. These must *not* have "transform: null" if options.transform is true because
+  // we need to pass the doc through any transforms to be sure
+  // that custom types are properly recognized for type validation.
+  const secondDeny = {
+    insert: function (userId, doc) {
+      // We pass the false options because we will have done them on the client if desired
+      doValidate({
+        collection,
+        type: 'insert',
+        args: [
+          doc,
+          {
+            trimStrings: false,
+            removeEmptyStrings: false,
+            filter: false,
+            autoConvert: false
+          },
+          function (error) {
+            if (error) {
+              throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+            }
+          }
+        ],
+        getAutoValues: false, // getAutoValues
+        userId,
+        isFromTrustedCode: false // isFromTrustedCode
+      });
 
-          return false;
-        },
-        update: function (userId, doc, fields, modifier) {
-          // NOTE: This will never be an upsert because client-side upserts
-          // are not allowed once you define allow/deny functions.
-          // We pass the false options because we will have done them on the client if desired
-          doValidate(
-            c,
-            'update',
-            [
-              { _id: doc && doc._id },
-              modifier,
-              {
-                trimStrings: false,
-                removeEmptyStrings: false,
-                filter: false,
-                autoConvert: false
-              },
-              function (error) {
-                if (error) {
-                  throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
-                }
-              }
-            ],
-            false, // getAutoValues
-            userId,
-            false // isFromTrustedCode
-          );
+      return false;
+    },
+    update: function (userId, doc, fields, modifier) {
+      // NOTE: This will never be an upsert because client-side upserts
+      // are not allowed once you define allow/deny functions.
+      // We pass the false options because we will have done them on the client if desired
+      doValidate({
+        collection,
+        type: 'update',
+        args: [
+          { _id: doc && doc._id },
+          modifier,
+          {
+            trimStrings: false,
+            removeEmptyStrings: false,
+            filter: false,
+            autoConvert: false
+          },
+          function (error) {
+            if (error) {
+              throw new Meteor.Error(400, 'INVALID', EJSON.stringify(error.invalidKeys));
+            }
+          }
+        ],
+        getAutoValues: false, // getAutoValues
+        userId,
+        isFromTrustedCode: false // isFromTrustedCode
+      });
 
-          return false;
-        },
-        fetch: ['_id'],
-        ...(options.transform === true ? {} : { transform: null })
-      };
+      return false;
+    },
+    fetch: ['_id'],
+    ...(options.transform === true ? {} : { transform: null })
+  };
 
       if (Meteor.isFibersDisabled && !noAsyncAllow) {
         Object.assign(secondDeny, {
@@ -837,20 +931,10 @@ function getArgumentsAndValidationContext(methodName, args, async) {
         });
       }
 
-      c.deny(secondDeny);
+  collection.deny(secondDeny);
 
-      // note that we've already done this collection so that we don't do it again
-      // if attachSchema is called again
-      alreadyDefined[c._name] = true;
-    }
-  }
-
-  function extendSchema(s1, s2) {
-    if (s2.version >= 2) {
-      const ss = new SimpleSchema(s1);
-      ss.extend(s2);
-      return ss;
-    } else {
-      return new SimpleSchema([s1, s2]);
-    }
-  }
+  // note that we've already done this collection so that we don't do it again
+  // if attachSchema is called again
+  C2.alreadyDefined[collection._name] = true;
+  return true; // new definition added
+}

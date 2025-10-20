@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        meteor: [ '2.13.3', '3.0.4', '3.1.2' ]
+        meteor: [ '3.2' ]
     # needs: [lintcode,lintstyle,lintdocs] # we could add prior jobs for linting, if desired
     steps:
       - name: checkout

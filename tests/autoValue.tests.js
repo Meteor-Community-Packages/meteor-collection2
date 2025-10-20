@@ -1,41 +1,48 @@
-/* eslint-env mocha */
 import 'meteor/aldeed:collection2/static';
 import { Meteor } from 'meteor/meteor';
-import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
+import expect from 'expect';
 import SimpleSchema from "meteor/aldeed:simple-schema";
 import { callMongoMethod } from './helper';
+import { Collection2 } from 'meteor/aldeed:collection2'
 
 const collection = new Mongo.Collection('autoValueTestCollection');
 const localCollection = new Mongo.Collection('autoValueTestLocalCollection', {
   connection: null
 });
 
-[collection, localCollection].forEach((c) => {
-  c.attachSchema(
-    new SimpleSchema({
-      clientAV: {
-        type: SimpleSchema.Integer,
-        optional: true,
-        autoValue() {
-          if (Meteor.isServer) return;
-          return (this.value || 0) + 1;
+const attach = () => {
+  [collection, localCollection].forEach((c) => {
+    c.attachSchema(
+      new SimpleSchema({
+        clientAV: {
+          type: SimpleSchema.Integer,
+          optional: true,
+          autoValue() {
+            if (Meteor.isServer) return;
+            return (this.value || 0) + 1;
+          }
+        },
+        serverAV: {
+          type: SimpleSchema.Integer,
+          optional: true,
+          autoValue() {
+            console.debug('get autovalues', Meteor.isClient)
+            if (Meteor.isClient) return;
+            return (this.value || 0) + 1;
+          }
         }
-      },
-      serverAV: {
-        type: SimpleSchema.Integer,
-        optional: true,
-        autoValue() {
-          if (Meteor.isClient) return;
-          return (this.value || 0) + 1;
-        }
-      }
-    })
-  );
-});
+      })
+    );
+  });
+}
 
 if (Meteor.isClient) {
   describe('autoValue on client', function () {
+    before(() => {
+      attach()
+    })
+
     it('for client insert, autoValues should be added on the server only (added to only a validated clone of the doc on client)', function (done) {
       collection.insert({}, (error, id) => {
         if (error) {
@@ -79,6 +86,9 @@ if (Meteor.isClient) {
 
 if (Meteor.isServer) {
   describe('autoValue on server', function () {
+    before(() => {
+      attach()
+    })
     it('runs function once', async function () {
       const id = await callMongoMethod(collection, 'insert', [{}]);
       const doc = await callMongoMethod(collection, 'findOne', [id]);
