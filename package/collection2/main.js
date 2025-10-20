@@ -4,8 +4,8 @@ import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 
-const meteorVersion = Meteor.release === 'none' ? ["3", "1"] : Meteor.release.split('@')[1].split('.');
-const noAsyncAllow = meteorVersion[0] >= 3 && meteorVersion[1].split('-')[0] >= 1;
+const meteorVersion = Meteor.release === 'none' ? ["3", "3"] : Meteor.release.split('@')[1].split('.');
+const noAsyncAllow = Number.parseInt(meteorVersion[0], 10) >= 3 && Number.parseInt(meteorVersion[1].split('-')[0], 10) >= 1;
 
 /**
  * Mongo.Collection.prototype.attachSchema
