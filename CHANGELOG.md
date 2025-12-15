@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [4.1.5](#415)
 - [4.1.4](#414)
 - [4.1.3](#413)
 - [4.1.2](#412)
@@ -86,6 +87,10 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 4.1.5
+
+* Improve MeteorJS version detection
 
 ## 4.1.4
 
