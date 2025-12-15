@@ -1,7 +1,21 @@
 import { Meteor } from 'meteor/meteor';
 import { Mongo } from 'meteor/mongo';
-import SimpleSchema from "meteor/aldeed:simple-schema";
 import { EJSON } from 'meteor/ejson';
+
+// Lazy loader for SimpleSchema (weak dependency)
+// Using Package global allows collection2 to work without SimpleSchema installed
+let _SimpleSchema = null;
+const getSimpleSchema = () => {
+  if (_SimpleSchema) return _SimpleSchema;
+  // Check if the weak dependency is loaded via Package global
+  if (typeof Package !== 'undefined' && Package['aldeed:simple-schema']) {
+    const pkg = Package['aldeed:simple-schema'];
+    // Handle both ES6 default export and named export patterns
+    _SimpleSchema = pkg.default || pkg.SimpleSchema || pkg;
+    return _SimpleSchema;
+  }
+  return null;
+};
 import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
 import { detectSchemaType } from './schemaDetectors';
 import { createSimpleSchemaAdapter as simpleSchemaAdapter } from './adapters/simpleSchema';
@@ -34,10 +48,10 @@ C2._getValidator = () => {
 
   // Try to load validators for known schema libraries
   try {
-    // Check for SimpleSchema
-    if (typeof SimpleSchema !== 'undefined') {
+    // Check for SimpleSchema (lazy loaded)
+    const SimpleSchema = getSimpleSchema();
+    if (SimpleSchema) {
       C2._validators.SimpleSchema = C2._validators.SimpleSchema || simpleSchemaAdapter(SimpleSchema);
-      // No need to attach anything to the SimpleSchema library anymore
     }
   } catch (e) {
     console.error('Error loading schema validators:', e);
@@ -54,52 +68,67 @@ C2._getValidator = () => {
 C2._detectSchemaType = function(schema) {
   // Use the centralized schema detection functions
   const schemaType = detectSchemaType(schema);
-  
+
   switch (schemaType) {
-    case 'SimpleSchema':
+    case 'SimpleSchema': {
+      const SimpleSchema = getSimpleSchema();
+      if (!SimpleSchema) {
+        throw new Error(
+          'SimpleSchema schema detected but aldeed:simple-schema package is not installed. ' +
+          'Run: meteor add aldeed:simple-schema'
+        );
+      }
       if (!C2._validators.SimpleSchema) {
         C2._validators.SimpleSchema = simpleSchemaAdapter(SimpleSchema);
       }
       C2._currentValidator = C2._validators.SimpleSchema;
       return C2._validators.SimpleSchema;
-      
+    }
+
     case 'zod':
       if (!C2._validators.zod) {
-        C2._validators.zod = zodAdapter({ 
+        C2._validators.zod = zodAdapter({
           ZodType: function() {}, // Dummy constructor for instanceof checks
           object: (obj) => obj // Simplified for detection purposes
         });
       }
-      
+
       // Ensure the schema has necessary methods by enhancing it
       if (C2._validators.zod.enhance && typeof C2._validators.zod.enhance === 'function') {
         schema = C2._validators.zod.enhance(schema);
       }
-      
+
       C2._currentValidator = C2._validators.zod;
       return C2._validators.zod;
-      
+
     case 'ajv':
       if (!C2._validators.ajv) {
         C2._validators.ajv = ajvAdapter(function() {}); // Dummy constructor
       }
-      
+
       // Ensure the schema has necessary methods by enhancing it
       if (C2._validators.ajv.enhance && typeof C2._validators.ajv.enhance === 'function') {
         schema = C2._validators.ajv.enhance(schema);
       }
-      
+
       C2._currentValidator = C2._validators.ajv;
       return C2._validators.ajv;
-      
-    default:
+
+    default: {
       // If we can't detect the schema type, default to SimpleSchema if available
-      if (C2._validators.SimpleSchema) {
+      const SimpleSchema = getSimpleSchema();
+      if (SimpleSchema && C2._validators.SimpleSchema) {
         C2._currentValidator = C2._validators.SimpleSchema;
         return C2._validators.SimpleSchema;
       }
-      
-      throw new Error(`Cannot determine schema type. Make sure you have a supported schema library installed (SimpleSchema, Zod, or AJV).`);
+
+      throw new Error(
+        'Cannot determine schema type. Make sure you have a supported schema library installed:\n' +
+        '  - SimpleSchema: meteor add aldeed:simple-schema\n' +
+        '  - Zod: meteor npm install zod\n' +
+        '  - AJV: meteor npm install ajv'
+      );
+    }
   }
 };
 
