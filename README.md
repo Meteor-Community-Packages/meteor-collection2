@@ -10,7 +10,7 @@
 
 A Meteor package that allows you to attach a schema to a Mongo.Collection. Automatically validates against that schema when inserting and updating from client or server code.
 
-This package requires the [simpl-schema](https://github.com/aldeed/simple-schema-js) NPM package, which defines the schema syntax and provides the validation logic.
+Since version 4.0, this package ships with the [aldeed:simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema) Meteor package built in, which defines the schema syntax and provides the validation logic.
 
 ## TOC
 
@@ -381,7 +381,7 @@ to figure out a more specific schema.
 ## Schema Format
 
 Refer to the
-[simpl-schema](https://github.com/aldeed/simple-schema-js) package
+[aldeed:simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema) package
 documentation for a list of all the available schema rules and validation
 methods.
 
@@ -470,7 +470,7 @@ Books.simpleSchema()
   );
 ```
 
-Refer to the [simpl-schema](https://github.com/aldeed/simple-schema-js) package documentation for more information about these methods.
+Refer to the [aldeed:simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema) package documentation for more information about these methods.
 
 ## Inserting or Updating Without Validating
 
@@ -500,7 +500,7 @@ To skip adding automatic values, set the `getAutoValues` option to `false` when 
 
 To pick or omit fields from the schema for the operation, set the 'pick' or 'omit' option respectively to an array of schema field names. These options are mutually exclusive, so you cannot have both present in the options object at the same time.
 
-This is the implementation of [pick and omit functionality from simple-schema](https://github.com/aldeed/simpl-schema#extracting-schemas), but on your DB calls like this:
+This is the implementation of [pick and omit functionality from simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema#extracting-schemas), but on your DB calls like this:
 
 ```js
 // Will insert everything except 'noop'
@@ -526,7 +526,7 @@ Even if you skip all validation and cleaning, Collection2 will still do some obj
 ## Additional SimpleSchema Options
 
 In addition to all the other schema validation options documented in the
-[simpl-schema](https://github.com/longshotlabs/simpl-schema) package, the
+[aldeed:simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema) package, the
 collection2 package adds additional options explained in this section.
 
 ### index and unique
