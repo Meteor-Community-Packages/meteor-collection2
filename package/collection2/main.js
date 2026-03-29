@@ -224,8 +224,8 @@ function _methodMutation(async, methodName) {
     : Mongo.Collection.prototype[methodName.replace('Async', '')];
 
   if (!_super) return;
-  Mongo.Collection.prototype[methodName] = function(...args) {
-    const [validatedArgs, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, async);
+  Mongo.Collection.prototype[methodName] = async function (...args) {
+    const [validatedArgs, validationContext] = await getArgumentsAndValidationContext.call(this, methodName, args, async);
 
     if (async && !Meteor.isFibersDisabled) {
       try {
@@ -235,9 +235,9 @@ function _methodMutation(async, methodName) {
       } catch (err) {
         if (this._c2) {
           const addValidationErrorsPropName =
-            typeof validationContext.addValidationErrors === 'function' ?
-              'addValidationErrors'
-              : 'addInvalidKeys';
+              typeof validationContext.addValidationErrors === 'function' ?
+                  'addValidationErrors'
+                  : 'addInvalidKeys';
           parsingServerError([err], validationContext, addValidationErrorsPropName);
           const error = getErrorObject(validationContext, err.message, err.code);
           return Promise.reject(error);
@@ -327,8 +327,8 @@ async function doValidate(collection, type, args, getAutoValues, userId, isFromT
     throw new Error('invalid type argument');
   }
 
+  doc = doc || {};
   const validatedObjectWasInitiallyEmpty = Object.keys(doc).length === 0;
-
   // Support missing options arg
   if (!callback && typeof options === 'function') {
     callback = options;
