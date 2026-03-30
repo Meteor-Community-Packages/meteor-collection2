@@ -1,6 +1,6 @@
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
-import SimpleSchema from "meteor/aldeed:simple-schema";
+import SimpleSchema from 'meteor/aldeed:simple-schema';
 import { Meteor } from 'meteor/meteor';
 import { callMeteorFetch, callMongoMethod } from './helper';
 
@@ -103,8 +103,8 @@ if (Meteor.isServer) {
 }
 
 export default function addMultiTests() {
-  describe('multiple top-level schemas', function () {
-    beforeEach(async function () {
+  describe('multiple top-level schemas', function() {
+    beforeEach(async function() {
       for (const doc of await callMeteorFetch(products, {})) {
         await callMongoMethod(products, 'remove', [doc._id]);
       }
@@ -124,7 +124,7 @@ export default function addMultiTests() {
       */
     });
 
-    it('works', function () {
+    it('works', function() {
       const c = new Mongo.Collection('multiSchema');
 
       // Attach two different schemas
@@ -162,7 +162,7 @@ export default function addMultiTests() {
     });
 
     if (Meteor.isServer) {
-      it('inserts doc correctly with selector passed via doc', async function () {
+      it('inserts doc correctly with selector passed via doc', async function() {
         const productId = await callMongoMethod(products, 'insert', [
           {
             title: 'Product one',
@@ -191,7 +191,7 @@ export default function addMultiTests() {
       // the deny functions, where we call .simpleSchema()
       //
       // Also synchronous only works on server
-      it('insert selects the correct schema', async function () {
+      it('insert selects the correct schema', async function() {
         const productId = await callMongoMethod(products, 'insert', [
           {
             title: 'Product one'
@@ -217,7 +217,7 @@ export default function addMultiTests() {
         expect(productVariant.price).toBe(5);
       });
 
-      it('inserts doc correctly with selector passed via doc and via <option>', async function () {
+      it('inserts doc correctly with selector passed via doc and via <option>', async function() {
         const productId = await callMongoMethod(products, 'insert', [
           {
             title: 'Product one',
@@ -252,7 +252,7 @@ export default function addMultiTests() {
         expect(product3.price).toBe(5);
       });
 
-      it('upsert selects the correct schema', async function () {
+      it('upsert selects the correct schema', async function() {
         await callMongoMethod(products, 'insert', [
           { title: 'Product one' },
           { selector: { type: 'simple' } }
@@ -278,7 +278,7 @@ export default function addMultiTests() {
         expect(productsList[1].price).toBe(undefined);
       });
 
-      it('upserts doc correctly with selector passed via <query>, via <update> and via <option>', async function () {
+      it('upserts doc correctly with selector passed via <query>, via <update> and via <option>', async function() {
         const productId = await callMongoMethod(products, 'insert', [
           {
             title: 'Product one'
@@ -322,7 +322,7 @@ export default function addMultiTests() {
         expect(product.price).toBe(undefined);
       });
 
-      it('update selects the correct schema', async function () {
+      it('update selects the correct schema', async function() {
         const productId = await callMongoMethod(products, 'insert', [
           {
             title: 'Product one'
@@ -364,7 +364,7 @@ export default function addMultiTests() {
         expect(productVariant.price).toBe(5);
       });
 
-      it('updates doc correctly with selector passed via <query>, via <update> and via <option>', async function () {
+      it('updates doc correctly with selector passed via <query>, via <update> and via <option>', async function() {
         const productId = await callMongoMethod(products, 'insert', [
           {
             title: 'Product one'
@@ -408,7 +408,7 @@ export default function addMultiTests() {
         expect(product.price).toBe(undefined);
       });
 
-      it('allows changing schema on update operation', async function () {
+      it('allows changing schema on update operation', async function() {
         const productId = await callMongoMethod(products, 'insert', [
           {
             title: 'Product one'
@@ -441,36 +441,31 @@ export default function addMultiTests() {
         expect(product.type).toBe('variant');
       });
     } else {
-      it('inserts doc correctly with selector passed via doc', function (done) {
-        const productId = products.insert(
+      it('inserts doc correctly with selector passed via doc', async function() {
+        const productId = await products.insertAsync(
           {
             title: 'Product one',
             type: 'simple' // selector in doc
-          },
-          () => {
-            const product = products.findOne(productId);
-            expect(product.description).toBe('This is a simple product.');
-            expect(product.price).toBe(undefined);
+          });
 
-            const productId3 = products.insert(
-              {
-                title: 'Product three',
-                createdAt: new Date(),
-                type: 'variant' // other selector in doc
-              },
-              () => {
-                const product3 = products.findOne(productId3);
-                expect(product3.description).toBe(undefined);
-                expect(product3.price).toBe(5);
-                done();
-              }
-            );
-          }
-        );
+        const product = await products.findOneAsync(productId);
+        expect(product.description).toBe('This is a simple product.');
+        expect(product.price).toBe(undefined);
+
+        const productId3 = await products.insertAsync(
+          {
+            title: 'Product three',
+            createdAt: new Date(),
+            type: 'variant' // other selector in doc
+          });
+
+        const product3 = await products.findOneAsync(productId3);
+        expect(product3.description).toBe(undefined);
+        expect(product3.price).toBe(5);
       });
     }
 
-    it('returns the correct schema on `MyCollection.simpleSchema(object)`', async function () {
+    it('returns the correct schema on `MyCollection.simpleSchema(object)`', async function() {
       const schema = products.simpleSchema({
         title: 'Product one',
         type: 'variant'
@@ -482,7 +477,7 @@ export default function addMultiTests() {
       // Passing selector in options works only on the server because
       // client options are not sent to the server and made availabe in
       // the deny functions, where we call .simpleSchema()
-      it('insert selects the correct extended schema', async function () {
+      it('insert selects the correct extended schema', async function() {
         const productId = await callMongoMethod(extendedProducts, 'insert', [
           {
             title: 'Extended Product one'
@@ -513,7 +508,7 @@ export default function addMultiTests() {
         expect(extendedProductVariant.barcode).toBe(undefined);
       });
 
-      it('update selects the correct extended schema', async function () {
+      it('update selects the correct extended schema', async function() {
         const productId = await callMongoMethod(extendedProducts, 'insert', [
           {
             title: 'Product one'

@@ -16,6 +16,7 @@ export function callMongoMethod(collection, method, args) {
   return new Promise((resolve, reject) => {
     if (ASYNC_FRIENDLY) {
       try {
+        //console.log(`calling method ${methodName} with args ${JSON.stringify(args)}`);
         resolve(collection[methodName](...args));
       } catch (error) {
         reject(error);

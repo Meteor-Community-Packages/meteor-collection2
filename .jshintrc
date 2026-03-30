@@ -9,6 +9,8 @@
 
   "maxerr"        : 50,       // {int} Maximum error before stopping
 
+  "esversion"     : 11,
+
   // Enforcing
   "bitwise"       : true,     // true: Prohibit bitwise operators (&, |, ^, etc.)
   "camelcase"     : false,    // false: Identifiers do not need to be in camelCase. We would like to enforce this except for when interacting with our api objects which use snakeCase properties.
