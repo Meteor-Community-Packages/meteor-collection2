@@ -8,6 +8,20 @@ import { Collection2 } from 'meteor/aldeed:collection2'
 /* global describe, it */
 
 describe('collection2', function () {
+  it('creates a SimpleSchema from a plain schema definition on first attach', function () {
+    const mc = new Mongo.Collection(
+      `plainSchemaDefinition_${new Date().getTime()}`,
+      Meteor.isClient ? { connection: null } : undefined
+    );
+
+    mc.attachSchema({
+      foo: { type: String }
+    });
+
+    expect(mc.c2Schema() instanceof SimpleSchema).toBe(true);
+    expect(mc.simpleSchema()).toBe(mc.c2Schema());
+  });
+
   it('attach and get simpleSchema for normal collection', function () {
     const mc = new Mongo.Collection('mc', Meteor.isClient ? { connection: null } : undefined);
 

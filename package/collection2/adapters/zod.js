@@ -10,10 +10,12 @@ import { isZodSchema } from '../schemaDetectors';
  */
 const formatZodErrors = (error) => {
   if (!error || !error.issues) {
-    return [{ name: 'general', type: 'error', message: error?.message || 'Unknown validation error' }];
+    return [
+      { name: 'general', type: 'error', message: error?.message || 'Unknown validation error' }
+    ];
   }
-  
-  return error.issues.map(err => ({
+
+  return error.issues.map((err) => ({
     name: err.path.join('.'),
     type: err.code,
     value: err.received,
@@ -27,27 +29,29 @@ const formatZodErrors = (error) => {
  */
 export const createZodAdapter = (z) => ({
   name: 'zod',
-  is: schema => isZodSchema(schema),
-  create: schema => {
+  is: (schema) => isZodSchema(schema),
+  create: (schema) => {
     // If this is already a Zod schema, return it directly with namedContext
-    if (schema && typeof schema === 'object' && schema._def) {
+    if (isZodSchema(schema)) {
       // Enhance the schema with Collection2 compatibility methods
       return enhanceZodSchema(schema);
     }
-    
+
     // For non-Zod schemas, we can't convert without the actual Zod library
-    throw new Error('Cannot create Zod schema from non-Zod object. Please use a Zod schema directly.');
+    throw new Error(
+      'Cannot create Zod schema from non-Zod object. Please use a Zod schema directly.'
+    );
   },
   extend: (s1, s2) => {
     // For property-based detection, we need to ensure both schemas have the right properties
-    if (!(s1 && s1._def) || !(s2 && s2._def)) {
+    if (!isZodSchema(s1) || !isZodSchema(s2)) {
       throw new Error('Both schemas must be Zod schemas');
     }
-    
+
     // Since we don't have direct access to Zod's methods, we'll use a simplified approach
     // In a real implementation, you'd merge the schemas properly
     const mergedSchema = s1.merge(s2);
-    
+
     // Ensure the merged schema has all the Collection2 compatibility methods
     return enhanceZodSchema(mergedSchema);
   },
@@ -55,13 +59,14 @@ export const createZodAdapter = (z) => ({
     try {
       // Handle modifiers for updates
       if (options.modifier) {
-        const result = schema.partial().safeParse(obj.$set || {});
-        if (result.success) {
+        const context = createZodValidationContext(schema);
+        const isValid = context.validate(obj, options);
+        if (isValid) {
           return { isValid: true };
         } else {
           return {
             isValid: false,
-            errors: formatZodErrors(result.error)
+            errors: context.validationErrors()
           };
         }
       } else {
@@ -88,7 +93,7 @@ export const createZodAdapter = (z) => ({
     // Zod schemas don't have a built-in clean method, so we use our custom implementation
     const isModifier = !isInsertType(type);
     const target = isModifier ? modifier : doc;
-    
+
     if (typeof schema.clean === 'function') {
       schema.clean(target, {
         mutate: true,
@@ -98,23 +103,23 @@ export const createZodAdapter = (z) => ({
   },
   getErrorObject: (context, appendToMessage = '', code) => {
     const invalidKeys = context.validationErrors();
-    
+
     if (!invalidKeys || invalidKeys.length === 0) {
       const error = new Error('Unknown validation error');
       error.name = 'ValidationError';
       return error;
     }
-    
+
     const firstErrorKey = invalidKeys[0].name;
     const firstErrorMessage = invalidKeys[0].message;
     let message = firstErrorMessage;
-    
+
     // Special handling for required/missing fields (invalid_type with undefined value)
     if (invalidKeys[0].type === 'invalid_type' && invalidKeys[0].value === undefined) {
       // Get the expected type directly from the error
       const expectedType = invalidKeys[0].expected || 'string';
       message = `Field '${firstErrorKey}' is required but was not provided (expected ${expectedType})`;
-    } 
+    }
     // Special handling for other type errors
     else if (invalidKeys[0].type === 'invalid_type') {
       // Get the expected type directly from the error
@@ -132,8 +137,10 @@ export const createZodAdapter = (z) => ({
     }
     // General case with error type and value
     else if (invalidKeys[0].type && invalidKeys[0].value !== undefined) {
-      message = `${firstErrorMessage} for field '${firstErrorKey}' (${invalidKeys[0].type}: received ${JSON.stringify(invalidKeys[0].value)})`;
-    } 
+      message = `${firstErrorMessage} for field '${firstErrorKey}' (${
+        invalidKeys[0].type
+      }: received ${JSON.stringify(invalidKeys[0].value)})`;
+    }
     // Fallback to standard message format
     else {
       if (firstErrorKey.indexOf('.') === -1) {
@@ -142,7 +149,7 @@ export const createZodAdapter = (z) => ({
         message = `${firstErrorMessage} (${firstErrorKey})`;
       }
     }
-    
+
     message = `${message} ${appendToMessage}`.trim();
     const error = new Error(message);
     error.invalidKeys = invalidKeys;
@@ -160,7 +167,7 @@ export const createZodAdapter = (z) => ({
     if (validationContext && typeof validationContext === 'object') {
       return validationContext;
     }
-    
+
     // Ensure the schema is enhanced with Collection2 compatibility methods
     const enhancedSchema = enhanceZodSchema(schema);
     return enhancedSchema.namedContext(validationContext);
@@ -196,7 +203,7 @@ class ZodValidationContext {
    */
   validate(obj, options = {}) {
     this.errors = []; // Clear previous errors
-    
+
     try {
       // For modifiers, we need special handling
       if (options.modifier) {
@@ -204,19 +211,31 @@ class ZodValidationContext {
         // In a real implementation, we would validate each modifier operation
         const modifier = obj;
         let isValid = true;
-        
+
         // Check $set operations
         if (modifier.$set) {
-          const result = this.schema.partial().safeParse(modifier.$set);
-          if (!this._processZodErrors(result)) {
+          if (!validateSetModifierFields(this.schema, modifier.$set, this.errors)) {
             isValid = false;
           }
         }
-        
+
         // Check $setOnInsert operations
         if (modifier.$setOnInsert) {
-          const result = this.schema.partial().safeParse(modifier.$setOnInsert);
-          if (!this._processZodErrors(result)) {
+          if (!validateSetModifierFields(this.schema, modifier.$setOnInsert, this.errors)) {
+            isValid = false;
+          }
+        }
+
+        // Check $unset operations against required fields
+        if (modifier.$unset) {
+          if (!validateUnsetModifierFields(this.schema, modifier.$unset, this.errors)) {
+            isValid = false;
+          }
+        }
+
+        // Check $inc operations against numeric fields
+        if (modifier.$inc) {
+          if (!validateIncModifierFields(this.schema, modifier.$inc, this.errors)) {
             isValid = false;
           }
         }
@@ -228,7 +247,6 @@ class ZodValidationContext {
             // Get the array element schema for this field
             const elementSchema = getArrayElementSchema(this.schema, field);
 
-            
             if (elementSchema) {
               // Handle $each operator
               if (value && typeof value === 'object' && value.$each) {
@@ -240,27 +258,29 @@ class ZodValidationContext {
                     const err = result.error.issues[0] || {};
                     const errorPath = err.path ? err.path.join('.') : '';
                     const fieldName = errorPath ? `${field}.${errorPath}` : field;
-                    
+
                     // Create a more specific error message for missing fields
                     let errorMessage = '';
                     // Extract received value from error message since Zod v4 doesn't include it as a property
-                  let receivedValue = err.received;
-                  if (receivedValue === undefined && err.message) {
-                    if (err.message.includes('received undefined')) {
-                      receivedValue = undefined;
-                    } else if (err.message.includes('received number')) {
-                      receivedValue = 'number';
-                    } else if (err.message.includes('received string')) {
-                      receivedValue = 'string';
+                    let receivedValue = err.received;
+                    if (receivedValue === undefined && err.message) {
+                      if (err.message.includes('received undefined')) {
+                        receivedValue = undefined;
+                      } else if (err.message.includes('received number')) {
+                        receivedValue = 'number';
+                      } else if (err.message.includes('received string')) {
+                        receivedValue = 'string';
+                      }
                     }
-                  }
-                  
-                  if (err.code === 'invalid_type' && receivedValue === undefined) {
+
+                    if (err.code === 'invalid_type' && receivedValue === undefined) {
                       errorMessage = `Field is required but was not provided in array field '${field}'`;
                     } else {
-                      errorMessage = `Invalid value for array field '${field}': ${err.message || 'validation failed'}`;
+                      errorMessage = `Invalid value for array field '${field}': ${
+                        err.message || 'validation failed'
+                      }`;
                     }
-                    
+
                     this.errors.push({
                       name: fieldName,
                       type: err.code || 'invalid_type',
@@ -280,7 +300,7 @@ class ZodValidationContext {
                   const err = result.error.issues[0] || {};
                   const errorPath = err.path ? err.path.join('.') : '';
                   const fieldName = errorPath ? `${field}.${errorPath}` : field;
-                  
+
                   // Create a more specific error message for missing fields
                   let errorMessage = '';
                   // Extract received value from error message since Zod v4 doesn't include it as a property
@@ -294,13 +314,15 @@ class ZodValidationContext {
                       receivedValue = 'string';
                     }
                   }
-                  
+
                   if (err.code === 'invalid_type' && receivedValue === undefined) {
                     errorMessage = `Field is required but was not provided in array field '${field}'`;
                   } else {
-                    errorMessage = `Invalid value for array field '${field}': ${err.message || 'validation failed'}`;
+                    errorMessage = `Invalid value for array field '${field}': ${
+                      err.message || 'validation failed'
+                    }`;
                   }
-                  
+
                   this.errors.push({
                     name: fieldName,
                     type: 'ValidationError',
@@ -353,27 +375,29 @@ class ZodValidationContext {
                     const err = result.error.issues[0] || {};
                     const errorPath = err.path ? err.path.join('.') : '';
                     const fieldName = errorPath ? `${field}.${errorPath}` : field;
-                    
+
                     // Create a more specific error message for missing fields
                     let errorMessage = '';
                     // Extract received value from error message since Zod v4 doesn't include it as a property
-                  let receivedValue = err.received;
-                  if (receivedValue === undefined && err.message) {
-                    if (err.message.includes('received undefined')) {
-                      receivedValue = undefined;
-                    } else if (err.message.includes('received number')) {
-                      receivedValue = 'number';
-                    } else if (err.message.includes('received string')) {
-                      receivedValue = 'string';
+                    let receivedValue = err.received;
+                    if (receivedValue === undefined && err.message) {
+                      if (err.message.includes('received undefined')) {
+                        receivedValue = undefined;
+                      } else if (err.message.includes('received number')) {
+                        receivedValue = 'number';
+                      } else if (err.message.includes('received string')) {
+                        receivedValue = 'string';
+                      }
                     }
-                  }
-                  
-                  if (err.code === 'invalid_type' && receivedValue === undefined) {
+
+                    if (err.code === 'invalid_type' && receivedValue === undefined) {
                       errorMessage = `Field is required but was not provided in array field '${field}'`;
                     } else {
-                      errorMessage = `Invalid value for array field '${field}': ${err.message || 'validation failed'}`;
+                      errorMessage = `Invalid value for array field '${field}': ${
+                        err.message || 'validation failed'
+                      }`;
                     }
-                    
+
                     this.errors.push({
                       name: fieldName,
                       type: err.code || 'invalid_type',
@@ -393,7 +417,7 @@ class ZodValidationContext {
                   const err = result.error.issues[0] || {};
                   const errorPath = err.path ? err.path.join('.') : '';
                   const fieldName = errorPath ? `${field}.${errorPath}` : field;
-                  
+
                   // Create a more specific error message for missing fields
                   let errorMessage = '';
                   // Extract received value from error message since Zod v4 doesn't include it as a property
@@ -407,13 +431,15 @@ class ZodValidationContext {
                       receivedValue = 'string';
                     }
                   }
-                  
+
                   if (err.code === 'invalid_type' && receivedValue === undefined) {
                     errorMessage = `Field is required but was not provided in array field '${field}'`;
                   } else {
-                    errorMessage = `Invalid value for array field '${field}': ${err.message || 'validation failed'}`;
+                    errorMessage = `Invalid value for array field '${field}': ${
+                      err.message || 'validation failed'
+                    }`;
                   }
-                  
+
                   this.errors.push({
                     name: fieldName,
                     type: 'ValidationError',
@@ -447,7 +473,7 @@ class ZodValidationContext {
             }
           });
         }
-        
+
         return isValid;
       } else {
         // For normal documents (insert)
@@ -483,11 +509,15 @@ class ZodValidationContext {
       if (result.error) {
         result.error.name = 'ValidationError';
       }
-      
+
       const zodErrors = result.error.issues || [];
       for (const err of zodErrors) {
-        const path = isArray ? (Array.isArray(err.path) ? err.path.join('.') : err.path) : err.path.join('.');
-        
+        const path = isArray
+          ? Array.isArray(err.path)
+            ? err.path.join('.')
+            : err.path
+          : err.path.join('.');
+
         // Extract expected type from Zod error
         let expectedType = 'valid type';
         if (err.code === 'invalid_type') {
@@ -500,7 +530,7 @@ class ZodValidationContext {
           // For string validation errors (regex, email, etc.)
           expectedType = `string (${err.validation})`;
         }
-        
+
         // Extract received value from error message since Zod v4 doesn't include it as a property
         let receivedValue = err.received;
         if (receivedValue === undefined && err.message) {
@@ -570,7 +600,7 @@ class ZodValidationContext {
    * @returns {Boolean} True if the key is invalid, false otherwise
    */
   keyIsInvalid(key) {
-    return this.errors.some(err => err.name === key);
+    return this.errors.some((err) => err.name === key);
   }
 
   /**
@@ -579,7 +609,7 @@ class ZodValidationContext {
    * @returns {String} The error message or empty string if no error
    */
   keyErrorMessage(key) {
-    const error = this.errors.find(err => err.name === key);
+    const error = this.errors.find((err) => err.name === key);
     return error ? error.message : '';
   }
 }
@@ -595,60 +625,222 @@ const createZodValidationContext = (schema, name = 'default') => {
 };
 
 /**
- * Extracts the array element schema from a Zod schema for a specific field path
- * @param {Object} schema - The Zod schema
- * @param {String} fieldPath - The field path (e.g., 'comments' or 'nested.array')
- * @returns {Object|null} The array element schema or null if not found/not an array
+ * Helper utilities for reading enough Zod internals to validate Mongo modifier
+ * paths without importing a specific Zod version.
  */
-const getArrayElementSchema = (schema, fieldPath) => {
-  try {
-    // Get the shape from the schema definition
-    // In Zod v4, shape is a property, not a function
-    const shape = schema._def?.shape;
-    if (!shape) return null;
-    
-    // Handle nested paths (e.g., 'nested.array')
-    const parts = fieldPath.split('.');
-    let currentShape = shape;
-    let currentSchema = null;
-    
-    // Navigate through the nested structure
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      if (!currentShape[part]) return null;
-      
-      currentSchema = currentShape[part];
-      
-      // If we're not at the last part, we need to get the nested shape
-      if (i < parts.length - 1) {
-        // For objects, get the nested shape
-        if (currentSchema._def?.type === 'object') {
-          // In Zod v4, shape is a property, not a function
-          currentShape = currentSchema._def.shape;
-        } else {
-          // Not an object, can't navigate further
-          return null;
-        }
+const getZodDef = (schema) => schema?._zod?.def || schema?._def || schema?.def || {};
+
+const getZodType = (schema) => {
+  const def = getZodDef(schema);
+  return typeof def.type === 'string' ? def.type : def.typeName;
+};
+
+const isZodType = (schema, ...types) => {
+  const type = getZodType(schema);
+  return types.some((t) => type === t || type === `Zod${t[0].toUpperCase()}${t.slice(1)}`);
+};
+
+const getZodShape = (schema) => {
+  const shape = getZodDef(schema).shape;
+  return typeof shape === 'function' ? shape() : shape;
+};
+
+const getZodArrayElement = (schema) => {
+  const def = getZodDef(schema);
+  return def.element || (typeof def.type !== 'string' ? def.type : null) || def.innerType;
+};
+
+const unwrapZodSchema = (schema) => {
+  let current = schema;
+  let guard = 0;
+
+  while (current && guard < 10) {
+    const def = getZodDef(current);
+    const type = getZodType(current);
+
+    if (['optional', 'nullable', 'default', 'catch', 'readonly', 'branded'].includes(type)) {
+      current = def.innerType || def.type;
+    } else if (type === 'pipe') {
+      current = def.out || def.in;
+    } else if (type === 'effects' || type === 'ZodEffects') {
+      current = def.schema;
+    } else {
+      return current;
+    }
+
+    guard++;
+  }
+
+  return current;
+};
+
+const isArrayPathPart = (part) =>
+  /^\d+$/.test(part) || part === '$' || part === '$[]' || /^\$\[.+\]$/.test(part);
+
+const getSchemaAtPath = (schema, fieldPath) => {
+  const parts = fieldPath.split('.');
+  let currentSchema = schema;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    currentSchema = unwrapZodSchema(currentSchema);
+
+    if (isZodType(currentSchema, 'array')) {
+      currentSchema = getZodArrayElement(currentSchema);
+      if (isArrayPathPart(part)) {
+        continue;
       }
     }
-    
-    // Check if the field is an optional type
-    if (currentSchema._def?.type === 'optional') {
-      // Unwrap the optional type
-      currentSchema = currentSchema._def.innerType;
+
+    currentSchema = unwrapZodSchema(currentSchema);
+    if (!isZodType(currentSchema, 'object')) {
+      return null;
     }
-    
-    // Check if the field is an array
-    if (currentSchema._def?.type === 'array') {
-      // In Zod v4, array element schema is at .def.element
-      return currentSchema.def?.element || currentSchema._def?.element;
+
+    const shape = getZodShape(currentSchema);
+    if (!shape || !shape[part]) {
+      return null;
     }
-    
-    return null; // Not an array
-  } catch (error) {
-    console.error('Error extracting array element schema:', error);
-    return null;
+
+    currentSchema = shape[part];
   }
+
+  return currentSchema;
+};
+
+const schemaAllowsUnknownKeys = (schema) => {
+  const def = getZodDef(schema);
+  const catchallType = getZodType(def.catchall);
+  return (
+    def.unknownKeys === 'passthrough' ||
+    def.unknownKeys === 'ignore' ||
+    !!(def.catchall && catchallType !== 'never' && catchallType !== 'ZodNever')
+  );
+};
+
+const isOptionalZodSchema = (schema) => {
+  if (!schema) return false;
+  if (typeof schema.isOptional === 'function' && schema.isOptional()) return true;
+
+  return isZodType(schema, 'optional', 'default', 'catch');
+};
+
+const isNumberZodSchema = (schema) => {
+  const unwrapped = unwrapZodSchema(schema);
+  return isZodType(unwrapped, 'number');
+};
+
+const pushZodIssueErrors = (errors, fieldPath, value, result) => {
+  const zodErrors = result.error?.issues || [];
+
+  for (const err of zodErrors) {
+    const nestedPath = Array.isArray(err.path) && err.path.length ? err.path.join('.') : '';
+    const name = nestedPath ? `${fieldPath}.${nestedPath}` : fieldPath;
+    errors.push({
+      name,
+      type: err.code || 'invalid_type',
+      value,
+      expected: err.expected || 'valid type',
+      message: err.message,
+      zodError: err
+    });
+  }
+};
+
+const pushInvalidKeyError = (errors, fieldPath, value) => {
+  errors.push({
+    name: fieldPath,
+    type: 'invalid_key',
+    value,
+    message: `Field '${fieldPath}' is not allowed by the schema`
+  });
+};
+
+const validateSetModifierFields = (schema, fields, errors) => {
+  let isValid = true;
+
+  Object.entries(fields).forEach(([fieldPath, value]) => {
+    const fieldSchema = getSchemaAtPath(schema, fieldPath);
+
+    if (!fieldSchema) {
+      if (!schemaAllowsUnknownKeys(schema)) {
+        pushInvalidKeyError(errors, fieldPath, value);
+        isValid = false;
+      }
+      return;
+    }
+
+    const result = unwrapZodSchema(fieldSchema).safeParse(value);
+    if (!result.success) {
+      pushZodIssueErrors(errors, fieldPath, value, result);
+      isValid = false;
+    }
+  });
+
+  return isValid;
+};
+
+const validateUnsetModifierFields = (schema, fields, errors) => {
+  let isValid = true;
+
+  Object.entries(fields).forEach(([fieldPath, value]) => {
+    const fieldSchema = getSchemaAtPath(schema, fieldPath);
+
+    if (!fieldSchema) {
+      if (!schemaAllowsUnknownKeys(schema)) {
+        pushInvalidKeyError(errors, fieldPath, value);
+        isValid = false;
+      }
+      return;
+    }
+
+    if (!isOptionalZodSchema(fieldSchema)) {
+      errors.push({
+        name: fieldPath,
+        type: 'required',
+        value: undefined,
+        expected: 'defined',
+        message: `Field '${fieldPath}' is required and cannot be unset`
+      });
+      isValid = false;
+    }
+  });
+
+  return isValid;
+};
+
+const validateIncModifierFields = (schema, fields, errors) => {
+  let isValid = true;
+
+  Object.entries(fields).forEach(([fieldPath, value]) => {
+    const fieldSchema = getSchemaAtPath(schema, fieldPath);
+
+    if (!fieldSchema) {
+      if (!schemaAllowsUnknownKeys(schema)) {
+        pushInvalidKeyError(errors, fieldPath, value);
+        isValid = false;
+      }
+      return;
+    }
+
+    if (typeof value !== 'number' || !isNumberZodSchema(fieldSchema)) {
+      errors.push({
+        name: fieldPath,
+        type: 'invalid_type',
+        value,
+        expected: 'number',
+        message: `Field '${fieldPath}' must be a number for $inc`
+      });
+      isValid = false;
+    }
+  });
+
+  return isValid;
+};
+
+const getArrayElementSchema = (schema, fieldPath) => {
+  const arraySchema = unwrapZodSchema(getSchemaAtPath(schema, fieldPath));
+  return isZodType(arraySchema, 'array') ? getZodArrayElement(arraySchema) : null;
 };
 
 /**
@@ -659,65 +851,50 @@ const getArrayElementSchema = (schema, fieldPath) => {
 const enhanceZodSchema = (schema) => {
   // Store validation contexts by name
   const validationContexts = {};
-  
+
   // Add namedContext method if it doesn't exist
   if (typeof schema.namedContext !== 'function') {
-    schema.namedContext = function(name = 'default') {
+    schema.namedContext = function (name = 'default') {
       // Reuse existing context if available
       if (validationContexts[name]) {
         return validationContexts[name];
       }
-      
+
       // Create and store a new context
       const context = createZodValidationContext(schema, name);
       validationContexts[name] = context;
       return context;
     };
   }
-  
+
   // Add allowsKey method to the schema
   if (typeof schema.allowsKey !== 'function') {
     schema.allowsKey = (key) => {
-      // For Zod schemas, check if the key exists in the shape
       if (key === '_id') return true; // Always allow _id
-      
-      // Try to get the shape from the Zod schema
-      // In Zod v4, shape is a property, not a function
-      const shape = schema._def?.shape;
-      if (shape) {
-        // If unknownKeys is set to 'ignore' or 'passthrough', allow any key
-        if (schema._def.unknownKeys === 'ignore' || schema._def.unknownKeys === 'passthrough') {
-          return true;
-        }
-        
-        return key in shape;
-      }
-      
-      // If we can't determine, default to allowing the key
-      return true;
+      return !!getSchemaAtPath(schema, key) || schemaAllowsUnknownKeys(schema);
     };
   }
-  
+
   // Add clean method for Zod schemas
   if (typeof schema.clean !== 'function') {
     schema.clean = (obj, options = {}) => {
       const { mutate = false, isModifier = false } = options;
-      
+
       // If not mutating, clone the object first
       let cleanObj = mutate ? obj : JSON.parse(JSON.stringify(obj));
-      
+
       if (isModifier) {
         // For update operations with modifiers like $set, $unset, etc.
         if (cleanObj.$set) {
           // Process each field in $set
-          Object.keys(cleanObj.$set).forEach(key => {
+          Object.keys(cleanObj.$set).forEach((key) => {
             const value = cleanObj.$set[key];
-            
+
             // Remove empty strings if option is enabled
             if (options.removeEmptyStrings && value === '') {
               delete cleanObj.$set[key];
             }
-            
+
             // Auto-convert strings to numbers/booleans/etc if option is enabled
             if (options.autoConvert) {
               // Would need more complex logic to properly convert types
@@ -728,32 +905,32 @@ const enhanceZodSchema = (schema) => {
                 else if (!isNaN(value) && value.trim() !== '') cleanObj.$set[key] = Number(value);
               }
             }
-            
+
             // Trim strings if option is enabled
             if (options.trimStrings && typeof value === 'string') {
               cleanObj.$set[key] = value.trim();
             }
           });
-          
+
           // Remove $set if it's empty after processing
           if (Object.keys(cleanObj.$set).length === 0) {
             delete cleanObj.$set;
           }
         }
-        
+
         // Process other modifiers if needed
       } else {
         // For insert/update operations without modifiers
-        
+
         // Process each field in the document
-        Object.keys(cleanObj).forEach(key => {
+        Object.keys(cleanObj).forEach((key) => {
           const value = cleanObj[key];
-          
+
           // Remove empty strings if option is enabled
           if (options.removeEmptyStrings && value === '') {
             delete cleanObj[key];
           }
-          
+
           // Auto-convert strings to numbers/booleans/etc if option is enabled
           if (options.autoConvert) {
             // Would need more complex logic to properly convert types
@@ -764,17 +941,17 @@ const enhanceZodSchema = (schema) => {
               else if (!isNaN(value) && value.trim() !== '') cleanObj[key] = Number(value);
             }
           }
-          
+
           // Trim strings if option is enabled
           if (options.trimStrings && typeof value === 'string') {
             cleanObj[key] = value.trim();
           }
         });
       }
-      
+
       return cleanObj;
     };
-    
+
     // Set default clean options
     schema._cleanOptions = {
       filter: true,
@@ -783,6 +960,6 @@ const enhanceZodSchema = (schema) => {
       trimStrings: true
     };
   }
-  
+
   return schema;
 };

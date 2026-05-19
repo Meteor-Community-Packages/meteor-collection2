@@ -17,6 +17,8 @@ declare module 'meteor/mongo' {
   export namespace Mongo {
     interface Collection<T> {
       attachSchema(schema: SimpleSchema | object, options?: Collection2Options): void
+      c2Schema(doc?: object, options?: object, query?: object): SimpleSchema | object | null
+      simpleSchema(doc?: object, options?: object, query?: object): SimpleSchema | object | null
     }
   }
 }

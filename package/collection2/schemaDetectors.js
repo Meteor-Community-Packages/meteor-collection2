@@ -1,10 +1,17 @@
-import { Meteor } from 'meteor/meteor';
-
 /**
  * Schema detectors for different validation libraries
  * These functions provide a consistent way to detect schema types
  * across the Collection2 package
  */
+
+const getSimpleSchema = () => {
+  if (typeof Package === 'undefined' || !Package['aldeed:simple-schema']) {
+    return null;
+  }
+
+  const simpleSchemaPackage = Package['aldeed:simple-schema'];
+  return simpleSchemaPackage.default || simpleSchemaPackage.SimpleSchema || simpleSchemaPackage;
+};
 
 /**
  * Determines if a schema is a SimpleSchema schema
@@ -12,8 +19,10 @@ import { Meteor } from 'meteor/meteor';
  * @returns {Boolean} True if the schema is a SimpleSchema schema
  */
 export const isSimpleSchema = (schema) => {
+  const SimpleSchema = getSimpleSchema();
+
   // Check if SimpleSchema.isSimpleSchema exists and use it
-  if (typeof SimpleSchema !== 'undefined' && typeof SimpleSchema.isSimpleSchema === 'function') {
+  if (SimpleSchema && typeof SimpleSchema.isSimpleSchema === 'function') {
     return SimpleSchema.isSimpleSchema(schema);
   }
   
@@ -34,7 +43,7 @@ export const isSimpleSchema = (schema) => {
 export const isZodSchema = (schema) => {
   return schema && 
          typeof schema === 'object' && 
-         schema._def && 
+         (schema._def || schema._zod?.def) &&
          schema.safeParse && 
          schema.parse && 
          typeof schema.safeParse === 'function' && 

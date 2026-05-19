@@ -12,7 +12,7 @@ export const createAjvAdapter = () => ({
   is: schema => isAjvSchema(schema),
   create: schema => {
     // If this is already an AJV schema, return it directly
-    if (schema && typeof schema === 'object' && (schema.definition || schema.$id)) {
+    if (isAjvSchema(schema)) {
       // Enhance the schema with Collection2 compatibility methods
       return enhanceAjvSchema(schema);
     }
@@ -179,6 +179,7 @@ const createAjvValidationContext = (schema, name = 'default') => {
   let errors = [];
   
   return {
+    schema,
     validate: (obj, options = {}) => {
       errors = []; // Clear previous errors
       

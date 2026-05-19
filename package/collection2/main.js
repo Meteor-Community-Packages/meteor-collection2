@@ -27,6 +27,33 @@ const noAsyncAllow = Number.parseInt(meteorVersion[0], 10) >= 3 && Number.parseI
 
 const C2 = {};
 C2._validators = {};
+C2._validatorProperty = '__collection2Validator';
+
+C2._setSchemaValidator = (schema, validator) => {
+  if (!schema || typeof schema !== 'object') {
+    return schema;
+  }
+
+  try {
+    Object.defineProperty(schema, C2._validatorProperty, {
+      value: validator,
+      configurable: true,
+      writable: true
+    });
+  } catch (e) {
+    schema[C2._validatorProperty] = validator;
+  }
+
+  return schema;
+};
+
+C2._getValidatorForSchema = (schema) => {
+  if (schema && schema[C2._validatorProperty]) {
+    return schema[C2._validatorProperty];
+  }
+
+  return C2._detectSchemaType(schema);
+};
 
 C2.init = self => {
   self._c2 = self._c2 || Object.create(null);
@@ -34,18 +61,10 @@ C2.init = self => {
   return self;
 };
 
-C2.validator = () => {
-  // Get the appropriate validator based on the schema type
-  return C2._getValidator();
-}
+C2.validator = schema => C2._getValidatorForSchema(schema);
 
 // Helper function to detect schema type and return the appropriate validator
 C2._getValidator = () => {
-  // If we've already determined a validator, return it
-  if (C2._currentValidator) {
-    return C2._currentValidator;
-  }
-
   // Try to load validators for known schema libraries
   try {
     // Check for SimpleSchema (lazy loaded)
@@ -81,7 +100,7 @@ C2._detectSchemaType = function(schema) {
       if (!C2._validators.SimpleSchema) {
         C2._validators.SimpleSchema = simpleSchemaAdapter(SimpleSchema);
       }
-      C2._currentValidator = C2._validators.SimpleSchema;
+      C2._setSchemaValidator(schema, C2._validators.SimpleSchema);
       return C2._validators.SimpleSchema;
     }
 
@@ -98,7 +117,7 @@ C2._detectSchemaType = function(schema) {
         schema = C2._validators.zod.enhance(schema);
       }
 
-      C2._currentValidator = C2._validators.zod;
+      C2._setSchemaValidator(schema, C2._validators.zod);
       return C2._validators.zod;
 
     case 'ajv':
@@ -111,14 +130,16 @@ C2._detectSchemaType = function(schema) {
         schema = C2._validators.ajv.enhance(schema);
       }
 
-      C2._currentValidator = C2._validators.ajv;
+      C2._setSchemaValidator(schema, C2._validators.ajv);
       return C2._validators.ajv;
 
     default: {
       // If we can't detect the schema type, default to SimpleSchema if available
       const SimpleSchema = getSimpleSchema();
-      if (SimpleSchema && C2._validators.SimpleSchema) {
-        C2._currentValidator = C2._validators.SimpleSchema;
+      if (SimpleSchema) {
+        if (!C2._validators.SimpleSchema) {
+          C2._validators.SimpleSchema = simpleSchemaAdapter(SimpleSchema);
+        }
         return C2._validators.SimpleSchema;
       }
 
@@ -168,7 +189,10 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     // Allow passing just the schema object
     if (!validator.is(ss)) {
       ss = validator.create(ss);
+    } else if (typeof validator.enhance === 'function') {
+      ss = validator.enhance(ss);
     }
+    C2._setSchemaValidator(ss, validator);
 
     function attachTo(obj) {
       // we need an array to hold multiple schemas
@@ -313,6 +337,8 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
 
       return null;
     };
+
+    obj.prototype.simpleSchema = obj.prototype.c2Schema;
   }
 
 function getArgumentsAndValidationContext(methodName, args, async) {
@@ -324,6 +350,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
     }
 
     let validationContext = {};
+    let validator;
     let validatedArgs = args;
     if (this._c2 && options.bypassCollection2 !== true) {
        let userId = null;
@@ -332,7 +359,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
          userId = Meteor.userId();
        } catch (err) {}
 
-       [validatedArgs, validationContext] = doValidate({
+       [validatedArgs, validationContext, validator] = doValidate({
          collection: this,
          type: methodName,
          args,
@@ -352,7 +379,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
        if (isInsertType(methodName) && typeof validatedArgs[1] !== 'function') validatedArgs.splice(1, 1);
     }
 
-    return [validatedArgs, validationContext];
+    return [validatedArgs, validationContext, validator];
    }
 
    function _methodMutation(async, methodName) {
@@ -371,6 +398,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
       }
   
       let validationContext = {};
+      let validator;
       let error;
       if (this._c2 && options.bypassCollection2 !== true) {
         let userId = null;
@@ -379,7 +407,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
           userId = Meteor.userId();
         } catch (err) {}
   
-        [args, validationContext] = doValidate({
+        [args, validationContext, validator] = doValidate({
           collection: this,
           type: methodName,
           args,
@@ -405,13 +433,17 @@ function getArgumentsAndValidationContext(methodName, args, async) {
           _super.isCalledFromAsync = true;
           return Promise.resolve(_super.apply(this, args));
         } catch (err) {
-          const addValidationErrorsPropName =
-            typeof validationContext.addValidationErrors === 'function'
-              ? 'addValidationErrors'
-              : 'addInvalidKeys';
-          parsingServerError([err], validationContext, addValidationErrorsPropName);
-          error = getErrorObject(validationContext, err.message, err.code);
-          return Promise.reject(error);
+          if (this._c2) {
+            const addValidationErrorsPropName =
+              typeof validationContext.addValidationErrors === 'function'
+                ? 'addValidationErrors'
+                : 'addInvalidKeys';
+            parsingServerError([err], validationContext, addValidationErrorsPropName, validator);
+            error = getErrorObject(validationContext, err.message, err.code, validator);
+            return Promise.reject(error);
+          }
+
+          return Promise.reject(err);
         }
       } else {
         return _super.apply(this, args);
@@ -422,7 +454,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
   function _methodMutationAsync(methodName) {
     const _super = Mongo.Collection.prototype[methodName];
     Mongo.Collection.prototype[methodName] = async function (...args) {
-       const [validatedArgs, validationContext] = getArgumentsAndValidationContext.call(this, methodName, args, true);
+       const [validatedArgs, validationContext, validator] = getArgumentsAndValidationContext.call(this, methodName, args, true);
 
        try {
          return await _super.apply(this, validatedArgs);
@@ -432,8 +464,8 @@ function getArgumentsAndValidationContext(methodName, args, async) {
            typeof validationContext.addValidationErrors === 'function'
              ? 'addValidationErrors'
              : 'addInvalidKeys';
-         parsingServerError([err], validationContext, addValidationErrorsPropName);
-         throw getErrorObject(validationContext, err.message, err.code);
+         parsingServerError([err], validationContext, addValidationErrorsPropName, validator);
+         throw getErrorObject(validationContext, err.message, err.code, validator);
         } else {
           // do not change error if collection isn't being validated by collection2
          throw err;
@@ -450,8 +482,8 @@ if (Mongo.Collection.prototype.insertAsync) {
   } else {
     ['insertAsync', 'updateAsync'].forEach(_methodMutation.bind(this, true));
   }
-  ['insert', 'update'].forEach(_methodMutation.bind(this, false));
-} 
+}
+['insert', 'update'].forEach(_methodMutation.bind(this, false));
 
 /*
  * Private
@@ -506,6 +538,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     // we need to pass `doc` and `options` to `simpleSchema` method, that's why
     // schema declaration moved here
     let schema = collection.c2Schema(doc, options, selector);
+    const validator = C2._getValidatorForSchema(schema);
     const isLocalCollection = collection._connection === null;
 
     // On the server and for local collections, we allow passing `getAutoValues: false` to disable autoValue functions
@@ -555,7 +588,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     // is found to be invalid on the server, we get that error back
     // as a special Meteor.Error that we need to parse.
     if (Meteor.isClient && hasCallback) {
-      callback = args[last] = wrapCallbackForParsingServerErrors(validationContext, callback);
+      callback = args[last] = wrapCallbackForParsingServerErrors(validationContext, callback, validator);
     }
 
     const schemaAllowsId = schema.allowsKey('_id');
@@ -707,16 +740,18 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
 
       // If callback, set invalidKey when we get a mongo unique error
       if (Meteor.isServer && hasCallback) {
-        args[last] = wrapCallbackForParsingMongoValidationErrors(validationContext, args[last]);
+        args[last] = wrapCallbackForParsingMongoValidationErrors(validationContext, args[last], validator);
       }
 
-      return [args, validationContext];
+      return [args, validationContext, validator];
     } else {
       error = getErrorObject(
         validationContext,
         Meteor.settings?.packages?.collection2?.disableCollectionNamesInValidation
           ? ''
-          : `in ${collection._name} ${type}`
+          : `in ${collection._name} ${type}`,
+        undefined,
+        validator
       );
       if (callback) {
         // insert/update/upsert pass `false` when there's an error, so we do that
@@ -728,10 +763,9 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     }
   }
 
-  function getErrorObject(context, appendToMessage = '', code) {
-    // Get the current validator from Collection2
-    const validator = C2._currentValidator;
-    
+  function getErrorObject(context, appendToMessage = '', code, validator) {
+    validator = validator || C2._getValidatorForSchema(context?.schema);
+
     // If the validator has a getErrorObject method, use it
     if (validator && typeof validator.getErrorObject === 'function') {
       return validator.getErrorObject(context, appendToMessage, code);
@@ -758,7 +792,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     ]);
   }
 
-  function parsingServerError(args, validationContext, addValidationErrorsPropName) {
+  function parsingServerError(args, validationContext, addValidationErrorsPropName, validator) {
     const error = args[0];
     // Handle our own validation errors
     if (
@@ -769,7 +803,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     ) {
       const invalidKeysFromServer = EJSON.parse(error.details);
       validationContext[addValidationErrorsPropName](invalidKeysFromServer);
-      args[0] = getErrorObject(validationContext);
+      args[0] = getErrorObject(validationContext, '', undefined, validator);
     } else if (
       error instanceof Meteor.Error &&
       // Handle Mongo unique index errors, which are forwarded to the client as 409 errors
@@ -779,11 +813,11 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
       error.reason.indexOf('c2_') !== -1
     ) {
       addUniqueError(validationContext, error.reason);
-      args[0] = getErrorObject(validationContext);
+      args[0] = getErrorObject(validationContext, '', undefined, validator);
     }
   }
 
-  function wrapCallbackForParsingMongoValidationErrors(validationContext, cb) {
+  function wrapCallbackForParsingMongoValidationErrors(validationContext, cb, validator) {
     return function wrappedCallbackForParsingMongoValidationErrors(...args) {
       const error = args[0];
       if (
@@ -793,19 +827,19 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
         error.message.indexOf('c2_') !== -1
       ) {
         addUniqueError(validationContext, error.message);
-        args[0] = getErrorObject(validationContext);
+        args[0] = getErrorObject(validationContext, '', undefined, validator);
       }
       return cb.apply(this, args);
     };
   }
 
-  function wrapCallbackForParsingServerErrors(validationContext, cb) {
+  function wrapCallbackForParsingServerErrors(validationContext, cb, validator) {
     const addValidationErrorsPropName =
       typeof validationContext.addValidationErrors === 'function'
         ? 'addValidationErrors'
         : 'addInvalidKeys';
     return function wrappedCallbackForParsingServerErrors(...args) {
-      parsingServerError(args, validationContext, addValidationErrorsPropName);
+      parsingServerError(args, validationContext, addValidationErrorsPropName, validator);
       return cb.apply(this, args);
     };
   }
@@ -852,7 +886,6 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
 C2.alreadyDefined = {};
   
 function defineDeny(collection, options) {
-  const validator = C2.validator();
   if (C2.alreadyDefined[collection._name]) {
     return false; // no definition added;
   }
@@ -865,12 +898,14 @@ function defineDeny(collection, options) {
     insert: function (userId, doc) {
       // Referenced doc is cleaned in place
       const schema = collection.c2Schema(doc);
+      const validator = C2._getValidatorForSchema(schema);
       validator.clean({ doc, schema, userId, isLocalCollection, type: 'insert' });
       return false;
     },
     update: function (userId, doc, fields, modifier) {
       // Referenced modifier is cleaned in place
-      const schema = collection.c2Schema(doc);
+      const schema = collection.c2Schema(modifier, null, doc);
+      const validator = C2._getValidatorForSchema(schema);
       validator.clean({ userId, doc, fields, modifier, schema, type: 'update' });
       return false;
     },
@@ -905,7 +940,8 @@ function defineDeny(collection, options) {
             trimStrings: false,
             removeEmptyStrings: false,
             filter: false,
-            autoConvert: false
+            autoConvert: false,
+            selector: doc
           },
           function (error) {
             if (error) {
@@ -934,7 +970,8 @@ function defineDeny(collection, options) {
             trimStrings: false,
             removeEmptyStrings: false,
             filter: false,
-            autoConvert: false
+            autoConvert: false,
+            selector: doc
           },
           function (error) {
             if (error) {

@@ -1,6 +1,7 @@
 /* eslint-env mocha */
-import Ajv from 'ajv'
 import expect from 'expect'
+import { Meteor } from 'meteor/meteor'
+import { Mongo } from 'meteor/mongo'
 import { callMongoMethod } from './helper'
 
 describe('using ajv', () => {
