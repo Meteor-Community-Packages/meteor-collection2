@@ -8,7 +8,7 @@ describe('using ajv', () => {
   it('attach and get ajv for normal collection', function () {
     ['ajvMc1', null].forEach(name => {
       const mc = new Mongo.Collection(name, Meteor.isClient ? { connection: null } : undefined);
-  
+
       mc.attachSchema({
         type: "object",
         properties: { foo: { type: "string" } },

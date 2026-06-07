@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [4.2.0](#420)
 - [4.1.5](#415)
 - [4.1.4](#414)
 - [4.1.3](#413)
@@ -88,6 +89,14 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
+## 4.2.0
+
+- Add support for Zod v4 schemas.
+- Add support for AJV-style JSON schemas.
+- Make `aldeed:simple-schema` a weak dependency so apps can choose their validation library.
+- Add schema adapters and schema type detection for SimpleSchema, Zod, and AJV.
+- Add validation coverage for Zod and AJV schemas.
+
 ## 4.1.5
 
 * Improve MeteorJS version detection
@@ -126,7 +135,7 @@
 
 ## 4.0.3
 
-- Update Meteor release to 3.0 
+- Update Meteor release to 3.0
 
 ## 4.0.2
 
@@ -140,7 +149,7 @@
 
 ## 4.0.0
 
-- Make collection2 compatible with Meteor 3.0 thanks to the [awesome work](https://github.com/Meteor-Community-Packages/meteor-collection2/pull/443) by @klablink  
+- Make collection2 compatible with Meteor 3.0 thanks to the [awesome work](https://github.com/Meteor-Community-Packages/meteor-collection2/pull/443) by @klablink
 - Remove clean options https://github.com/Meteor-Community-Packages/meteor-collection2/pull/436
 - Prettier is added to enforce a consistent style across the project
 - Removed `babel-polyfill`
@@ -198,7 +207,7 @@ Updated tests
 
 ## 3.0.6
 
-Fix upsert error when supplying a nested object which was caused by previous change. 
+Fix upsert error when supplying a nested object which was caused by previous change.
 
 
 ## 3.0.5

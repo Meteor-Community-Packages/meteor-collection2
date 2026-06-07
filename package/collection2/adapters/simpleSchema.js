@@ -47,7 +47,7 @@ export const createSimpleSchemaAdapter = (SimpleSchema) => ({
   getErrors: () => {},
   getErrorObject: (context, appendToMessage = '', code) => {
     let message;
-    const invalidKeys = 
+    const invalidKeys =
       typeof context.validationErrors === 'function'
         ? context.validationErrors()
         : context.invalidKeys();
@@ -80,16 +80,16 @@ export const createSimpleSchemaAdapter = (SimpleSchema) => ({
     return error;
   },
   freeze: false,
-  
+
   // Add validation context handling directly to the adapter
   getValidationContext: (schema, validationContext) => {
     if (validationContext && typeof validationContext === 'object') {
       return validationContext;
     }
-    
+
     return schema.namedContext(validationContext);
   },
-  
+
   // Enhance a SimpleSchema instance with any additional methods needed
   enhance: (schema) => {
     // SimpleSchema already has all the methods we need

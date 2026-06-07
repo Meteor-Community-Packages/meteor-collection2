@@ -68,17 +68,17 @@ describe('collection2', function () {
 
   it('SimpleSchema property-based detection', function() {
     const mc = new Mongo.Collection('simpleSchemaDetection', Meteor.isClient ? { connection: null } : undefined);
-    
+
     const schema = new SimpleSchema({
       name: { type: String },
       age: { type: Number, optional: true }
     });
-    
+
     mc.attachSchema(schema);
-    
+
     expect(mc.c2Schema()).toBeDefined();
     expect(mc.c2Schema() instanceof SimpleSchema).toBe(true);
-    
+
     expect(mc.c2Schema()._schema).toBeDefined();
     expect(mc.c2Schema()._schema.name).toBeDefined();
   });

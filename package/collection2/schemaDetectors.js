@@ -25,13 +25,13 @@ export const isSimpleSchema = (schema) => {
   if (SimpleSchema && typeof SimpleSchema.isSimpleSchema === 'function') {
     return SimpleSchema.isSimpleSchema(schema);
   }
-  
+
   // Fallback to property-based detection
-  return schema && 
-         typeof schema === 'object' && 
-         typeof schema.schema === 'function' && 
-         typeof schema.validator === 'function' && 
-         typeof schema.clean === 'function' && 
+  return schema &&
+         typeof schema === 'object' &&
+         typeof schema.schema === 'function' &&
+         typeof schema.validator === 'function' &&
+         typeof schema.clean === 'function' &&
          typeof schema.namedContext === 'function';
 };
 
@@ -41,12 +41,12 @@ export const isSimpleSchema = (schema) => {
  * @returns {Boolean} True if the schema is a Zod schema
  */
 export const isZodSchema = (schema) => {
-  return schema && 
-         typeof schema === 'object' && 
+  return schema &&
+         typeof schema === 'object' &&
          (schema._def || schema._zod?.def) &&
-         schema.safeParse && 
-         schema.parse && 
-         typeof schema.safeParse === 'function' && 
+         schema.safeParse &&
+         schema.parse &&
+         typeof schema.safeParse === 'function' &&
          typeof schema.parse === 'function';
 };
 
@@ -56,12 +56,12 @@ export const isZodSchema = (schema) => {
  * @returns {Boolean} True if the schema is an AJV schema
  */
 export const isAjvSchema = (schema) => {
-  return schema && 
-         typeof schema === 'object' && 
-         ((schema.compile && schema.validate && 
-           typeof schema.compile === 'function' && 
+  return schema &&
+         typeof schema === 'object' &&
+         ((schema.compile && schema.validate &&
+           typeof schema.compile === 'function' &&
            typeof schema.validate === 'function') ||
-          (schema.type === 'object' && schema.properties && 
+          (schema.type === 'object' && schema.properties &&
            typeof schema.properties === 'object'));
 };
 
@@ -74,14 +74,14 @@ export const detectSchemaType = (schema) => {
   if (isSimpleSchema(schema)) {
     return 'SimpleSchema';
   }
-  
+
   if (isZodSchema(schema)) {
     return 'zod';
   }
-  
+
   if (isAjvSchema(schema)) {
     return 'ajv';
   }
-  
+
   return 'unknown';
 };

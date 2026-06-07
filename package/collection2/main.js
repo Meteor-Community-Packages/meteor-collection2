@@ -182,7 +182,7 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
     options = options || Object.create(null);
 
     const self = this;
-    
+
     // Detect schema type and get appropriate validator
     const validator = C2._detectSchemaType(ss);
 
@@ -212,13 +212,13 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
 
         // Index of existing schema with identical selector
         let index;
-  
+
         // Loop through existing schemas with selectors,
         for (index = allSchemas.length - 1; index > 0; index--) {
           const current = allSchemas[index];
           if (current && isEqual(current.selector, options.selector)) break;
         }
-  
+
         if (index <= 0) {
           // We didn't find the schema in our array - push it into the array
           allSchemas.push({
@@ -266,17 +266,17 @@ Mongo.Collection.prototype.attachSchema = function c2AttachSchema(ss, options) {
         }
       }
     }
-  
+
     attachTo(self);
     // Attach the schema to the underlying LocalCollection, too
     if (self._collection instanceof LocalCollection) {
       C2.init(self._collection);
       attachTo(self._collection);
     }
-  
+
     defineDeny(self, options);
     keepInsecure(self);
-  
+
     Collection2.emit('schema.attached', self, ss, options);
   };
 
@@ -388,15 +388,15 @@ function getArgumentsAndValidationContext(methodName, args, async) {
        : Mongo.Collection.prototype[methodName.replace('Async', '')];
 
     if (!_super) return;
-  
+
     Mongo.Collection.prototype[methodName] = function (...args) {
       let options = isInsertType(methodName) ? args[1] : args[2];
-  
+
       // Support missing options arg
       if (!options || typeof options === 'function') {
         options = {};
       }
-  
+
       let validationContext = {};
       let validator;
       let error;
@@ -406,7 +406,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
           // https://github.com/aldeed/meteor-collection2/issues/175
           userId = Meteor.userId();
         } catch (err) {}
-  
+
         [args, validationContext, validator] = doValidate({
           collection: this,
           type: methodName,
@@ -416,7 +416,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
           isFromTrustedCode: Meteor.isServer, // isFromTrustedCode
           async
         });
-  
+
         if (!args) {
           // doValidate already called the callback or threw the error, so we're done.
           // But insert should always return an ID to match core behavior.
@@ -426,7 +426,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
         // We still need to adjust args because insert does not take options
         if (isInsertType(methodName) && typeof args[1] !== 'function') args.splice(1, 1);
       }
-  
+
       if (async && !Meteor.isFibersDisabled) {
         try {
           this[methodName.replace('Async', '')].isCalledFromAsync = true;
@@ -450,7 +450,7 @@ function getArgumentsAndValidationContext(methodName, args, async) {
       }
     };
   }
-  
+
   function _methodMutationAsync(methodName) {
     const _super = Mongo.Collection.prototype[methodName];
     Mongo.Collection.prototype[methodName] = async function (...args) {
@@ -488,7 +488,7 @@ if (Mongo.Collection.prototype.insertAsync) {
 /*
  * Private
  */
-  
+
 function doValidate({ collection, type, args = [], getAutoValues, userId, isFromTrustedCode, async }) {
     let doc, callback, error, options, selector;
 
@@ -518,9 +518,9 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     } else {
       throw new Error('invalid type argument');
     }
-  
+
     const validatedObjectWasInitiallyEmpty = Object.keys(doc).length === 0;
-  
+
     // Support missing options arg
     if (!callback && typeof options === 'function') {
       callback = options;
@@ -770,7 +770,7 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     if (validator && typeof validator.getErrorObject === 'function') {
       return validator.getErrorObject(context, appendToMessage, code);
     }
-    
+
     // If we get here, it means we couldn't find a validator or the validator doesn't have a getErrorObject method
     // This indicates a problem with schema detection or adapter implementation
     throw new Error('No validator found or validator does not implement getErrorObject method. ' +
@@ -882,9 +882,9 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     // own for each operation for this collection. And the user may still add
     // additional deny functions, but does not have to.
   }
-  
+
 C2.alreadyDefined = {};
-  
+
 function defineDeny(collection, options) {
   if (C2.alreadyDefined[collection._name]) {
     return false; // no definition added;

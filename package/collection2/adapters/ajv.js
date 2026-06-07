@@ -16,7 +16,7 @@ export const createAjvAdapter = () => ({
       // Enhance the schema with Collection2 compatibility methods
       return enhanceAjvSchema(schema);
     }
-    
+
     // For non-AJV schemas, we can't convert without the actual AJV library
     throw new Error('Cannot create AJV schema from non-AJV object. Please use an AJV schema directly.');
   },
@@ -25,7 +25,7 @@ export const createAjvAdapter = () => ({
     if (!(s1 && (s1.definition || s1.$id)) || !(s2 && (s2.definition || s2.$id))) {
       throw new Error('Both schemas must be AJV schemas');
     }
-    
+
     // Since we don't have direct access to AJV's methods, we'll use a simplified approach
     // In a real implementation, you'd merge the schemas properly
     return enhanceAjvSchema(s2); // Simplified implementation - just use the second schema
@@ -44,7 +44,7 @@ export const createAjvAdapter = () => ({
         const definition = schema.definition || schema;
         let isValid = true;
         const errors = [];
-        
+
         if (definition.required && Array.isArray(definition.required)) {
           for (const field of definition.required) {
             if (obj[field] === undefined) {
@@ -58,7 +58,7 @@ export const createAjvAdapter = () => ({
             }
           }
         }
-        
+
         // Check property types
         if (definition.properties && typeof definition.properties === 'object') {
           for (const [field, propDef] of Object.entries(definition.properties)) {
@@ -92,7 +92,7 @@ export const createAjvAdapter = () => ({
             }
           }
         }
-        
+
         return {
           isValid,
           errors
@@ -110,7 +110,7 @@ export const createAjvAdapter = () => ({
     // AJV schemas don't have a built-in clean method, so we use our custom implementation
     const isModifier = !isInsertType(type);
     const target = isModifier ? modifier : doc;
-    
+
     if (typeof schema.clean === 'function') {
       schema.clean(target, {
         mutate: true,
@@ -120,22 +120,22 @@ export const createAjvAdapter = () => ({
   },
   getErrorObject: (context, appendToMessage = '', code) => {
     const invalidKeys = context.validationErrors();
-    
+
     if (!invalidKeys || invalidKeys.length === 0) {
       return new Error('Unknown validation error');
     }
-    
+
     const firstErrorKey = invalidKeys[0].name;
     const firstErrorMessage = invalidKeys[0].message;
     let message = firstErrorMessage;
-    
+
     // Fallback to standard message format
     if (firstErrorKey.indexOf('.') === -1) {
       message = `${firstErrorMessage}`;
     } else {
       message = `${firstErrorMessage} (${firstErrorKey})`;
     }
-    
+
     message = `${message} ${appendToMessage}`.trim();
     const error = new Error(message);
     error.invalidKeys = invalidKeys;
@@ -153,19 +153,19 @@ export const createAjvAdapter = () => ({
     if (validationContext && typeof validationContext === 'object') {
       return validationContext;
     }
-    
+
     // Ensure the schema is enhanced with Collection2 compatibility methods
     const enhancedSchema = enhanceAjvSchema(schema);
     return enhancedSchema.namedContext(validationContext);
   },
-  
+
   // Enhance a schema with Collection2 compatibility methods
   enhance: (schema) => {
     return enhanceAjvSchema(schema);
   },
-  
+
   freeze: false,
-  
+
   // Add validation context handling directly to the adapter
 });
 
@@ -177,16 +177,16 @@ export const createAjvAdapter = () => ({
  */
 const createAjvValidationContext = (schema, name = 'default') => {
   let errors = [];
-  
+
   return {
     schema,
     validate: (obj, options = {}) => {
       errors = []; // Clear previous errors
-      
+
       try {
         // Use the schema definition for validation
         const definition = schema.definition || schema;
-        
+
         // For modifiers, we need special handling
         if (options.modifier) {
           // For now, just allow modifiers without validation
@@ -208,7 +208,7 @@ const createAjvValidationContext = (schema, name = 'default') => {
               }
             }
           }
-          
+
           // Check property types
           if (definition.properties && typeof definition.properties === 'object') {
             for (const [field, propDef] of Object.entries(definition.properties)) {
@@ -239,7 +239,7 @@ const createAjvValidationContext = (schema, name = 'default') => {
               }
             }
           }
-          
+
           return errors.length === 0;
         }
       } catch (error) {
@@ -282,7 +282,7 @@ const createAjvValidationContext = (schema, name = 'default') => {
 const enhanceAjvSchema = (schema) => {
   // Store validation contexts by name
   const validationContexts = {};
-  
+
   // Add namedContext method if it doesn't exist
   if (typeof schema.namedContext !== 'function') {
     schema.namedContext = function(name = 'default') {
@@ -290,47 +290,47 @@ const enhanceAjvSchema = (schema) => {
       if (validationContexts[name]) {
         return validationContexts[name];
       }
-      
+
       // Create and store a new context
       const context = createAjvValidationContext(schema, name);
       validationContexts[name] = context;
       return context;
     };
   }
-  
+
   // Add allowsKey method to the schema
   if (typeof schema.allowsKey !== 'function') {
     schema.allowsKey = (key) => {
       // For AJV schemas, check if the key exists in the properties
       if (key === '_id') return true; // Always allow _id
-      
+
       // Try to get the properties from the AJV schema
       const definition = schema.definition || schema;
       const properties = definition.properties;
-      
+
       if (properties) {
         return key in properties;
       }
-      
+
       // If we can't determine, default to allowing the key
       return true;
     };
   }
-  
+
   // Add clean method for AJV schemas
   if (typeof schema.clean !== 'function') {
     schema.clean = (obj, options = {}) => {
       const { mutate = false, isModifier = false } = options;
-      
+
       // If not mutating, clone the object first
       let cleanObj = mutate ? obj : JSON.parse(JSON.stringify(obj));
-      
+
       // For now, we'll just implement basic cleaning operations
       // In a real implementation, we would do more sophisticated cleaning
-      
+
       return cleanObj;
     };
-    
+
     // Set default clean options
     schema._cleanOptions = {
       filter: true,
@@ -339,6 +339,6 @@ const enhanceAjvSchema = (schema) => {
       trimStrings: true
     };
   }
-  
+
   return schema;
 };
