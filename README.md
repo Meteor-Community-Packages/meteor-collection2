@@ -4,13 +4,13 @@
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
 ![OSSF-Scorecard Score](https://img.shields.io/ossf-scorecard/github.com/Meteor-Community-Packages/meteor-collection2)
 ![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/Meteor-Community-Packages/meteor-collection2?label=latest&sort=semver)
-[![](https://img.shields.io/badge/semver-2.0.0-success)](http://semver.org/spec/v2.0.0.html) 
+[![](https://img.shields.io/badge/semver-2.0.0-success)](http://semver.org/spec/v2.0.0.html)
 ![Test suite](https://github.com/Meteor-Community-Packages/meteor-collection2/workflows/Test%20suite/badge.svg)
 
 
 A Meteor package that allows you to attach a schema to a Mongo.Collection. Automatically validates against that schema when inserting and updating from client or server code.
 
-Since version 4.0, this package ships with the [aldeed:simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema) Meteor package built in, which defines the schema syntax and provides the validation logic.
+Since version 4.2, this package can validate with [aldeed:simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema), [Zod](https://zod.dev/), or [AJV-style JSON schemas](https://ajv.js.org/json-schema.html). SimpleSchema remains the compatibility path for existing apps.
 
 ## TOC
 
@@ -61,9 +61,35 @@ Since version 4.0, this package ships with the [aldeed:simple-schema](https://gi
 
 In your Meteor app directory, enter:
 
-### 4.0
+### 4.2+
 
-Starting 4.0 collection2 ships with built in [`aldeed:simple-schema@1.13.1`](https://github.com/Meteor-Community-Packages/meteor-simple-schema/releases/tag/v1.13.1).
+Starting 4.2, collection2 detects the schema type you attach. Add the validation package you plan to use:
+
+```bash
+meteor add aldeed:collection2
+```
+
+For SimpleSchema:
+
+```bash
+meteor add aldeed:simple-schema
+```
+
+For Zod:
+
+```bash
+meteor npm install zod
+```
+
+For AJV-style JSON schemas:
+
+```bash
+meteor npm install ajv
+```
+
+### 4.0 and 4.1
+
+In 4.0 and 4.1, collection2 shipped with [`aldeed:simple-schema@1.13.1`](https://github.com/Meteor-Community-Packages/meteor-simple-schema/releases/tag/v1.13.1).
 
 ```bash
 meteor add aldeed:collection2
@@ -380,10 +406,41 @@ to figure out a more specific schema.
 
 ## Schema Format
 
-Refer to the
-[aldeed:simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema) package
+Collection2 detects the attached schema type and uses the matching adapter.
+
+For SimpleSchema, refer to the
+[aldeed:simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema)
 documentation for a list of all the available schema rules and validation
 methods.
+
+For Zod, attach a Zod v4 schema directly:
+
+```js
+import { z } from 'zod';
+
+const BookSchema = z.object({
+  title: z.string(),
+  author: z.string(),
+  copies: z.number().int().nonnegative(),
+});
+
+Books.attachSchema(BookSchema);
+```
+
+For AJV-style JSON schemas, attach the JSON schema directly:
+
+```js
+Books.attachSchema({
+  type: 'object',
+  properties: {
+    title: { type: 'string' },
+    author: { type: 'string' },
+    copies: { type: 'number' },
+  },
+  required: ['title', 'author', 'copies'],
+  additionalProperties: false,
+});
+```
 
 Use the `MyCollection.simpleSchema()` method to access the attached `SimpleSchema`
 instance for a Mongo.Collection instance. For example:
@@ -670,7 +727,7 @@ The callback you specify as the last argument of your `insert()` or `update()` c
 
 If you attempt a synchronous operation in server code, the same validation error is thrown since there is no callback to pass it to. If this happens in a server method (defined with `Meteor.methods`), a more generic `Meteor.Error` is passed to your callback back on the client. This error does not have an `invalidKeys` property, but it does have the error message for the first invalid key set in `error.reason`.
 
-Generally speaking, you would probably not use the `Error` for displaying to the user. You can instead use the reactive methods provided by the SimpleSchema validation context to display the specific error messages to the user somewhere in the UI. The [autoform](https://github.com/aldeed/meteor-autoform) package provides some UI components and helpers for this purpose.
+Generally speaking, you would probably not use the `Error` for displaying to the user. For SimpleSchema schemas, you can instead use the reactive methods provided by the validation context to display the specific error messages to the user somewhere in the UI. The [autoform](https://github.com/aldeed/meteor-autoform) package provides some UI components and helpers for this purpose.
 
 ## More Details
 
@@ -683,7 +740,7 @@ For the curious, this is exactly what Collection2 does before every insert or up
 1. Validates your document or mongo modifier object. (To skip this, set the `validate` option to `false` when you call `insert` or `update`.)
 1. Performs the insert or update like normal, only if it was valid.
 
-Collection2 is simply calling SimpleSchema methods to do these things. The validation happens on both the client and the server for client-initiated actions, giving you the speed of client-side validation along with the security of server-side validation.
+For SimpleSchema schemas, Collection2 calls SimpleSchema methods to do these things. Zod and AJV-style schemas use Collection2 adapters for validation and do not provide the same automatic cleaning features as SimpleSchema. The validation happens on both the client and the server for client-initiated actions, giving you the speed of client-side validation along with the security of server-side validation.
 
 ## Community Add-On Packages
 
@@ -766,4 +823,3 @@ This project exists thanks to all the people who contribute. [[Contribute]](CONT
 @SimonSimCity
 
 (Add yourself if you should be listed here.)
-

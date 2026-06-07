@@ -1,16 +1,27 @@
 import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
 import SimpleSchema from 'meteor/aldeed:simple-schema';
-import addMultiTests from './multi.tests.js';
-import addBooksTests from './books.tests.js';
-import addContextTests from './context.tests.js';
-import addDefaultValuesTests from './default.tests.js';
 import { Meteor } from 'meteor/meteor';
 import { callMongoMethod } from './helper';
+import { Collection2 } from 'meteor/aldeed:collection2'
 
 /* global describe, it */
 
 describe('collection2', function () {
+  it('creates a SimpleSchema from a plain schema definition on first attach', function () {
+    const mc = new Mongo.Collection(
+      `plainSchemaDefinition_${new Date().getTime()}`,
+      Meteor.isClient ? { connection: null } : undefined
+    );
+
+    mc.attachSchema({
+      foo: { type: String }
+    });
+
+    expect(mc.c2Schema() instanceof SimpleSchema).toBe(true);
+    expect(mc.simpleSchema()).toBe(mc.c2Schema());
+  });
+
   it('attach and get simpleSchema for normal collection', function () {
     const mc = new Mongo.Collection('mc', Meteor.isClient ? { connection: null } : undefined);
 
@@ -20,7 +31,7 @@ describe('collection2', function () {
       })
     );
 
-    expect(mc.simpleSchema() instanceof SimpleSchema).toBe(true);
+    expect(mc.c2Schema() instanceof SimpleSchema).toBe(true);
   });
 
   it('attach and get simpleSchema for local collection', function () {
@@ -32,7 +43,7 @@ describe('collection2', function () {
       })
     );
 
-    expect(mc.simpleSchema() instanceof SimpleSchema).toBe(true);
+    expect(mc.c2Schema() instanceof SimpleSchema).toBe(true);
   });
 
   it('handles prototype-less objects', async function () {
@@ -53,6 +64,23 @@ describe('collection2', function () {
     prototypelessObject.foo = 'bar';
 
     await callMongoMethod(prototypelessTest, 'insert', [prototypelessObject]);
+  });
+
+  it('SimpleSchema property-based detection', function() {
+    const mc = new Mongo.Collection('simpleSchemaDetection', Meteor.isClient ? { connection: null } : undefined);
+
+    const schema = new SimpleSchema({
+      name: { type: String },
+      age: { type: Number, optional: true }
+    });
+
+    mc.attachSchema(schema);
+
+    expect(mc.c2Schema()).toBeDefined();
+    expect(mc.c2Schema() instanceof SimpleSchema).toBe(true);
+
+    expect(mc.c2Schema()._schema).toBeDefined();
+    expect(mc.c2Schema()._schema.name).toBeDefined();
   });
 
   if (Meteor.isServer) {
@@ -731,8 +759,4 @@ describe('collection2', function () {
     }
   });
 
-  addBooksTests();
-  addContextTests();
-  addDefaultValuesTests();
-  addMultiTests();
 });
