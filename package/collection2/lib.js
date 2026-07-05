@@ -1,4 +1,7 @@
 export function flattenSelector(selector) {
+  // Create a shallow copy to avoid mutating the original object
+  selector = { ...selector };
+
   // If the selector uses $and format, convert to plain object selector
   if (Array.isArray(selector.$and)) {
     selector.$and.forEach((sel) => {
@@ -11,6 +14,11 @@ export function flattenSelector(selector) {
   const obj = {};
 
   for (const [key, value] of Object.entries(selector) || []) {
+    // Prevent prototype pollution
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+      continue;
+    }
+
     // Ignoring logical selectors (https://docs.mongodb.com/manual/reference/operator/query/#logical)
     if (!key.startsWith('$')) {
       if (typeof value === 'object' && value !== null) {
