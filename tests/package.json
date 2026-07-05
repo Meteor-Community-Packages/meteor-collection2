@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "expect": "^26.6.2",
-    "puppeteer": "^19.11.1"
+    "puppeteer": "^25.3.0"
   },
   "meteor": {
     "testModule": "main.tests.js"
