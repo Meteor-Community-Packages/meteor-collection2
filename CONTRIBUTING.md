@@ -76,6 +76,8 @@ git status --short
 
 Verify your Meteor publisher account with `meteor whoami`. Then `cd` to the `package/collection2` directory and run `meteor publish`.
 
+Publishing may update `/package/collection2/.versions` with the exact dependency versions used for the published build. If it does, review those generated changes and merge them before tagging.
+
 After the package is visible on Atmosphere, tag the exact published commit using the repository's `vX.Y.Z` convention and create a matching GitHub release:
 
 ```sh
