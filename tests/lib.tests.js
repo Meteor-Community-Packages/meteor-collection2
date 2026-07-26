@@ -33,10 +33,10 @@ describe('collection2 selector projection helpers', function () {
 
   it('copies special field names as own data properties without changing prototypes', function () {
     const selector = JSON.parse(
-      '{"__proto__":{"polluted":"selector"},"constructor":"selector","prototype":"selector"}'
+      '{"__proto__":{"polluted":"selector"},"constructor":"selector","prototype":"selector","ordinary":"selector"}'
     );
     const set = JSON.parse(
-      '{"__proto__":{"polluted":"modifier"},"constructor":"modifier","prototype":"modifier"}'
+      '{"__proto__":{"polluted":"modifier"},"constructor":"modifier","prototype":"modifier","ordinary":"modifier"}'
     );
 
     const result = mergeSelectorAndSet(selector, set);
@@ -48,6 +48,7 @@ describe('collection2 selector projection helpers', function () {
     expect(result.__proto__).toEqual({ polluted: 'modifier' });
     expect(result.constructor).toBe('modifier');
     expect(result.prototype).toBe('modifier');
+    expect(result.ordinary).toBe('modifier');
     expect({}.polluted).toBe(undefined);
   });
 });
