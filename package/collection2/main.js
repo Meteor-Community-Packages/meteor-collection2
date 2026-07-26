@@ -16,7 +16,14 @@ const getSimpleSchema = () => {
   }
   return null;
 };
-import { flattenSelector, isInsertType, isUpdateType, isUpsertType, isObject, isEqual } from './lib';
+import {
+  mergeSelectorAndSet,
+  isInsertType,
+  isUpdateType,
+  isUpsertType,
+  isObject,
+  isEqual
+} from './lib';
 import { detectSchemaType } from './schemaDetectors';
 import { createSimpleSchemaAdapter as simpleSchemaAdapter } from './adapters/simpleSchema';
 import { createZodAdapter as zodAdapter } from './adapters/zod';
@@ -671,10 +678,9 @@ function doValidate({ collection, type, args = [], getAutoValues, userId, isFrom
     // right now.
     if (Meteor.isServer && isUpsert && isObject(selector)) {
       const set = docToValidate.$set || {};
-      docToValidate.$set = flattenSelector(selector);
+      docToValidate.$set = mergeSelectorAndSet(selector, set);
 
       if (!schemaAllowsId) delete docToValidate.$set._id;
-      Object.assign(docToValidate.$set, set);
     }
     // Set automatic values for validation on the client.
     // On the server, we already updated doc with auto values, but on the client,

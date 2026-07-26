@@ -1,14 +1,7 @@
 export function flattenSelector(selector) {
-  // If the selector uses $and format, convert to plain object selector
-  if (Array.isArray(selector.$and)) {
-    selector.$and.forEach((sel) => {
-      Object.assign(selector, flattenSelector(sel));
-    });
-
-    delete selector.$and;
-  }
-
-  const obj = {};
+  // Use a prototype-less accumulator so selector field names are always copied
+  // as data properties, including names such as "__proto__".
+  const obj = Object.create(null);
 
   for (const [key, value] of Object.entries(selector) || []) {
     // Ignoring logical selectors (https://docs.mongodb.com/manual/reference/operator/query/#logical)
@@ -27,7 +20,25 @@ export function flattenSelector(selector) {
     }
   }
 
-  return obj;
+  // If the selector uses $and format, add its equality-like fields to the
+  // validation projection without changing the selector that Mongo will use.
+  if (Array.isArray(selector.$and)) {
+    selector.$and.forEach((sel) => {
+      Object.assign(obj, flattenSelector(sel));
+    });
+  }
+
+  // Return a normal object for compatibility with the validation adapters.
+  // Object spread creates own data properties without invoking __proto__ setters.
+  return { ...obj };
+}
+
+export function mergeSelectorAndSet(selector, set) {
+  // Modifier values take precedence over values inferred from the selector.
+  return {
+    ...flattenSelector(selector),
+    ...set
+  };
 }
 
 export const isInsertType = function (type) {
@@ -63,5 +74,4 @@ export function isEqual(a, b) {
     return isEqual(a[key], b[key]);
   });
 }
-
 
