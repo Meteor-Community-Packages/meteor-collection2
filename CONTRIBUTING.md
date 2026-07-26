@@ -52,9 +52,11 @@ Open a pull request from your branch and describe what changes you are making an
 
 ## Publishing a New Release to Atmosphere
 
-Check out `master` branch.
+Create a release branch from a clean, up-to-date `master` branch.
 
 In `/package/collection2/package.js`, increment the version according to semantic versioning rules.
+
+Update the `aldeed:collection2` and `local-test:aldeed:collection2` entries in `/package/collection2/.versions` to the same version.
 
 In `CHANGELOG.md`, add a heading for this version and a description of changes committed since the previous version.
 
@@ -64,15 +66,21 @@ In root of project, run `doctoc .`. This updates both TOCs in the markdown files
 
 Run tests (see "Running Tests" section above).
 
-`cd` to `package/collection2` directory and run `meteor publish`. (You must have permission.)
-
-Commit all version and docs changes, tag, and push:
+Open and merge a release pull request. Then check out the reviewed release commit from `master` and verify that the worktree is clean:
 
 ```sh
-git add .
-git commit -m "publish 1.2.3"
-git push origin master
-git tag 1.2.3 && git push --tags
+git switch master
+git pull --ff-only origin master
+git status --short
+```
+
+Verify your Meteor publisher account with `meteor whoami`. Then `cd` to the `package/collection2` directory and run `meteor publish`.
+
+After the package is visible on Atmosphere, tag the exact published commit using the repository's `vX.Y.Z` convention and create a matching GitHub release:
+
+```sh
+git tag v1.2.3
+git push origin v1.2.3
 ```
 
 (substitute actual version number)
