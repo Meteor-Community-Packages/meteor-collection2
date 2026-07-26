@@ -18,6 +18,9 @@ Since version 4.2, this package can validate with [aldeed:simple-schema](https:/
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Installation](#installation)
+  - [4.2+](#42)
+  - [4.0 and 4.1](#40-and-41)
+  - [3.x](#3x)
 - [Import using static imports](#import-using-static-imports)
 - [Import using dynamic imports](#import-using-dynamic-imports)
 - [Why Use Collection2](#why-use-collection2)
@@ -28,7 +31,6 @@ Since version 4.2, this package can validate with [aldeed:simple-schema](https:/
     - [replace](#replace)
   - [Attach a Schema to Meteor.users](#attach-a-schema-to-meteorusers)
 - [Schema Format](#schema-format)
-- [Schema Clean Options](#schema-clean-options)
 - [Passing Options](#passing-options)
 - [Validation Contexts](#validation-contexts)
 - [Validating Without Inserting or Updating](#validating-without-inserting-or-updating)
@@ -241,6 +243,8 @@ Products.insert(
 ```
 
 For an update or upsert, the matching selector can be in the query, the modifier `$set` object, or the `selector` option.
+
+For server-side upsert validation, Collection2 treats direct equality values, `$eq` values, and single-value `$in` clauses, including those nested in `$and`, as fields that may be inserted. This projection is used only for validation; the original selector is passed unchanged to MongoDB.
 
 ### attachSchema options
 

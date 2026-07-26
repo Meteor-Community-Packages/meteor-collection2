@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [4.2.1](#421)
 - [4.2.0](#420)
 - [4.1.5](#415)
 - [4.1.4](#414)
@@ -88,6 +89,11 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 4.2.1
+
+- Preserve the original Mongo selector during server-side upsert validation so `$and` conditions cannot be unintentionally broadened.
+- Copy selector and modifier fields as own data properties without invoking prototype setters.
 
 ## 4.2.0
 
