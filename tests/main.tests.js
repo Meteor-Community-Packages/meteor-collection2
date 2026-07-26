@@ -8,3 +8,4 @@ import './context.tests.js';
 import './default.tests.js';
 import './ajv.tests'
 import './zod.tests.js'
+import './lib.tests.js'

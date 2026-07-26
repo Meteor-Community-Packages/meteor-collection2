@@ -461,6 +461,65 @@ describe('collection2', function () {
       expect(doc.bar).toBe(2);
       expect(doc.baz).toBe(4);
     });
+
+    it('passes the original $and selector to Mongo when validating an upsert', async function () {
+      const upsertSelectorIntegrityTest = new Mongo.Collection(
+        'upsertSelectorIntegrityTest'
+      );
+
+      upsertSelectorIntegrityTest.attachSchema(
+        new SimpleSchema({
+          score: {
+            type: Number,
+            optional: true
+          },
+          name: {
+            type: String,
+            optional: true
+          },
+          selected: {
+            type: Boolean,
+            optional: true
+          }
+        })
+      );
+
+      await callMongoMethod(upsertSelectorIntegrityTest, 'remove', [{}]);
+      const nonMatchingId = await callMongoMethod(upsertSelectorIntegrityTest, 'insert', [
+        { score: 100, name: 'non-matching' }
+      ]);
+      const matchingId = await callMongoMethod(upsertSelectorIntegrityTest, 'insert', [
+        { score: 3, name: 'matching' }
+      ]);
+      const selector = {
+        $and: [
+          { score: { $gt: 1 } },
+          { score: { $lt: 5 } }
+        ]
+      };
+      const originalSelector = JSON.parse(JSON.stringify(selector));
+
+      await callMongoMethod(upsertSelectorIntegrityTest, 'upsert', [
+        selector,
+        { $set: { selected: true } }
+      ]);
+
+      expect(selector).toEqual(originalSelector);
+
+      const nonMatching = await callMongoMethod(
+        upsertSelectorIntegrityTest,
+        'findOne',
+        [nonMatchingId]
+      );
+      const matching = await callMongoMethod(
+        upsertSelectorIntegrityTest,
+        'findOne',
+        [matchingId]
+      );
+
+      expect(nonMatching.selected).toBe(undefined);
+      expect(matching.selected).toBe(true);
+    });
   }
 
   it('no errors when using a schemaless collection', async function () {
