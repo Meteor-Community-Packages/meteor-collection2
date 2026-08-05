@@ -3,6 +3,7 @@ import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
 import { Meteor } from 'meteor/meteor';
 import { z } from 'zod';
+import { z as z3 } from 'zod3';
 import SimpleSchema from 'meteor/aldeed:simple-schema';
 import { callMongoMethod, callMeteorFetch } from './helper';
 import { Collection2 } from 'meteor/aldeed:collection2';
@@ -977,6 +978,206 @@ describe('Using Zod for validation', () => {
         }
       });
     }
+  });
+
+  describe('Zod modifier path resolution', () => {
+    const versions = [
+      {
+        name: 'Zod 3',
+        z: z3,
+        record: (valueSchema) => z3.record(valueSchema)
+      },
+      {
+        name: 'Zod 4',
+        z,
+        record: (valueSchema) => z.record(z.string(), valueSchema)
+      }
+    ];
+
+    versions.forEach(({ name, z: currentZod, record }) => {
+      it(`resolves wrapped paths and preserves leaf semantics with ${name}`, function () {
+        const nestedSchema = currentZod.object({
+          count: currentZod.number(),
+          optionalField: currentZod.string().optional()
+        });
+        const schema = currentZod.object({
+          optionalNested: nestedSchema.optional(),
+          nullableNested: nestedSchema.nullable(),
+          defaultNested: nestedSchema.default({ count: 0 }),
+          transformedNested: nestedSchema.transform(() => 'transformed'),
+          pipelineNested: nestedSchema.transform(() => 'transformed').pipe(currentZod.string()),
+          preprocessedNested: currentZod.preprocess((value) => value, nestedSchema),
+          lazyNested: currentZod.lazy(() => nestedSchema),
+          ...(typeof nestedSchema.prefault === 'function'
+            ? {
+                prefaultNested: nestedSchema.prefault({ count: 0 }),
+                nonoptionalNested: nestedSchema.optional().nonoptional()
+              }
+            : {})
+        });
+        const collection = new Mongo.Collection(null);
+        collection.attachSchema(schema);
+        const context = collection.c2Schema().namedContext(`${name}-wrapped-paths`);
+
+        expect(
+          context.validate(
+            {
+              $set: {
+                'optionalNested.count': 1,
+                'nullableNested.count': 2,
+                'defaultNested.count': 3,
+                'transformedNested.count': 4,
+                'pipelineNested.count': 5,
+                'preprocessedNested.count': 6,
+                'lazyNested.count': 7,
+                ...(typeof nestedSchema.prefault === 'function'
+                  ? {
+                      'prefaultNested.count': 8,
+                      'nonoptionalNested.count': 9
+                    }
+                  : {}),
+                'optionalNested.optionalField': undefined
+              }
+            },
+            { modifier: true }
+          )
+        ).toBe(true);
+
+        expect(
+          context.validate(
+            { $setOnInsert: { 'optionalNested.optionalField': undefined } },
+            { modifier: true }
+          )
+        ).toBe(true);
+
+        expect(
+          context.validate({ $set: { 'optionalNested.count': 'not-a-number' } }, { modifier: true })
+        ).toBe(false);
+        expect(context.validationErrors()[0].name).toBe('optionalNested.count');
+      });
+
+      it(`authorizes local blackbox paths without weakening typed paths with ${name}`, function () {
+        const schema = currentZod.object({
+          settings: currentZod
+            .object({
+              theme: currentZod.string().optional()
+            })
+            .passthrough(),
+          meta: currentZod.any(),
+          refinedMeta: currentZod.any().refine((value) => value === 'allowed'),
+          bag: record(currentZod.any()),
+          counters: record(currentZod.number()),
+          typedSettings: currentZod.object({}).catchall(currentZod.number()),
+          strict: currentZod.object({
+            known: currentZod.string()
+          })
+        });
+        const collection = new Mongo.Collection(null);
+        collection.attachSchema(schema);
+        const context = collection.c2Schema().namedContext(`${name}-dynamic-paths`);
+
+        expect(
+          context.validate(
+            {
+              $set: {
+                'settings.anyKey': { nested: true },
+                'meta.current': { nested: true },
+                'bag.foo': 1,
+                'counters.foo': 1,
+                'typedSettings.foo': 1
+              },
+              $unset: {
+                'settings.oldKey': '',
+                'meta.oldKey': '',
+                'bag.oldKey': ''
+              },
+              $inc: {
+                'settings.count': 1,
+                'meta.count': 1,
+                'bag.count': 1,
+                'counters.count': 1
+              },
+              $push: {
+                'settings.items': { $each: ['one', 'two'] },
+                'meta.items': 'one'
+              },
+              $addToSet: {
+                'bag.items': 'one'
+              }
+            },
+            { modifier: true }
+          )
+        ).toBe(true);
+
+        expect(
+          context.validate({ $set: { 'counters.foo': 'not-a-number' } }, { modifier: true })
+        ).toBe(false);
+        expect(context.validationErrors()[0].name).toBe('counters.foo');
+
+        expect(
+          context.validate({ $set: { 'typedSettings.foo': 'not-a-number' } }, { modifier: true })
+        ).toBe(false);
+        expect(context.validationErrors()[0].name).toBe('typedSettings.foo');
+
+        expect(context.validate({ $set: { refinedMeta: 'allowed' } }, { modifier: true })).toBe(
+          true
+        );
+        expect(context.validate({ $set: { refinedMeta: 'rejected' } }, { modifier: true })).toBe(
+          false
+        );
+        expect(context.validationErrors()[0].name).toBe('refinedMeta');
+
+        expect(context.validate({ $set: { 'strict.unknown': true } }, { modifier: true })).toBe(
+          false
+        );
+        expect(context.validationErrors()[0].type).toBe('invalid_key');
+
+        expect(context.validate({ $set: { rootUnknown: true } }, { modifier: true })).toBe(false);
+        expect(context.validationErrors()[0].type).toBe('invalid_key');
+      });
+    });
+
+    it('rejects unsetting required Zod 4 record keys', function () {
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          exhaustive: z.record(z.enum(['a', 'b']), z.number()),
+          numeric: z.record(z.literal(1), z.number()),
+          largeNumeric: z.record(z.literal(1e21), z.number()),
+          transformed: z.record(
+            z.literal('required').transform(() => 'parsed'),
+            z.number()
+          ),
+          partial: z.partialRecord(z.enum(['a', 'b']), z.number())
+        })
+      );
+      const context = collection.c2Schema().namedContext('Zod 4-record-requiredness');
+
+      expect(context.validate({ $unset: { 'exhaustive.a': '' } }, { modifier: true })).toBe(false);
+      expect(context.validationErrors()[0].type).toBe('required');
+
+      expect(context.validate({ $set: { 'numeric.1': 1 } }, { modifier: true })).toBe(true);
+      expect(context.validate({ $unset: { 'numeric.1': '' } }, { modifier: true })).toBe(false);
+      expect(context.validationErrors()[0].type).toBe('required');
+
+      expect(context.validate({ $set: { 'numeric.01': 1 } }, { modifier: true })).toBe(false);
+      expect(context.validationErrors()[0].type).toBe('invalid_key');
+
+      expect(context.validate({ $set: { 'largeNumeric.1e+21': 1 } }, { modifier: true })).toBe(
+        true
+      );
+      expect(context.validate({ $unset: { 'largeNumeric.1e+21': '' } }, { modifier: true })).toBe(
+        false
+      );
+      expect(context.validationErrors()[0].type).toBe('required');
+
+      expect(context.validate({ $unset: { 'transformed.required': '' } }, { modifier: true })).toBe(
+        false
+      );
+      expect(context.validationErrors()[0].type).toBe('required');
+
+      expect(context.validate({ $unset: { 'partial.a': '' } }, { modifier: true })).toBe(true);
+    });
   });
 
   describe('Zod array operations', () => {

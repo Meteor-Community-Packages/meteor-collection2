@@ -417,7 +417,7 @@ For SimpleSchema, refer to the
 documentation for a list of all the available schema rules and validation
 methods.
 
-For Zod, attach a Zod v4 schema directly:
+For Zod, attach a Zod v3 or v4 schema directly:
 
 ```js
 import { z } from 'zod';
@@ -430,6 +430,10 @@ const BookSchema = z.object({
 
 Books.attachSchema(BookSchema);
 ```
+
+For modifier validation, permissive nodes such as `.passthrough()`, `z.any()`, and
+`z.unknown()` authorize descendant paths where they are declared. Records and typed
+catchalls authorize dynamic keys while continuing to validate their values.
 
 For AJV-style JSON schemas, attach the JSON schema directly:
 

@@ -247,7 +247,9 @@ class ZodValidationContext {
             // Get the array element schema for this field
             const elementSchema = getArrayElementSchema(this.schema, field);
 
-            if (elementSchema) {
+            if (elementSchema === ZOD_UNRESTRICTED_PATH) {
+              return;
+            } else if (elementSchema) {
               // Handle $each operator
               if (value && typeof value === 'object' && value.$each) {
                 for (const item of value.$each) {
@@ -364,7 +366,9 @@ class ZodValidationContext {
             // Get the array element schema for this field
             const elementSchema = getArrayElementSchema(this.schema, field);
 
-            if (elementSchema) {
+            if (elementSchema === ZOD_UNRESTRICTED_PATH) {
+              return;
+            } else if (elementSchema) {
               // Handle $each operator
               if (value && typeof value === 'object' && value.$each) {
                 for (const item of value.$each) {
@@ -650,20 +654,49 @@ const getZodArrayElement = (schema) => {
   return def.element || (typeof def.type !== 'string' ? def.type : null) || def.innerType;
 };
 
+const getZodRecordKey = (schema) => getZodDef(schema).keyType;
+const getZodRecordValue = (schema) => getZodDef(schema).valueType;
+const isRequiredZodRecordKey = (schema, key) => {
+  const values = schema?._zod?.values;
+  return values ? Array.from(values).some((value) => String(value) === key) : false;
+};
+const parseZodRecordKey = (schema, key) => {
+  const stringResult = schema.safeParse(key);
+  if (stringResult.success) return stringResult;
+
+  const numericKey = Number(key);
+  return String(numericKey) === key ? schema.safeParse(numericKey) : stringResult;
+};
+
+const ZOD_UNRESTRICTED_PATH = Symbol('zodUnrestrictedPath');
+
 const unwrapZodSchema = (schema) => {
   let current = schema;
   let guard = 0;
 
   while (current && guard < 10) {
     const def = getZodDef(current);
-    const type = getZodType(current);
 
-    if (['optional', 'nullable', 'default', 'catch', 'readonly', 'branded'].includes(type)) {
+    if (
+      isZodType(
+        current,
+        'optional',
+        'nullable',
+        'default',
+        'prefault',
+        'nonoptional',
+        'catch',
+        'readonly',
+        'branded'
+      )
+    ) {
       current = def.innerType || def.type;
-    } else if (type === 'pipe') {
-      current = def.out || def.in;
-    } else if (type === 'effects' || type === 'ZodEffects') {
+    } else if (isZodType(current, 'pipe', 'pipeline')) {
+      current = isZodType(def.in, 'transform') ? def.out || def.in : def.in || def.out;
+    } else if (isZodType(current, 'effects')) {
       current = def.schema;
+    } else if (isZodType(current, 'lazy')) {
+      current = def.getter?.();
     } else {
       return current;
     }
@@ -677,45 +710,93 @@ const unwrapZodSchema = (schema) => {
 const isArrayPathPart = (part) =>
   /^\d+$/.test(part) || part === '$' || part === '$[]' || /^\$\[.+\]$/.test(part);
 
-const getSchemaAtPath = (schema, fieldPath) => {
+const isUnrestrictedZodSchema = (schema) => {
+  const unwrapped = unwrapZodSchema(schema);
+  return isZodType(unwrapped, 'any', 'unknown');
+};
+
+const getZodUnknownKeySchema = (schema) => {
+  const def = getZodDef(schema);
+  const catchall = def.catchall;
+
+  if (catchall && !isZodType(catchall, 'never')) {
+    return catchall;
+  }
+
+  if (def.unknownKeys === 'passthrough' || def.unknownKeys === 'ignore') {
+    return ZOD_UNRESTRICTED_PATH;
+  }
+
+  return null;
+};
+
+const resolveZodSchemaPath = (schema, fieldPath) => {
   const parts = fieldPath.split('.');
   let currentSchema = schema;
+  let isDynamic = false;
 
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
     currentSchema = unwrapZodSchema(currentSchema);
 
+    if (isUnrestrictedZodSchema(currentSchema)) {
+      return { schema: currentSchema, isDynamic: true, isUnrestricted: true };
+    }
+
     if (isZodType(currentSchema, 'array')) {
       currentSchema = getZodArrayElement(currentSchema);
       if (isArrayPathPart(part)) {
+        isDynamic = false;
         continue;
       }
     }
 
     currentSchema = unwrapZodSchema(currentSchema);
+
+    if (isZodType(currentSchema, 'record')) {
+      const keySchema = getZodRecordKey(currentSchema);
+      const valueSchema = getZodRecordValue(currentSchema);
+      const keyResult = keySchema?.safeParse ? parseZodRecordKey(keySchema, part) : null;
+
+      if (!valueSchema || (keyResult && !keyResult.success)) {
+        return null;
+      }
+
+      currentSchema = valueSchema;
+      isDynamic = !isRequiredZodRecordKey(keySchema, part);
+      continue;
+    }
+
     if (!isZodType(currentSchema, 'object')) {
       return null;
     }
 
     const shape = getZodShape(currentSchema);
-    if (!shape || !shape[part]) {
+    if (shape && Object.prototype.hasOwnProperty.call(shape, part)) {
+      currentSchema = shape[part];
+      isDynamic = false;
+      continue;
+    }
+
+    const unknownKeySchema = getZodUnknownKeySchema(currentSchema);
+    if (!unknownKeySchema) {
       return null;
     }
 
-    currentSchema = shape[part];
+    if (unknownKeySchema === ZOD_UNRESTRICTED_PATH) {
+      return { schema: null, isDynamic: true, isUnrestricted: true };
+    }
+
+    currentSchema = unknownKeySchema;
+    isDynamic = true;
   }
 
-  return currentSchema;
-};
-
-const schemaAllowsUnknownKeys = (schema) => {
-  const def = getZodDef(schema);
-  const catchallType = getZodType(def.catchall);
-  return (
-    def.unknownKeys === 'passthrough' ||
-    def.unknownKeys === 'ignore' ||
-    !!(def.catchall && catchallType !== 'never' && catchallType !== 'ZodNever')
-  );
+  return {
+    schema: currentSchema,
+    isDynamic,
+    isUnrestricted: false,
+    acceptsAnyValue: isUnrestrictedZodSchema(currentSchema)
+  };
 };
 
 const isOptionalZodSchema = (schema) => {
@@ -760,17 +841,17 @@ const validateSetModifierFields = (schema, fields, errors) => {
   let isValid = true;
 
   Object.entries(fields).forEach(([fieldPath, value]) => {
-    const fieldSchema = getSchemaAtPath(schema, fieldPath);
+    const resolution = resolveZodSchemaPath(schema, fieldPath);
 
-    if (!fieldSchema) {
-      if (!schemaAllowsUnknownKeys(schema)) {
-        pushInvalidKeyError(errors, fieldPath, value);
-        isValid = false;
-      }
+    if (!resolution) {
+      pushInvalidKeyError(errors, fieldPath, value);
+      isValid = false;
       return;
     }
 
-    const result = unwrapZodSchema(fieldSchema).safeParse(value);
+    if (resolution.isUnrestricted) return;
+
+    const result = resolution.schema.safeParse(value);
     if (!result.success) {
       pushZodIssueErrors(errors, fieldPath, value, result);
       isValid = false;
@@ -784,17 +865,19 @@ const validateUnsetModifierFields = (schema, fields, errors) => {
   let isValid = true;
 
   Object.entries(fields).forEach(([fieldPath, value]) => {
-    const fieldSchema = getSchemaAtPath(schema, fieldPath);
+    const resolution = resolveZodSchemaPath(schema, fieldPath);
 
-    if (!fieldSchema) {
-      if (!schemaAllowsUnknownKeys(schema)) {
-        pushInvalidKeyError(errors, fieldPath, value);
-        isValid = false;
-      }
+    if (!resolution) {
+      pushInvalidKeyError(errors, fieldPath, value);
+      isValid = false;
       return;
     }
 
-    if (!isOptionalZodSchema(fieldSchema)) {
+    if (
+      !resolution.isUnrestricted &&
+      !resolution.isDynamic &&
+      !isOptionalZodSchema(resolution.schema)
+    ) {
       errors.push({
         name: fieldPath,
         type: 'required',
@@ -813,17 +896,20 @@ const validateIncModifierFields = (schema, fields, errors) => {
   let isValid = true;
 
   Object.entries(fields).forEach(([fieldPath, value]) => {
-    const fieldSchema = getSchemaAtPath(schema, fieldPath);
+    const resolution = resolveZodSchemaPath(schema, fieldPath);
 
-    if (!fieldSchema) {
-      if (!schemaAllowsUnknownKeys(schema)) {
-        pushInvalidKeyError(errors, fieldPath, value);
-        isValid = false;
-      }
+    if (!resolution) {
+      pushInvalidKeyError(errors, fieldPath, value);
+      isValid = false;
       return;
     }
 
-    if (typeof value !== 'number' || !isNumberZodSchema(fieldSchema)) {
+    if (
+      typeof value !== 'number' ||
+      (!resolution.isUnrestricted &&
+        !resolution.acceptsAnyValue &&
+        !isNumberZodSchema(resolution.schema))
+    ) {
       errors.push({
         name: fieldPath,
         type: 'invalid_type',
@@ -839,7 +925,13 @@ const validateIncModifierFields = (schema, fields, errors) => {
 };
 
 const getArrayElementSchema = (schema, fieldPath) => {
-  const arraySchema = unwrapZodSchema(getSchemaAtPath(schema, fieldPath));
+  const resolution = resolveZodSchemaPath(schema, fieldPath);
+  if (!resolution) return null;
+  if (resolution.isUnrestricted || resolution.acceptsAnyValue) {
+    return ZOD_UNRESTRICTED_PATH;
+  }
+
+  const arraySchema = unwrapZodSchema(resolution.schema);
   return isZodType(arraySchema, 'array') ? getZodArrayElement(arraySchema) : null;
 };
 
@@ -871,7 +963,7 @@ const enhanceZodSchema = (schema) => {
   if (typeof schema.allowsKey !== 'function') {
     schema.allowsKey = (key) => {
       if (key === '_id') return true; // Always allow _id
-      return !!getSchemaAtPath(schema, key) || schemaAllowsUnknownKeys(schema);
+      return !!resolveZodSchemaPath(schema, key);
     };
   }
 
