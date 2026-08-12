@@ -4,7 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [4.2.2-beta.1](#422-beta1)
+- [4.2.2](#422)
 - [4.2.1](#421)
 - [4.2.0](#420)
 - [4.1.5](#415)
@@ -91,7 +91,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## 4.2.2-beta.1
+## 4.2.2
 
 - Resolve dotted Mongo modifier paths through Zod 3 and Zod 4 wrappers.
 - Preserve optional, default, catch, and refined leaf semantics during `$set` and `$setOnInsert` validation.
