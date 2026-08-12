@@ -1,7 +1,7 @@
 import { Meteor } from 'meteor/meteor';
 import { EJSON } from 'meteor/ejson';
 import { isInsertType, isUpsertType } from '../lib';
-import { isZodSchema } from '../schemaDetectors';
+import { isZod4Schema } from '../schemaDetectors';
 import { getZodAutoValue } from '../zodAutoValue';
 
 /**
@@ -357,10 +357,10 @@ const cleanZodAsync = async args => {
 export const createZodAdapter = (z) => ({
   name: 'zod',
   asyncOnly: false,
-  is: (schema) => isZodSchema(schema),
+  is: (schema) => isZod4Schema(schema),
   create: (schema) => {
     // If this is already a Zod schema, return it directly with namedContext
-    if (isZodSchema(schema)) {
+    if (isZod4Schema(schema)) {
       // Enhance the schema with Collection2 compatibility methods
       return enhanceZodSchema(schema);
     }
@@ -372,7 +372,7 @@ export const createZodAdapter = (z) => ({
   },
   extend: (s1, s2) => {
     // For property-based detection, we need to ensure both schemas have the right properties
-    if (!isZodSchema(s1) || !isZodSchema(s2)) {
+    if (!isZod4Schema(s1) || !isZod4Schema(s2)) {
       throw new Error('Both schemas must be Zod schemas');
     }
 
