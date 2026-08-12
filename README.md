@@ -10,7 +10,7 @@
 
 A Meteor package that allows you to attach a schema to a Mongo.Collection. Automatically validates against that schema when inserting and updating from client or server code.
 
-Since version 4.2, this package can validate with [aldeed:simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema), [Zod](https://zod.dev/), or [AJV-style JSON schemas](https://ajv.js.org/json-schema.html). SimpleSchema remains the compatibility path for existing apps.
+This package can validate with [aldeed:simple-schema](https://github.com/Meteor-Community-Packages/meteor-simple-schema), [Zod](https://zod.dev/), or [AJV-style JSON schemas](https://ajv.js.org/json-schema.html). Collection2 5 requires Meteor 3.1.2+, SimpleSchema 3, and Zod 4.
 
 ## TOC
 
@@ -18,6 +18,7 @@ Since version 4.2, this package can validate with [aldeed:simple-schema](https:/
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Installation](#installation)
+  - [5.x](#5x)
   - [4.2+](#42)
   - [4.0 and 4.1](#40-and-41)
   - [3.x](#3x)
@@ -62,6 +63,21 @@ Since version 4.2, this package can validate with [aldeed:simple-schema](https:/
 ## Installation
 
 In your Meteor app directory, enter:
+
+### 5.x
+
+Collection2 5 requires Meteor 3.1.2+. Use `insertAsync`, `updateAsync`, and `upsertAsync` with SimpleSchema 3 because cleaning and validation may be asynchronous.
+
+```bash
+meteor add aldeed:collection2 aldeed:simple-schema@3
+```
+
+For Zod, install Zod 4:
+
+```bash
+meteor add aldeed:collection2
+meteor npm install zod@4
+```
 
 ### 4.2+
 
@@ -417,7 +433,7 @@ For SimpleSchema, refer to the
 documentation for a list of all the available schema rules and validation
 methods.
 
-For Zod, attach a Zod v3 or v4 schema directly:
+For Zod, attach a Zod v4 schema directly. Collection2 applies `.default()` values through nested objects and arrays on inserts, within whole subdocuments assigned by `$set`, and under `$setOnInsert` for upserts. Other Zod parse output, including transforms and coercions, is used only for validation and is not persisted.
 
 ```js
 import { z } from 'zod';
@@ -430,6 +446,26 @@ const BookSchema = z.object({
 
 Books.attachSchema(BookSchema);
 ```
+
+Experimental Zod autoValues can be registered with the exported helper:
+
+```js
+import { autoValue } from 'meteor/aldeed:collection2';
+
+const BookSchema = z.object({
+  title: z.string(),
+  createdAt: autoValue(z.date().optional(), function () {
+    if (this.isInsert) return new Date();
+    if (this.isUpsert) return { $setOnInsert: new Date() };
+    this.unset();
+  }),
+  updatedAt: autoValue(z.date().optional(), async function () {
+    if (this.isUpdate) return new Date();
+  }),
+});
+```
+
+Zod autoValues support top-level and nested object fields. Array-element autoValues are not yet supported.
 
 For modifier validation, permissive nodes such as `.passthrough()`, `z.any()`, and
 `z.unknown()` authorize descendant paths where they are declared. Records and typed
@@ -748,7 +784,7 @@ For the curious, this is exactly what Collection2 does before every insert or up
 1. Validates your document or mongo modifier object. (To skip this, set the `validate` option to `false` when you call `insert` or `update`.)
 1. Performs the insert or update like normal, only if it was valid.
 
-For SimpleSchema schemas, Collection2 calls SimpleSchema methods to do these things. Zod and AJV-style schemas use Collection2 adapters for validation and do not provide the same automatic cleaning features as SimpleSchema. The validation happens on both the client and the server for client-initiated actions, giving you the speed of client-side validation along with the security of server-side validation.
+For SimpleSchema schemas, Collection2 calls SimpleSchema methods to do these things. Zod schemas support defaults and experimental autoValues, but not SimpleSchema's other automatic cleaning features. AJV-style schemas use Collection2's validation adapter without SimpleSchema cleaning. Validation happens on both the client and the server for client-initiated actions, giving you client-side feedback along with server-side enforcement.
 
 ## Community Add-On Packages
 

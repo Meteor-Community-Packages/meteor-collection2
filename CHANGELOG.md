@@ -4,6 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
+- [5.0.0-beta.1](#500-beta1)
 - [4.2.2](#422)
 - [4.2.1](#421)
 - [4.2.0](#420)
@@ -90,6 +91,14 @@
 - [0.1.6](#016)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
+## 5.0.0-beta.1
+
+- Require Meteor 3.1.2+, SimpleSchema 3, and Zod 4. Zod 3 schemas now fail with an explicit upgrade error.
+- Await SimpleSchema 3 cleaning, autoValues, field validators, and whole-document validators before database writes.
+- Require async Mongo mutation methods when using SimpleSchema 3.
+- Apply Zod `.default()` values through nested objects and arrays on inserts, whole-subdocument updates, and upsert inserts without persisting transforms, coercions, catches, or unknown-key stripping.
+- Add experimental Zod `autoValue(schema, fn)` support with operation context, modifier return values, `unset()`, and async functions.
 
 ## 4.2.2
 

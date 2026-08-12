@@ -442,32 +442,23 @@ describe('multiple top-level schemas', function () {
     });
   }
   else {
-    it('inserts doc correctly with selector passed via doc', function (done) {
-      const productId = products.insert(
-        {
-          title: 'Product one',
-          type: 'simple' // selector in doc
-        },
-        () => {
-          const product = products.findOne(productId);
-          expect(product.description).toBe('This is a simple product.');
-          expect(product.price).toBe(undefined);
+    it('inserts doc correctly with selector passed via doc', async function () {
+      const productId = await products.insertAsync({
+        title: 'Product one',
+        type: 'simple'
+      });
+      const product = await products.findOneAsync(productId);
+      expect(product.description).toBe('This is a simple product.');
+      expect(product.price).toBe(undefined);
 
-          const productId3 = products.insert(
-            {
-              title: 'Product three',
-              createdAt: new Date(),
-              type: 'variant' // other selector in doc
-            },
-            () => {
-              const product3 = products.findOne(productId3);
-              expect(product3.description).toBe(undefined);
-              expect(product3.price).toBe(5);
-              done();
-            }
-          );
-        }
-      );
+      const productId3 = await products.insertAsync({
+        title: 'Product three',
+        createdAt: new Date(),
+        type: 'variant'
+      });
+      const product3 = await products.findOneAsync(productId3);
+      expect(product3.description).toBe(undefined);
+      expect(product3.price).toBe(5);
     });
   }
 

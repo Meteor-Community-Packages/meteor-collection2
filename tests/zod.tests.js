@@ -3,12 +3,154 @@ import expect from 'expect';
 import { Mongo } from 'meteor/mongo';
 import { Meteor } from 'meteor/meteor';
 import { z } from 'zod';
-import { z as z3 } from 'zod3';
 import SimpleSchema from 'meteor/aldeed:simple-schema';
 import { callMongoMethod, callMeteorFetch } from './helper';
-import { Collection2 } from 'meteor/aldeed:collection2';
+import { autoValue, Collection2 } from 'meteor/aldeed:collection2';
 
 describe('Using Zod for validation', () => {
+  describe('Zod defaults and autoValues', () => {
+    it('applies defaults recursively without persisting other parse output', async function () {
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          name: z.string().transform(value => value.toUpperCase()),
+          copies: z.number().default(1),
+          details: z.object({ enabled: z.boolean().default(true) }),
+          items: z.array(z.object({ count: z.number().default(2) }))
+        })
+      );
+
+      const id = await collection.insertAsync({
+        name: 'unchanged',
+        details: {},
+        items: [{}]
+      });
+      const doc = await collection.findOneAsync(id);
+
+      expect(doc.name).toBe('unchanged');
+      expect(doc.copies).toBe(1);
+      expect(doc.details.enabled).toBe(true);
+      expect(doc.items[0].count).toBe(2);
+    });
+
+    it('applies defaults through wrappers', async function () {
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          outerOptional: z.string().default('outer').optional(),
+          innerOptional: z.string().optional().default('inner')
+        })
+      );
+
+      const id = await collection.insertAsync({});
+      const doc = await collection.findOneAsync(id);
+      expect(doc.outerOptional).toBe('outer');
+      expect(doc.innerOptional).toBe('inner');
+    });
+
+    it('applies defaults to set subdocuments and setOnInsert only', async function () {
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          name: z.string(),
+          status: z.string().default('new'),
+          details: z.object({ enabled: z.boolean().default(true) }).optional()
+        })
+      );
+
+      const id = await collection.insertAsync({ name: 'existing' }, { getAutoValues: false });
+      await collection.updateAsync(id, { $unset: { status: '' } });
+      expect((await collection.findOneAsync(id)).status).toBe(undefined);
+
+      await collection.updateAsync(id, { $set: { details: {} } });
+      expect((await collection.findOneAsync(id)).details.enabled).toBe(true);
+
+      await collection.upsertAsync(
+        { name: 'upserted' },
+        { $set: { name: 'upserted' } },
+        { getAutoValues: false }
+      );
+      expect((await collection.findOneAsync({ name: 'upserted' })).status).toBe('new');
+    });
+
+    it('does not add conflicting parent defaults during upsert', async function () {
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          name: z.string(),
+          details: z.object({ enabled: z.boolean() }).default({ enabled: true })
+        })
+      );
+
+      await collection.upsertAsync(
+        { name: 'nested-upsert' },
+        { $set: { name: 'nested-upsert', 'details.enabled': false } }
+      );
+      expect((await collection.findOneAsync({ name: 'nested-upsert' })).details.enabled).toBe(false);
+    });
+
+    it('runs sync and async autoValues with operation context', async function () {
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          name: z.string(),
+          created: autoValue(z.string().optional(), function () {
+            if (this.isInsert) return 'created';
+            if (this.isUpsert) return { $setOnInsert: 'created' };
+            this.unset();
+          }),
+          wrapped: autoValue(z.string(), function () {
+            if (this.isInsert) return 'wrapped';
+          }).optional(),
+          updated: autoValue(z.string().optional(), async function () {
+            if (this.isUpdate) return 'updated';
+          })
+        })
+      );
+
+      const id = await collection.insertAsync({ name: 'first' });
+      const inserted = await collection.findOneAsync(id);
+      expect(inserted.created).toBe('created');
+      expect(inserted.wrapped).toBe('wrapped');
+
+      await collection.updateAsync(id, { $set: { name: 'changed', created: 'tampered' } });
+      const updated = await collection.findOneAsync(id);
+      expect(updated.created).toBe('created');
+      expect(updated.updated).toBe('updated');
+
+      await collection.upsertAsync({ name: 'upserted-auto' }, { $set: { name: 'upserted-auto' } });
+      expect((await collection.findOneAsync({ name: 'upserted-auto' })).created).toBe('created');
+    });
+
+    it('does not traverse inherited objects for nested autoValues', async function () {
+      const field = autoValue(z.string().optional(), function () {
+        return 'safe';
+      });
+      const shape = Object.create(null);
+      Object.defineProperty(shape, '__proto__', {
+        value: z.object({ polluted: field }).optional(),
+        enumerable: true
+      });
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(z.object(shape));
+
+      const id = await collection.insertAsync({});
+      expect(id).toBeDefined();
+      expect({}.polluted).toBe(undefined);
+    });
+
+    it('rejects Zod 3 schemas explicitly', function () {
+      const zod3LikeSchema = {
+        _def: { typeName: 'ZodObject' },
+        parse() {},
+        safeParse() {}
+      };
+      const collection = new Mongo.Collection(null);
+
+      expect(() => collection.attachSchema(zod3LikeSchema)).toThrow(/requires Zod 4/);
+    });
+  });
+
   describe('Basic validation', () => {
     let booksCollection;
 
@@ -96,9 +238,6 @@ describe('Using Zod for validation', () => {
           const validationContext = booksCollection.c2Schema().namedContext();
           const validationErrors = validationContext.validationErrors();
 
-          // Log the actual errors for debugging
-          console.log('Validation errors for integer test:', JSON.stringify(validationErrors));
-
           // For now, just check that we have any validation errors
           expect(validationErrors.length).toBeGreaterThan(0);
 
@@ -127,9 +266,6 @@ describe('Using Zod for validation', () => {
           const validationContext = booksCollection.c2Schema().namedContext();
           const validationErrors = validationContext.validationErrors();
 
-          // Log the actual errors for debugging
-          console.log('Validation errors for length test:', JSON.stringify(validationErrors));
-
           // For now, just check that we have any validation errors
           expect(validationErrors.length).toBeGreaterThan(0);
 
@@ -150,15 +286,10 @@ describe('Using Zod for validation', () => {
         ]);
 
         // Then update with valid data
-        try {
-          await callMongoMethod(booksCollection, 'update', [
-            { _id: id },
-            { $set: { copies: 5, title: 'Updated Title' } }
-          ]);
-        } catch (error) {
-          console.error('Update failed:', error);
-          throw error;
-        }
+        await callMongoMethod(booksCollection, 'update', [
+          { _id: id },
+          { $set: { copies: 5, title: 'Updated Title' } }
+        ]);
 
         // Verify the update worked
         const updated = await callMongoMethod(booksCollection, 'findOne', [{ _id: id }]);
@@ -229,14 +360,8 @@ describe('Using Zod for validation', () => {
           }
         };
 
-        // In a real implementation, this would work:
-        try {
-          const id = await callMongoMethod(zodNativeCollection, 'insert', [validUser]);
-          expect(typeof id).toBe('string');
-        } catch (error) {
-          // If this fails, it's because our implementation isn't fully complete
-          console.log('Failed to insert with native Zod schema:', error);
-        }
+        const id = await callMongoMethod(zodNativeCollection, 'insert', [validUser]);
+        expect(typeof id).toBe('string');
 
         // For now, just test that our schema is attached
         expect(zodNativeCollection._c2).not.toBe(undefined);
@@ -307,8 +432,6 @@ describe('Using Zod for validation', () => {
         // If we get here, the test failed
         expect(false).toBe(true, 'Expected validation error but none was thrown');
       } catch (error) {
-        console.log('Error message:', error.message);
-
         // Verify the error message contains the expected type information
         // The test should pass with either format of error message
         const isTypeError = error.message.includes("Field 'title' has invalid type");
@@ -330,7 +453,6 @@ describe('Using Zod for validation', () => {
           ]);
           expect(false).toBe(true, 'Expected validation error but none was thrown');
         } catch (typeError) {
-          console.log('Type error message:', typeError.message);
           expect(typeError.message).toContain("Field 'title' has invalid type");
           expect(typeError.message).toContain('expected string');
         }
@@ -519,18 +641,13 @@ describe('Using Zod for validation', () => {
         brandedCollection.attachSchema(userSchema);
 
         // Should allow insert with valid data
-        try {
-          const id = await callMongoMethod(brandedCollection, 'insert', [
-            {
-              email: 'test@example.com',
-              username: 'testuser'
-            }
-          ]);
-          expect(typeof id).toBe('string');
-        } catch (error) {
-          console.error('Failed to insert with branded types:', error);
-          expect(false).toBe(true, 'Insert with valid branded types should succeed');
-        }
+        const id = await callMongoMethod(brandedCollection, 'insert', [
+          {
+            email: 'test@example.com',
+            username: 'testuser'
+          }
+        ]);
+        expect(typeof id).toBe('string');
 
         // Should fail validation with invalid email
         try {
@@ -640,13 +757,6 @@ describe('Using Zod for validation', () => {
         const combinedSchema = extendedSchemaCollection.c2Schema();
         expect(typeof combinedSchema.namedContext).toBe('function');
 
-        // For debugging: log the schema methods
-        console.log(
-          'Schema methods:',
-          Object.keys(combinedSchema).filter((key) => typeof combinedSchema[key] === 'function')
-        );
-        console.log('Schema _def properties:', Object.keys(combinedSchema._def || {}));
-
         // Test with a simpler approach first - just check if we can get a validation context
         const validationContext = combinedSchema.namedContext();
         expect(validationContext).toBeDefined();
@@ -663,27 +773,17 @@ describe('Using Zod for validation', () => {
         const isValid = validationContext.validate(validDoc);
         expect(isValid).toBe(true);
 
-        // Only proceed with insert test if validation is working
-        if (isValid) {
-          try {
-            const id = await callMongoMethod(extendedSchemaCollection, 'insert', [validDoc]);
-            expect(typeof id).toBe('string');
+        const id = await callMongoMethod(extendedSchemaCollection, 'insert', [validDoc]);
+        expect(typeof id).toBe('string');
 
-            // Verify the document was inserted correctly
-            const insertedDoc = await callMongoMethod(extendedSchemaCollection, 'findOne', [
-              { _id: id }
-            ]);
-            expect(insertedDoc.title).toBe(validDoc.title);
-            expect(insertedDoc.priority).toBe(validDoc.priority);
-            expect(insertedDoc.assignee).toBe(validDoc.assignee);
-            expect(insertedDoc.dueDate).toBeInstanceOf(Date);
-          } catch (error) {
-            console.error('Failed to insert with extended schema:', error);
-            // Don't fail the test if there's still an issue with the insert
-            // The important part is that the schema extension works correctly
-            console.log('Insert test skipped, but schema extension is working correctly');
-          }
-        }
+        // Verify the document was inserted correctly
+        const insertedDoc = await callMongoMethod(extendedSchemaCollection, 'findOne', [
+          { _id: id }
+        ]);
+        expect(insertedDoc.title).toBe(validDoc.title);
+        expect(insertedDoc.priority).toBe(validDoc.priority);
+        expect(insertedDoc.assignee).toBe(validDoc.assignee);
+        expect(insertedDoc.dueDate).toBeInstanceOf(Date);
 
         // Test invalid document - missing required field from base schema
         try {
@@ -857,22 +957,17 @@ describe('Using Zod for validation', () => {
         expect(configError).toBeDefined();
 
         // Try to insert a valid document with nested objects
-        try {
-          const id = await callMongoMethod(nestedSchemaCollection, 'insert', [validDoc]);
-          expect(typeof id).toBe('string');
+        const id = await callMongoMethod(nestedSchemaCollection, 'insert', [validDoc]);
+        expect(typeof id).toBe('string');
 
-          // Verify the document was inserted correctly with all nested objects
-          const insertedDoc = await callMongoMethod(nestedSchemaCollection, 'findOne', [
-            { _id: id }
-          ]);
-          expect(insertedDoc.title).toBe(validDoc.title);
-          expect(insertedDoc.metadata.createdBy).toBe(validDoc.metadata.createdBy);
-          expect(insertedDoc.details.description).toBe(validDoc.details.description);
-          expect(insertedDoc.settings.config.theme).toBe(validDoc.settings.config.theme);
-        } catch (error) {
-          console.error('Failed to insert with nested schema:', error);
-          console.log('Insert test skipped, but nested schema validation is working correctly');
-        }
+        // Verify the document was inserted correctly with all nested objects
+        const insertedDoc = await callMongoMethod(nestedSchemaCollection, 'findOne', [
+          { _id: id }
+        ]);
+        expect(insertedDoc.title).toBe(validDoc.title);
+        expect(insertedDoc.metadata.createdBy).toBe(validDoc.metadata.createdBy);
+        expect(insertedDoc.details.description).toBe(validDoc.details.description);
+        expect(insertedDoc.settings.config.theme).toBe(validDoc.settings.config.theme);
       });
     }
   });
@@ -981,21 +1076,8 @@ describe('Using Zod for validation', () => {
   });
 
   describe('Zod modifier path resolution', () => {
-    const versions = [
-      {
-        name: 'Zod 3',
-        z: z3,
-        record: (valueSchema) => z3.record(valueSchema)
-      },
-      {
-        name: 'Zod 4',
-        z,
-        record: (valueSchema) => z.record(z.string(), valueSchema)
-      }
-    ];
-
-    versions.forEach(({ name, z: currentZod, record }) => {
-      it(`resolves wrapped paths and preserves leaf semantics with ${name}`, function () {
+      it('resolves wrapped paths and preserves leaf semantics with Zod 4', function () {
+        const currentZod = z;
         const nestedSchema = currentZod.object({
           count: currentZod.number(),
           optionalField: currentZod.string().optional()
@@ -1017,7 +1099,7 @@ describe('Using Zod for validation', () => {
         });
         const collection = new Mongo.Collection(null);
         collection.attachSchema(schema);
-        const context = collection.c2Schema().namedContext(`${name}-wrapped-paths`);
+        const context = collection.c2Schema().namedContext('Zod 4-wrapped-paths');
 
         expect(
           context.validate(
@@ -1056,7 +1138,9 @@ describe('Using Zod for validation', () => {
         expect(context.validationErrors()[0].name).toBe('optionalNested.count');
       });
 
-      it(`authorizes local blackbox paths without weakening typed paths with ${name}`, function () {
+      it('authorizes local blackbox paths without weakening typed paths with Zod 4', function () {
+        const currentZod = z;
+        const record = (valueSchema) => z.record(z.string(), valueSchema);
         const schema = currentZod.object({
           settings: currentZod
             .object({
@@ -1074,7 +1158,7 @@ describe('Using Zod for validation', () => {
         });
         const collection = new Mongo.Collection(null);
         collection.attachSchema(schema);
-        const context = collection.c2Schema().namedContext(`${name}-dynamic-paths`);
+        const context = collection.c2Schema().namedContext('Zod 4-dynamic-paths');
 
         expect(
           context.validate(
@@ -1135,8 +1219,6 @@ describe('Using Zod for validation', () => {
         expect(context.validate({ $set: { rootUnknown: true } }, { modifier: true })).toBe(false);
         expect(context.validationErrors()[0].type).toBe('invalid_key');
       });
-    });
-
     it('rejects unsetting required Zod 4 record keys', function () {
       const collection = new Mongo.Collection(null);
       collection.attachSchema(

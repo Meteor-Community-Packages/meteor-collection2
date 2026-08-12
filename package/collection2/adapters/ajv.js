@@ -9,6 +9,7 @@ import { isAjvSchema } from '../schemaDetectors';
  */
 export const createAjvAdapter = () => ({
   name: 'ajv',
+  asyncOnly: false,
   is: schema => isAjvSchema(schema),
   create: schema => {
     // If this is already an AJV schema, return it directly
@@ -106,18 +107,21 @@ export const createAjvAdapter = () => ({
       };
     }
   },
-  clean: ({ doc, modifier, schema, userId, isLocalCollection, type }) => {
+  cleanSync: ({ doc, modifier, schema, type, options }) => {
     // AJV schemas don't have a built-in clean method, so we use our custom implementation
     const isModifier = !isInsertType(type);
     const target = isModifier ? modifier : doc;
 
     if (typeof schema.clean === 'function') {
-      schema.clean(target, {
+      return schema.clean(target, options || {
         mutate: true,
         isModifier
       });
     }
   },
+  cleanAsync: (args) => createAjvAdapter().cleanSync(args),
+  validateSync: ({ context, target, options }) => context.validate(target, options),
+  validateAsync: ({ context, target, options }) => context.validate(target, options),
   getErrorObject: (context, appendToMessage = '', code) => {
     const invalidKeys = context.validationErrors();
 

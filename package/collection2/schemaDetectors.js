@@ -50,6 +50,8 @@ export const isZodSchema = (schema) => {
          typeof schema.parse === 'function';
 };
 
+export const isZod4Schema = (schema) => isZodSchema(schema) && !!schema._zod?.def;
+
 /**
  * Determines if a schema is an AJV schema
  * @param {Object} schema - The schema to check
@@ -75,8 +77,12 @@ export const detectSchemaType = (schema) => {
     return 'SimpleSchema';
   }
 
-  if (isZodSchema(schema)) {
+  if (isZod4Schema(schema)) {
     return 'zod';
+  }
+
+  if (isZodSchema(schema)) {
+    return 'zod3';
   }
 
   if (isAjvSchema(schema)) {

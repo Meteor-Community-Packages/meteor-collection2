@@ -1,7 +1,8 @@
 import { Meteor } from 'meteor/meteor';
 import { EJSON } from 'meteor/ejson';
-import { isInsertType } from '../lib';
+import { isInsertType, isUpsertType } from '../lib';
 import { isZodSchema } from '../schemaDetectors';
+import { getZodAutoValue } from '../zodAutoValue';
 
 /**
  * Formats Zod validation errors into a consistent structure
@@ -23,12 +24,339 @@ const formatZodErrors = (error) => {
   }));
 };
 
+const hasOwn = (obj, key) => obj != null && Object.prototype.hasOwnProperty.call(obj, key);
+const getPath = (obj, path) => path.split('.').reduce(
+  (value, key) => (hasOwn(value, key) ? value[key] : undefined),
+  obj
+);
+
+const setOwn = (obj, key, value) => {
+  Object.defineProperty(obj, key, {
+    value,
+    configurable: true,
+    enumerable: true,
+    writable: true
+  });
+};
+
+const setPath = (obj, path, value) => {
+  const parts = path.split('.');
+  let target = obj;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (!hasOwn(target, parts[i]) || !target[parts[i]] || typeof target[parts[i]] !== 'object') {
+      setOwn(target, parts[i], Object.create(null));
+    }
+    target = target[parts[i]];
+  }
+  setOwn(target, parts[parts.length - 1], value);
+};
+
+const deletePath = (obj, path) => {
+  const parts = path.split('.');
+  const target = parts.slice(0, -1).reduce(
+    (value, key) => (hasOwn(value, key) ? value[key] : undefined),
+    obj
+  );
+  if (target && hasOwn(target, parts[parts.length - 1])) delete target[parts[parts.length - 1]];
+};
+
+const cloneDefault = value => EJSON.clone(value);
+
+const applyZodDefaults = (schema, value) => {
+  if (!schema) return value;
+  const def = getZodDef(schema);
+
+  if (isZodType(schema, 'default')) {
+    if (value === undefined) return cloneDefault(def.defaultValue);
+    return applyZodDefaults(def.innerType, value);
+  }
+
+  if (
+    isZodType(
+      schema,
+      'optional',
+      'nullable',
+      'nonoptional',
+      'prefault',
+      'catch',
+      'readonly',
+      'branded'
+    )
+  ) {
+    return applyZodDefaults(def.innerType || def.type, value);
+  }
+
+  if (isZodType(schema, 'pipe', 'pipeline')) {
+    return applyZodDefaults(def.in, value);
+  }
+
+  if (isZodType(schema, 'lazy')) {
+    return applyZodDefaults(def.getter?.(), value);
+  }
+
+  if (isZodType(schema, 'object') && value && typeof value === 'object' && !Array.isArray(value)) {
+    const shape = getZodShape(schema) || {};
+    for (const [key, childSchema] of Object.entries(shape)) {
+      const childValue = applyZodDefaults(childSchema, hasOwn(value, key) ? value[key] : undefined);
+      if (childValue !== undefined) setOwn(value, key, childValue);
+    }
+  } else if (isZodType(schema, 'array') && Array.isArray(value)) {
+    const element = getZodArrayElement(schema);
+    value.forEach((item, index) => {
+      value[index] = applyZodDefaults(element, item);
+    });
+  }
+
+  return value;
+};
+
+const getModifierValue = (modifier, path) => {
+  for (const [operator, operation] of Object.entries(modifier)) {
+    if (operation && typeof operation === 'object' && hasOwn(operation, path)) {
+      return { isSet: operation[path] !== undefined, operator, value: operation[path] };
+    }
+  }
+  return { isSet: false, operator: null, value: undefined };
+};
+
+const removeModifierPath = (modifier, path) => {
+  for (const [operator, operation] of Object.entries(modifier)) {
+    if (operation && typeof operation === 'object') delete operation[path];
+    if (operation && typeof operation === 'object' && !Object.keys(operation).length) {
+      delete modifier[operator];
+    }
+  }
+};
+
+const modifierAffectsPath = (modifier, path) => Object.values(modifier).some(operation =>
+  operation && typeof operation === 'object' && Object.keys(operation).some(key =>
+    key === path || key.startsWith(`${path}.`) || path.startsWith(`${key}.`)
+  )
+);
+
+const getAutoValueThroughWrappers = schema => {
+  let current = schema;
+  let guard = 0;
+  while (current && guard < 10) {
+    const fn = getZodAutoValue(current);
+    if (fn) return fn;
+    const def = getZodDef(current);
+
+    if (
+      isZodType(
+        current,
+        'optional',
+        'nullable',
+        'default',
+        'prefault',
+        'nonoptional',
+        'catch',
+        'readonly',
+        'branded'
+      )
+    ) {
+      current = def.innerType || def.type;
+    } else if (isZodType(current, 'pipe', 'pipeline')) {
+      current = def.in;
+    } else {
+      return undefined;
+    }
+    guard++;
+  }
+  return undefined;
+};
+
+const collectZodAutoValues = (schema, path = '', entries = []) => {
+  if (!schema) return entries;
+  const fn = getAutoValueThroughWrappers(schema);
+  if (fn && path) entries.push({ path, fn });
+
+  const unwrapped = unwrapZodSchema(schema);
+  if (isZodType(unwrapped, 'object')) {
+    for (const [key, childSchema] of Object.entries(getZodShape(unwrapped) || {})) {
+      collectZodAutoValues(childSchema, path ? `${path}.${key}` : key, entries);
+    }
+  }
+  return entries;
+};
+
+const createAutoValueContext = ({ target, path, isModifier, context }) => {
+  const info = isModifier
+    ? getModifierValue(target, path)
+    : { isSet: getPath(target, path) !== undefined, operator: null, value: getPath(target, path) };
+  let shouldUnset = false;
+
+  return {
+    key: path,
+    value: info.value,
+    isSet: info.isSet,
+    isModifier,
+    operator: info.operator,
+    ...context,
+    field(fieldName) {
+      const fieldInfo = isModifier
+        ? getModifierValue(target, fieldName)
+        : { value: getPath(target, fieldName) };
+      return {
+        isSet: fieldInfo.value !== undefined,
+        operator: fieldInfo.operator || null,
+        value: fieldInfo.value
+      };
+    },
+    siblingField(fieldName) {
+      const parent = path.includes('.') ? path.slice(0, path.lastIndexOf('.') + 1) : '';
+      return this.field(`${parent}${fieldName}`);
+    },
+    parentField() {
+      const parent = path.includes('.') ? path.slice(0, path.lastIndexOf('.')) : '';
+      return this.field(parent);
+    },
+    unset() {
+      shouldUnset = true;
+    },
+    wasUnset() {
+      return shouldUnset;
+    }
+  };
+};
+
+const applyAutoValueResult = ({ target, path, result, isModifier, isUpsert, unset }) => {
+  if (unset) {
+    if (isModifier) removeModifierPath(target, path);
+    else deletePath(target, path);
+    return;
+  }
+  if (result === undefined) return;
+
+  if (!isModifier) {
+    setPath(target, path, result);
+    return;
+  }
+
+  let operator = '$set';
+  let value = result;
+  if (result && typeof result === 'object') {
+    const resultOperator = Object.keys(result).find(key => key.startsWith('$'));
+    if (resultOperator) {
+      operator = resultOperator;
+      value = result[resultOperator];
+    }
+  }
+  removeModifierPath(target, path);
+  if (modifierAffectsPath(target, path)) return;
+  if (!hasOwn(target, operator) || !target[operator] || typeof target[operator] !== 'object') {
+    setOwn(target, operator, Object.create(null));
+  }
+  setOwn(target[operator], path, value);
+};
+
+const cleanZodDefaults = ({ target, schema, isModifier, isUpsert }) => {
+  if (!isModifier) {
+    applyZodDefaults(schema, target);
+    return;
+  }
+
+  for (const operator of ['$set', '$setOnInsert']) {
+    if (!target[operator]) continue;
+    for (const [path, value] of Object.entries(target[operator])) {
+      const resolution = resolveZodSchemaPath(schema, path);
+      if (resolution?.schema) {
+        target[operator][path] = applyZodDefaults(resolution.schema, value);
+      }
+    }
+  }
+
+  if (isUpsert) {
+    if (!hasOwn(target, '$setOnInsert') || !target.$setOnInsert) {
+      setOwn(target, '$setOnInsert', Object.create(null));
+    }
+    for (const [key, childSchema] of Object.entries(getZodShape(unwrapZodSchema(schema)) || {})) {
+      if (modifierAffectsPath(target, key)) continue;
+      const defaultValue = applyZodDefaults(childSchema, undefined);
+      if (defaultValue !== undefined) setOwn(target.$setOnInsert, key, defaultValue);
+    }
+    if (!Object.keys(target.$setOnInsert).length) delete target.$setOnInsert;
+  }
+};
+
+const prepareZodClean = (args) => {
+  const { doc, modifier, schema, type } = args;
+  const options = args.options || {
+    extendAutoValueContext: {
+      isInsert: isInsertType(type),
+      isUpdate: !isInsertType(type),
+      isUpsert: false,
+      userId: args.userId,
+      isFromTrustedCode: false,
+      docId: doc?._id,
+      isLocalCollection: args.isLocalCollection
+    }
+  };
+  const isModifier = !isInsertType(type);
+  const isUpsert = isUpsertType(type) || options.extendAutoValueContext?.isUpsert;
+  const target = isModifier ? modifier : doc;
+
+  cleanZodDefaults({ target, schema, isModifier, isUpsert });
+  return { isModifier, isUpsert, options, schema, target };
+};
+
+const cleanZodSync = args => {
+  const state = prepareZodClean(args);
+  if (state.options.getAutoValues === false) return state.target;
+
+  for (const { path, fn } of collectZodAutoValues(state.schema)) {
+    const context = createAutoValueContext({
+      target: state.target,
+      path,
+      isModifier: state.isModifier,
+      context: state.options.extendAutoValueContext || {}
+    });
+    const result = fn.call(context, state.target);
+    if (result && typeof result.then === 'function') {
+      throw new Error('Async Zod autoValues require Mongo.Collection async mutation methods');
+    }
+    applyAutoValueResult({
+      target: state.target,
+      path,
+      result,
+      isModifier: state.isModifier,
+      isUpsert: state.isUpsert,
+      unset: context.wasUnset()
+    });
+  }
+  return state.target;
+};
+
+const cleanZodAsync = async args => {
+  const state = prepareZodClean(args);
+  if (state.options.getAutoValues === false) return state.target;
+
+  for (const { path, fn } of collectZodAutoValues(state.schema)) {
+    const context = createAutoValueContext({
+      target: state.target,
+      path,
+      isModifier: state.isModifier,
+      context: state.options.extendAutoValueContext || {}
+    });
+    applyAutoValueResult({
+      target: state.target,
+      path,
+      result: await fn.call(context, state.target),
+      isModifier: state.isModifier,
+      isUpsert: state.isUpsert,
+      unset: context.wasUnset()
+    });
+  }
+  return state.target;
+};
+
 /**
  * Zod adapter
  * @returns {Object} Zod adapter implementation
  */
 export const createZodAdapter = (z) => ({
   name: 'zod',
+  asyncOnly: false,
   is: (schema) => isZodSchema(schema),
   create: (schema) => {
     // If this is already a Zod schema, return it directly with namedContext
@@ -89,18 +417,10 @@ export const createZodAdapter = (z) => ({
       };
     }
   },
-  clean: ({ doc, modifier, schema, userId, isLocalCollection, type }) => {
-    // Zod schemas don't have a built-in clean method, so we use our custom implementation
-    const isModifier = !isInsertType(type);
-    const target = isModifier ? modifier : doc;
-
-    if (typeof schema.clean === 'function') {
-      schema.clean(target, {
-        mutate: true,
-        isModifier
-      });
-    }
-  },
+  cleanSync: args => cleanZodSync(args),
+  cleanAsync: args => cleanZodAsync(args),
+  validateSync: ({ context, target, options }) => context.validate(target, options),
+  validateAsync: ({ context, target, options }) => context.validate(target, options),
   getErrorObject: (context, appendToMessage = '', code) => {
     const invalidKeys = context.validationErrors();
 
