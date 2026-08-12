@@ -465,7 +465,7 @@ const BookSchema = z.object({
 });
 ```
 
-Zod autoValues support top-level fields, nested objects, array elements on inserts, and concrete arrays or subdocuments assigned by `$set` or `$setOnInsert`. AutoValues are not applied within `$push` or `$addToSet` payloads or positional array updates.
+Zod autoValues support top-level fields, nested objects, array elements on inserts, concrete arrays or subdocuments assigned by `$set` or `$setOnInsert`, and direct or `$each` payloads under `$push` and `$addToSet`. Descendant autoValues also run for positional `$`, `$[]`, and `$[identifier]` updates without replacing untouched element fields. An autoValue attached to the array element itself runs only when the modifier assigns the whole element.
 
 For modifier validation, permissive nodes such as `.passthrough()`, `z.any()`, and
 `z.unknown()` authorize descendant paths where they are declared. Records and typed

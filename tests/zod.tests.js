@@ -190,6 +190,254 @@ describe('Using Zod for validation', () => {
       ]);
     });
 
+    it('runs autoValues inside push and addToSet payloads', async function () {
+      const operators = [];
+      const itemSchema = autoValue(
+        z.object({
+          label: z.string(),
+          slug: autoValue(z.string().optional(), async function () {
+            operators.push(this.operator);
+            return this.siblingField('label').value.toLowerCase();
+          })
+        }),
+        function () {
+          if (this.value?.label === 'remove') this.unset();
+        }
+      );
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(z.object({ items: z.array(itemSchema) }));
+      const id = await collection.insertAsync({ items: [] });
+
+      await collection.updateAsync(id, { $push: { items: { label: 'ONE' } } });
+      await collection.updateAsync(id, {
+        $push: { items: { $each: [{ label: 'TWO' }, { label: 'remove' }] } }
+      });
+      await collection.updateAsync(id, {
+        $addToSet: { items: { $each: [{ label: 'THREE' }, { label: 'FOUR' }] } }
+      });
+      await collection.updateAsync(id, { $addToSet: { items: { label: 'FIVE' } } });
+
+      expect((await collection.findOneAsync(id)).items).toEqual([
+        { label: 'ONE', slug: 'one' },
+        { label: 'TWO', slug: 'two' },
+        { label: 'THREE', slug: 'three' },
+        { label: 'FOUR', slug: 'four' },
+        { label: 'FIVE', slug: 'five' }
+      ]);
+      expect(operators).toContain('$push');
+      expect(operators).toContain('$addToSet');
+    });
+
+    it('runs autoValues in nested array payloads', async function () {
+      const childSchema = z.object({
+        label: z.string(),
+        slug: autoValue(z.string().optional(), function () {
+          return this.siblingField('label').value.toLowerCase();
+        })
+      });
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({ items: z.array(z.object({ children: z.array(childSchema) })) })
+      );
+      const id = await collection.insertAsync({ items: [] });
+
+      await collection.updateAsync(id, {
+        $push: { items: { children: [{ label: 'NESTED' }] } }
+      });
+      expect((await collection.findOneAsync(id)).items).toEqual([
+        { children: [{ label: 'NESTED', slug: 'nested' }] }
+      ]);
+    });
+
+    if (Meteor.isServer) {
+      it('runs autoValues for positional array updates', async function () {
+        const itemSchema = z.object({
+          label: z.string(),
+          slug: autoValue(z.string().optional(), function () {
+            if (this.siblingField('label').isSet) {
+              return this.siblingField('label').value.toLowerCase();
+            }
+            this.unset();
+          })
+        });
+        const collection = new Mongo.Collection(`zod_positional_${Date.now()}`);
+        collection.attachSchema(z.object({ items: z.array(itemSchema) }));
+        const id = await collection.insertAsync({
+          items: [
+            { label: 'one', slug: 'one' },
+            { label: 'two', slug: 'two' }
+          ]
+        });
+
+        await collection.updateAsync(id, { $set: { 'items.$[].label': 'ALL' } });
+        expect((await collection.findOneAsync(id)).items).toEqual([
+          { label: 'ALL', slug: 'all' },
+          { label: 'ALL', slug: 'all' }
+        ]);
+
+        await collection.updateAsync(
+          id,
+          { $set: { 'items.$[item].label': 'FILTERED' } },
+          { arrayFilters: [{ 'item.label': 'ALL' }] }
+        );
+        expect((await collection.findOneAsync(id)).items).toEqual([
+          { label: 'FILTERED', slug: 'filtered' },
+          { label: 'FILTERED', slug: 'filtered' }
+        ]);
+
+        await collection.updateAsync(
+          { _id: id, 'items.label': 'FILTERED' },
+          { $set: { 'items.$.label': 'FIRST' } }
+        );
+        expect((await collection.findOneAsync(id)).items).toEqual([
+          { label: 'FIRST', slug: 'first' },
+          { label: 'FILTERED', slug: 'filtered' }
+        ]);
+      });
+    }
+
+    if (Meteor.isServer) {
+      it('runs element autoValues only for whole positional replacements', async function () {
+        const itemSchema = autoValue(
+          z.object({
+            label: z.string(),
+            untouched: z.string(),
+            generated: z.boolean().optional()
+          }),
+          function () {
+            if (!this.isUpdate) return;
+            if (this.value?.label) return { ...this.value, generated: true };
+          }
+        );
+        const collection = new Mongo.Collection(`zod_positional_element_${Date.now()}`);
+        collection.attachSchema(z.object({ items: z.array(itemSchema) }));
+        const id = await collection.insertAsync({
+          items: [{ label: 'one', untouched: 'preserved' }]
+        });
+
+        await collection.updateAsync(id, { $set: { 'items.$[].label': 'kept' } });
+        expect((await collection.findOneAsync(id)).items).toEqual([
+          { label: 'kept', untouched: 'preserved' }
+        ]);
+
+        await collection.updateAsync(id, {
+          $set: { 'items.$[]': { label: 'replaced', untouched: 'new' } }
+        });
+        expect((await collection.findOneAsync(id)).items).toEqual([
+          { label: 'replaced', untouched: 'new', generated: true }
+        ]);
+      });
+    }
+
+    if (Meteor.isServer) {
+      it('preserves push controls when autoValues remove every each item', async function () {
+        const itemSchema = autoValue(z.object({ rank: z.number() }), function () {
+          if (this.value?.rank < 0) this.unset();
+        });
+        const collection = new Mongo.Collection(`zod_push_controls_${Date.now()}`);
+        collection.attachSchema(z.object({ items: z.array(itemSchema) }));
+        const id = await collection.insertAsync({ items: [{ rank: 2 }, { rank: 1 }] });
+
+        await collection.updateAsync(id, {
+          $push: { items: { $each: [{ rank: -1 }], $sort: { rank: 1 } } }
+        });
+        expect((await collection.findOneAsync(id)).items).toEqual([{ rank: 1 }, { rank: 2 }]);
+      });
+    }
+
+    it('rejects malformed autoValue operator results', async function () {
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          name: z.string(),
+          audit: autoValue(z.string().optional(), function () {
+            if (this.isUpdate) return { $unsupported: 'bad' };
+          })
+        })
+      );
+      const id = await collection.insertAsync({ name: 'before' });
+
+      await expect(collection.updateAsync(id, { $set: { name: 'after' } })).rejects.toThrow(
+        /unsupported operator/
+      );
+      expect((await collection.findOneAsync(id)).name).toBe('before');
+    });
+
+    it('does not invoke inherited or accessor modifier properties', async function () {
+      let inheritedReads = 0;
+      let fieldReads = 0;
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          name: z.string(),
+          items: z.array(z.object({ generated: z.string().optional() }))
+        })
+      );
+      const id = await collection.insertAsync({ name: 'before', items: [] });
+      const modifier = Object.create({
+        get $push() {
+          inheritedReads++;
+          return { items: [{}] };
+        }
+      });
+      modifier.$set = {};
+      Object.defineProperty(modifier.$set, 'ignored', {
+        enumerable: true,
+        get() {
+          fieldReads++;
+          return 'unsafe';
+        }
+      });
+      modifier.$set.name = 'after';
+
+      await expect(collection.updateAsync(id, modifier)).rejects.toBeDefined();
+      expect(inheritedReads).toBe(0);
+      expect(fieldReads).toBe(0);
+      expect((await collection.findOneAsync(id)).name).toBe('before');
+    });
+
+    it('does not invoke inherited accessors inside modifier values', async function () {
+      let reads = 0;
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          item: z.object({ name: z.string(), generated: z.string() }).optional()
+        })
+      );
+      const item = Object.create({
+        get generated() {
+          reads++;
+          return 'unsafe';
+        }
+      });
+      item.name = 'safe';
+
+      await expect(collection.updateAsync({}, { $set: { item } })).rejects.toBeDefined();
+      expect(reads).toBe(0);
+    });
+
+    it('does not write through shared prototypes while assembling positional values', async function () {
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          items: z.array(
+            z.object({
+              nested: z.object({ polluted: z.boolean().optional() }).optional()
+            })
+          )
+        })
+      );
+      const modifier = {
+        $set: {
+          'items.$[].nested': Array.prototype,
+          'items.$[].nested.polluted': true
+        }
+      };
+
+      await expect(collection.updateAsync({}, modifier)).rejects.toBeDefined();
+      expect(Array.prototype.polluted).toBe(undefined);
+    });
+
     it('does not traverse inherited objects for nested autoValues', async function () {
       const field = autoValue(z.string().optional(), function () {
         return 'safe';
