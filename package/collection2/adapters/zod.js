@@ -57,7 +57,10 @@ const deletePath = (obj, path) => {
     (value, key) => (hasOwn(value, key) ? value[key] : undefined),
     obj
   );
-  if (target && hasOwn(target, parts[parts.length - 1])) delete target[parts[parts.length - 1]];
+  const key = parts[parts.length - 1];
+  if (!target || !hasOwn(target, key)) return;
+  if (Array.isArray(target) && /^\d+$/.test(key)) target.splice(Number(key), 1);
+  else delete target[key];
 };
 
 const cloneDefault = value => EJSON.clone(value);
@@ -110,16 +113,48 @@ const applyZodDefaults = (schema, value) => {
   return value;
 };
 
-const getModifierValue = (modifier, path) => {
+const getModifierPosition = (modifier, path) => {
+  let bestMatch = null;
   for (const [operator, operation] of Object.entries(modifier)) {
-    if (operation && typeof operation === 'object' && hasOwn(operation, path)) {
-      return { isSet: operation[path] !== undefined, operator, value: operation[path] };
+    if (!operation || typeof operation !== 'object') continue;
+    for (const key of Object.keys(operation)) {
+      const isExact = key === path;
+      const canTraverseValue = operator === '$set' || operator === '$setOnInsert';
+      if (!isExact && (!canTraverseValue || !path.startsWith(`${key}.`))) continue;
+      if (bestMatch && bestMatch.key.length >= key.length) continue;
+
+      let relativePath = key === path ? '' : path.slice(key.length + 1);
+      bestMatch = {
+        key,
+        operation,
+        operator,
+        relativePath,
+        value: relativePath ? getPath(operation[key], relativePath) : operation[key]
+      };
     }
+  }
+  return bestMatch;
+};
+
+const getModifierValue = (modifier, path) => {
+  const position = getModifierPosition(modifier, path);
+  if (position) {
+    return {
+      isSet: position.value !== undefined,
+      operator: position.operator,
+      value: position.value
+    };
   }
   return { isSet: false, operator: null, value: undefined };
 };
 
 const removeModifierPath = (modifier, path) => {
+  const position = getModifierPosition(modifier, path);
+  if (position?.relativePath) {
+    deletePath(position.operation[position.key], position.relativePath);
+    return;
+  }
+
   for (const [operator, operation] of Object.entries(modifier)) {
     if (operation && typeof operation === 'object') delete operation[path];
     if (operation && typeof operation === 'object' && !Object.keys(operation).length) {
@@ -166,18 +201,97 @@ const getAutoValueThroughWrappers = schema => {
   return undefined;
 };
 
-const collectZodAutoValues = (schema, path = '', entries = []) => {
+const collectZodAutoValues = ({
+  schema,
+  target,
+  isModifier,
+  path = '',
+  entries = [],
+  queuedPaths = new Set()
+}) => {
   if (!schema) return entries;
   const fn = getAutoValueThroughWrappers(schema);
-  if (fn && path) entries.push({ path, fn });
+  if (fn && path && !queuedPaths.has(path)) {
+    entries.push({ path, fn, schema });
+    queuedPaths.add(path);
+  }
 
   const unwrapped = unwrapZodSchema(schema);
   if (isZodType(unwrapped, 'object')) {
     for (const [key, childSchema] of Object.entries(getZodShape(unwrapped) || {})) {
-      collectZodAutoValues(childSchema, path ? `${path}.${key}` : key, entries);
+      collectZodAutoValues({
+        schema: childSchema,
+        target,
+        isModifier,
+        path: path ? `${path}.${key}` : key,
+        entries,
+        queuedPaths
+      });
+    }
+  } else if (isZodType(unwrapped, 'array') && path) {
+    const position = isModifier ? getModifierPosition(target, path) : null;
+    const value = isModifier
+      ? position && ['$set', '$setOnInsert'].includes(position.operator)
+        ? position.value
+        : undefined
+      : getPath(target, path);
+    if (Array.isArray(value)) {
+      for (let index = value.length - 1; index >= 0; index--) {
+        collectZodAutoValues({
+          schema: getZodArrayElement(unwrapped),
+          target,
+          isModifier,
+          path: `${path}.${index}`,
+          entries,
+          queuedPaths
+        });
+      }
     }
   }
   return entries;
+};
+
+const hasPositionalPathPart = path => path.split('.').some(isArrayPathPart);
+
+const getZodAutoValueEntries = (state, queuedPaths = new Set()) => {
+  const entries = collectZodAutoValues({ ...state, queuedPaths });
+  if (state.isModifier) {
+    for (const operator of ['$set', '$setOnInsert']) {
+      for (const path of Object.keys(state.target[operator] || {})) {
+        if (hasPositionalPathPart(path)) continue;
+        const resolution = resolveZodSchemaPath(state.schema, path);
+        if (resolution?.schema) {
+          collectZodAutoValues({
+            ...state,
+            schema: resolution.schema,
+            path,
+            entries,
+            queuedPaths
+          });
+        }
+      }
+    }
+  }
+  return entries;
+};
+
+const queueZodAutoValueChildren = (state, entry, entries, queuedPaths) => {
+  collectZodAutoValues({
+    ...state,
+    schema: entry.schema,
+    path: entry.path,
+    entries,
+    queuedPaths
+  });
+};
+
+const isBelowRemovedPath = (path, removedPaths) => {
+  let separator = path.lastIndexOf('.');
+  while (separator !== -1) {
+    if (removedPaths.has(path.slice(0, separator))) return true;
+    separator = path.lastIndexOf('.', separator - 1);
+  }
+  return false;
 };
 
 const createAutoValueContext = ({ target, path, isModifier, context }) => {
@@ -233,14 +347,29 @@ const applyAutoValueResult = ({ target, path, result, isModifier, isUpsert, unse
     return;
   }
 
+  const position = getModifierPosition(target, path);
+  const resultOperator = result && typeof result === 'object'
+    ? Object.keys(result).find(key => key.startsWith('$'))
+    : null;
+  if (position?.relativePath) {
+    if (resultOperator && resultOperator !== position.operator) {
+      throw new Error(
+        `Zod autoValue for '${path}' cannot change the operator of a containing ${position.operator} value`
+      );
+    }
+    setPath(
+      position.operation[position.key],
+      position.relativePath,
+      resultOperator ? result[resultOperator] : result
+    );
+    return;
+  }
+
   let operator = '$set';
   let value = result;
-  if (result && typeof result === 'object') {
-    const resultOperator = Object.keys(result).find(key => key.startsWith('$'));
-    if (resultOperator) {
-      operator = resultOperator;
-      value = result[resultOperator];
-    }
+  if (resultOperator) {
+    operator = resultOperator;
+    value = result[resultOperator];
   }
   removeModifierPath(target, path);
   if (modifierAffectsPath(target, path)) return;
@@ -304,7 +433,13 @@ const cleanZodSync = args => {
   const state = prepareZodClean(args);
   if (state.options.getAutoValues === false) return state.target;
 
-  for (const { path, fn } of collectZodAutoValues(state.schema)) {
+  const queuedPaths = new Set();
+  const removedPaths = new Set();
+  const entries = getZodAutoValueEntries(state, queuedPaths);
+  for (let index = 0; index < entries.length; index++) {
+    const entry = entries[index];
+    const { path, fn } = entry;
+    if (isBelowRemovedPath(path, removedPaths)) continue;
     const context = createAutoValueContext({
       target: state.target,
       path,
@@ -323,6 +458,8 @@ const cleanZodSync = args => {
       isUpsert: state.isUpsert,
       unset: context.wasUnset()
     });
+    if (context.wasUnset()) removedPaths.add(path);
+    else queueZodAutoValueChildren(state, entry, entries, queuedPaths);
   }
   return state.target;
 };
@@ -331,7 +468,13 @@ const cleanZodAsync = async args => {
   const state = prepareZodClean(args);
   if (state.options.getAutoValues === false) return state.target;
 
-  for (const { path, fn } of collectZodAutoValues(state.schema)) {
+  const queuedPaths = new Set();
+  const removedPaths = new Set();
+  const entries = getZodAutoValueEntries(state, queuedPaths);
+  for (let index = 0; index < entries.length; index++) {
+    const entry = entries[index];
+    const { path, fn } = entry;
+    if (isBelowRemovedPath(path, removedPaths)) continue;
     const context = createAutoValueContext({
       target: state.target,
       path,
@@ -346,6 +489,8 @@ const cleanZodAsync = async args => {
       isUpsert: state.isUpsert,
       unset: context.wasUnset()
     });
+    if (context.wasUnset()) removedPaths.add(path);
+    else queueZodAutoValueChildren(state, entry, entries, queuedPaths);
   }
   return state.target;
 };

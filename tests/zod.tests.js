@@ -122,6 +122,74 @@ describe('Using Zod for validation', () => {
       expect((await collection.findOneAsync({ name: 'upserted-auto' })).created).toBe('created');
     });
 
+    it('runs autoValues for array elements across inserts and modifiers', async function () {
+      const collection = new Mongo.Collection(null);
+      const itemSchema = z.object({
+        label: z.string(),
+        slug: autoValue(z.string().optional(), async function () {
+          return this.siblingField('label').value.toLowerCase();
+        })
+      });
+      collection.attachSchema(z.object({ name: z.string(), items: z.array(itemSchema) }));
+
+      const id = await collection.insertAsync({ name: 'arrays', items: [{ label: 'ONE' }] });
+      expect((await collection.findOneAsync(id)).items[0].slug).toBe('one');
+
+      await collection.updateAsync(id, {
+        $set: { items: [{ label: 'TWO' }, { label: 'THREE' }] }
+      });
+      expect((await collection.findOneAsync(id)).items.map(item => item.slug)).toEqual([
+        'two',
+        'three'
+      ]);
+
+      expect((await collection.findOneAsync(id)).items.map(item => item.slug)).toEqual([
+        'two',
+        'three'
+      ]);
+    });
+
+    it('handles nested arrays, generated parents, and element unsets', async function () {
+      const itemSchema = autoValue(
+        z.object({
+          label: z.string(),
+          generated: autoValue(z.boolean().optional(), function () {
+            return true;
+          })
+        }),
+        function () {
+          if (this.value?.label === 'remove') this.unset();
+        }
+      );
+      const collection = new Mongo.Collection(null);
+      collection.attachSchema(
+        z.object({
+          groups: autoValue(z.array(z.array(itemSchema)).optional(), function () {
+            if (this.isInsert && !this.isSet) {
+              return [[{ label: 'keep' }, { label: 'remove' }]];
+            }
+          })
+        })
+      );
+
+      const id = await collection.insertAsync({});
+      expect((await collection.findOneAsync(id)).groups).toEqual([
+        [{ label: 'keep', generated: true }]
+      ]);
+
+      await collection.updateAsync(id, {
+        $set: {
+          groups: [[{ label: 'first' }, { label: 'remove' }, { label: 'second' }]]
+        }
+      });
+      expect((await collection.findOneAsync(id)).groups).toEqual([
+        [
+          { label: 'first', generated: true },
+          { label: 'second', generated: true }
+        ]
+      ]);
+    });
+
     it('does not traverse inherited objects for nested autoValues', async function () {
       const field = autoValue(z.string().optional(), function () {
         return 'safe';

@@ -465,7 +465,7 @@ const BookSchema = z.object({
 });
 ```
 
-Zod autoValues support top-level and nested object fields. Array-element autoValues are not yet supported.
+Zod autoValues support top-level fields, nested objects, array elements on inserts, and concrete arrays or subdocuments assigned by `$set` or `$setOnInsert`. AutoValues are not applied within `$push` or `$addToSet` payloads or positional array updates.
 
 For modifier validation, permissive nodes such as `.passthrough()`, `z.any()`, and
 `z.unknown()` authorize descendant paths where they are declared. Records and typed

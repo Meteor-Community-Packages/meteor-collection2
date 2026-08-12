@@ -98,7 +98,7 @@
 - Await SimpleSchema 3 cleaning, autoValues, field validators, and whole-document validators before database writes, based on the async support contributed by [Matthew Turner (@thumptech)](https://github.com/thumptech) in [PR #480](https://github.com/Meteor-Community-Packages/meteor-collection2/pull/480).
 - Require async Mongo mutation methods when using SimpleSchema 3.
 - Apply Zod `.default()` values through nested objects and arrays on inserts, whole-subdocument updates, and upsert inserts without persisting transforms, coercions, catches, or unknown-key stripping.
-- Add experimental Zod `autoValue(schema, fn)` support with operation context, modifier return values, `unset()`, and async functions.
+- Add experimental Zod `autoValue(schema, fn)` support for object and array fields with operation context, modifier return values, `unset()`, and async functions.
 
 ## 4.2.2
 
