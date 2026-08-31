@@ -35,20 +35,14 @@ export const isSimpleSchema = (schema) => {
          typeof schema.namedContext === 'function';
 };
 
-/**
- * Determines if a schema is a Zod schema
- * @param {Object} schema - The schema to check
- * @returns {Boolean} True if the schema is a Zod schema
- */
-export const isZodSchema = (schema) => {
-  return schema &&
-         typeof schema === 'object' &&
-         (schema._def || schema._zod?.def) &&
-         schema.safeParse &&
-         schema.parse &&
-         typeof schema.safeParse === 'function' &&
-         typeof schema.parse === 'function';
-};
+const hasZodMethods = (schema) =>
+  schema &&
+  typeof schema === 'object' &&
+  typeof schema.safeParse === 'function' &&
+  typeof schema.parse === 'function';
+
+export const isZod4Schema = (schema) => hasZodMethods(schema) && !!schema._zod?.def;
+export const isZod3Schema = (schema) => hasZodMethods(schema) && !!schema._def && !schema._zod?.def;
 
 /**
  * Determines if a schema is an AJV schema
@@ -75,8 +69,12 @@ export const detectSchemaType = (schema) => {
     return 'SimpleSchema';
   }
 
-  if (isZodSchema(schema)) {
+  if (isZod4Schema(schema)) {
     return 'zod';
+  }
+
+  if (isZod3Schema(schema)) {
+    return 'zod3';
   }
 
   if (isAjvSchema(schema)) {

@@ -10,6 +10,7 @@ import { isSimpleSchema } from '../schemaDetectors';
  */
 export const createSimpleSchemaAdapter = (SimpleSchema) => ({
   name: 'SimpleSchema',
+  asyncOnly: true,
   is: schema => isSimpleSchema(schema),
   create: schema => new SimpleSchema(schema),
   extend: (s1, s2) => {
@@ -21,10 +22,10 @@ export const createSimpleSchemaAdapter = (SimpleSchema) => ({
       return new SimpleSchema([s1, s2]);
     }
   },
-  clean: ({ doc, modifier, schema, userId, isLocalCollection, type }) => {
+  cleanAsync: ({ doc, modifier, schema, userId, isLocalCollection, type, options }) => {
     const isModifier = !isInsertType(type);
     const target = isModifier ? modifier : doc;
-    schema.clean(target, {
+    return schema.clean(target, options || {
       mutate: true,
       isModifier,
       // We don't do these here because they are done on the client if desired
@@ -43,7 +44,7 @@ export const createSimpleSchemaAdapter = (SimpleSchema) => ({
       }
     });
   },
-  validate: () => {},
+  validateAsync: ({ context, target, options }) => context.validate(target, options),
   getErrors: () => {},
   getErrorObject: (context, appendToMessage = '', code) => {
     let message;

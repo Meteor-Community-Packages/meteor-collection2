@@ -1,5 +1,6 @@
 import 'meteor/aldeed:collection2/static';
 import './autoValue.tests'
+import './async.tests.js';
 import './clean.tests'
 import './collection2.tests'
 import './multi.tests.js';
