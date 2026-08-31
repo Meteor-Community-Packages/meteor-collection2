@@ -4,7 +4,7 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
 
-- [5.0.0-beta.1](#500-beta1)
+- [5.0.0](#500)
 - [4.2.2](#422)
 - [4.2.1](#421)
 - [4.2.0](#420)
@@ -92,7 +92,7 @@
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## 5.0.0-beta.1
+## 5.0.0
 
 - Require Meteor 3.1.2+, SimpleSchema 3, and Zod 4. Zod 3 schemas now fail with an explicit upgrade error.
 - Await SimpleSchema 3 cleaning, autoValues, field validators, and whole-document validators before database writes, based on the async support contributed by [Matthew Turner (@thumptech)](https://github.com/thumptech) in [PR #480](https://github.com/Meteor-Community-Packages/meteor-collection2/pull/480).
