@@ -66,7 +66,9 @@ In your Meteor app directory, enter:
 
 ### 5.x
 
-Collection2 5 requires Meteor 3.1.2+. Use `insertAsync`, `updateAsync`, and `upsertAsync` with SimpleSchema 3 because cleaning and validation may be asynchronous.
+Collection2 5 requires Meteor 3.1.2+. It only supports async Mongo mutation methods: `insert`, `update`, and `upsert` 
+throw, so use `insertAsync`, `updateAsync`, and `upsertAsync` 
+with SimpleSchema 3 because cleaning and validation may be asynchronous.
 
 ```bash
 meteor add aldeed:collection2 aldeed:simple-schema@3
@@ -197,23 +199,21 @@ Books.attachSchema(Schemas.Book);
 Now that our collection has a schema, we can do a validated insert on either the client or the server:
 
 ```js
-Books.insert({ title: 'Ulysses', author: 'James Joyce' }, (error, result) => {
-  //The insert will fail, error will be set,
-  //and result will be undefined or false because "copies" is required.
-  //
-  //The list of errors is available on `error.invalidKeys` or by calling Books.simpleSchema().namedContext().validationErrors()
-});
+try {
+  await Books.insertAsync({ title: 'Ulysses', author: 'James Joyce' });
+} catch (error) {
+  //The insert will fail and error.invalidKeys will explain why "copies" is required.
+}
 ```
 
 Or we can do a validated update:
 
 ```js
-Books.update(book._id, { $unset: { copies: 1 } }, (error, result) => {
-  //The update will fail, error will be set,
-  //and result will be undefined or false because "copies" is required.
-  //
-  //The list of errors is available on `error.invalidKeys` or by calling Books.simpleSchema().namedContext().validationErrors()
-});
+try {
+  await Books.updateAsync(book._id, { $unset: { copies: 1 } });
+} catch (error) {
+  //The update will fail and error.invalidKeys will explain why "copies" is required.
+}
 ```
 
 ### Attaching Multiple Schemas to the Same Collection
@@ -252,7 +252,7 @@ Now both schemas are attached. When you insert a document where `type: 'simple'`
 Alternatively, you can pass a `selector` option when inserting to choose which schema to use:
 
 ```js
-Products.insert(
+await Products.insertAsync(
   { title: 'This is a product' },
   { selector: { type: 'simple' } }
 );
@@ -495,10 +495,10 @@ MyCollection.simpleSchema().validate(doc);
 
 ## Passing Options
 
-In Meteor, the `update` function accepts an options argument. Collection2 changes the `insert` function signature to also accept options in the same way, as an optional second argument. Whenever this documentation says to "use X option", it's referring to this options argument. For example:
+In Meteor, the `updateAsync` function accepts an options argument. Collection2 changes the `insertAsync` function signature to also accept options in the same way, as an optional second argument. Whenever this documentation says to "use X option", it's referring to this options argument. For example:
 
 ```js
-myCollection.insert(doc, { validate: false });
+await myCollection.insertAsync(doc, { validate: false });
 ```
 
 ## Validation Contexts
@@ -513,24 +513,18 @@ you might want one context for inserts and one for updates, or you might want
 a different context for each form on a page.
 
 To use a specific named validation context, use the `validationContext` option
-when calling `insert` or `update`:
+when calling `insertAsync` or `updateAsync`:
 
 ```js
-Books.insert(
+await Books.insertAsync(
   { title: 'Ulysses', author: 'James Joyce' },
-  { validationContext: 'insertForm' },
-  (error, result) => {
-    //The list of errors is available by calling Books.simpleSchema().namedContext("insertForm").validationErrors()
-  }
+  { validationContext: 'insertForm' }
 );
 
-Books.update(
+await Books.updateAsync(
   book._id,
   { $unset: { copies: 1 } },
-  { validationContext: 'updateForm' },
-  (error, result) => {
-    //The list of errors is available by calling Books.simpleSchema().namedContext("updateForm").validationErrors()
-  }
+  { validationContext: 'updateForm' }
 );
 ```
 
@@ -575,27 +569,27 @@ Refer to the [aldeed:simple-schema](https://github.com/Meteor-Community-Packages
 
 ## Inserting or Updating Without Validating
 
-To skip validation, use the `validate: false` option when calling `insert` or
-`update`. On the client (untrusted code), this will skip only client-side
+To skip validation, use the `validate: false` option when calling `insertAsync` or
+`updateAsync`. On the client (untrusted code), this will skip only client-side
 validation. On the server (trusted code), it will skip all validation. The object is still cleaned and autoValues are still generated.
 
 ## Inserting or Updating Without Cleaning
 
 ### Skip removing properties that are not in the schema
 
-To skip object property filtering, set the `filter` option to `false` when you call `insert` or `update`.
+To skip object property filtering, set the `filter` option to `false` when you call `insertAsync` or `updateAsync`.
 
 ### Skip conversion of values to match what schema expects
 
-To skip automatic value conversion, set the `autoConvert` option to `false` when you call `insert` or `update`.
+To skip automatic value conversion, set the `autoConvert` option to `false` when you call `insertAsync` or `updateAsync`.
 
 ### Skip removing empty strings
 
-To skip removing empty strings, set the `removeEmptyStrings` option to `false` when you call `insert` or `update`.
+To skip removing empty strings, set the `removeEmptyStrings` option to `false` when you call `insertAsync` or `updateAsync`.
 
 ### Skip generating automatic values
 
-To skip adding automatic values, set the `getAutoValues` option to `false` when you call `insert` or `update`. This works only in server code.
+To skip adding automatic values, set the `getAutoValues` option to `false` when you call `insertAsync` or `updateAsync`. This works only in server code.
 
 ### Pick or omit from the attached schema
 
@@ -605,7 +599,7 @@ This is the implementation of [pick and omit functionality from simple-schema](h
 
 ```js
 // Will insert everything except 'noop'
-collection.insert(
+await collection.insertAsync(
   { foo: 'foo', noop: 'nooooo', bar: 'whiskey' },
   { omit: ['noop'] }
 );
@@ -613,7 +607,7 @@ collection.insert(
 
 ```js
 // Pick only 'foo'
-collection.update(
+await collection.updateAsync(
   { _id: 'myid' },
   { $set: { foo: 'test', bar: 'changed' } },
   { pick: ['foo'] }
@@ -622,7 +616,7 @@ collection.update(
 
 ## Inserting or Updating Bypassing Collection2 Entirely
 
-Even if you skip all validation and cleaning, Collection2 will still do some object parsing that can take a long time for a large document. To bypass this, set the `bypassCollection2` option to `true` when you call `insert` or `update`. This works only in server code.
+Even if you skip all validation and cleaning, Collection2 will still do some object parsing that can take a long time for a large document. To bypass this, set the `bypassCollection2` option to `true` when you call `insertAsync` or `updateAsync`. This works only in server code.
 
 ## Additional SimpleSchema Options
 
@@ -767,9 +761,9 @@ function that is called as part of a C2 database operation:
 
 ## What Happens When The Document Is Invalid?
 
-The callback you specify as the last argument of your `insert()` or `update()` call will have the first argument (`error`) set to an `Error` instance. The error message for the first invalid key is set in the `error.message`, and the full `validationErrors` array is available on `error.invalidKeys`. This is true on both client and server, even if validation for a client-initiated operation does not fail until checked on the server.
+The promise returned by your `insertAsync()` or `updateAsync()` call will reject with an `Error` instance. The error message for the first invalid key is set in the `error.message`, and the full `validationErrors` array is available on `error.invalidKeys`. This is true on both client and server, even if validation for a client-initiated operation does not fail until checked on the server.
 
-If you attempt a synchronous operation in server code, the same validation error is thrown since there is no callback to pass it to. If this happens in a server method (defined with `Meteor.methods`), a more generic `Meteor.Error` is passed to your callback back on the client. This error does not have an `invalidKeys` property, but it does have the error message for the first invalid key set in `error.reason`.
+If you attempt to use `insert` or `update` in Collection2 5, the method throws immediately because only the async Mongo methods are supported. If you call the async method from server code and do not catch the rejection, the same validation error is thrown. If this happens in a server method (defined with `Meteor.methods`), a more generic `Meteor.Error` is passed back to the client. This error does not have an `invalidKeys` property, but it does have the error message for the first invalid key set in `error.reason`.
 
 Generally speaking, you would probably not use the `Error` for displaying to the user. For SimpleSchema schemas, you can instead use the reactive methods provided by the validation context to display the specific error messages to the user somewhere in the UI. The [autoform](https://github.com/aldeed/meteor-autoform) package provides some UI components and helpers for this purpose.
 
@@ -777,11 +771,11 @@ Generally speaking, you would probably not use the `Error` for displaying to the
 
 For the curious, this is exactly what Collection2 does before every insert or update:
 
-1. Removes properties from your document or mongo modifier object if they are not explicitly listed in the schema. (To skip this, set the `filter` option to `false` when you call `insert` or `update`.)
-1. Automatically converts some properties to match what the schema expects, if possible. (To skip this, set the `autoConvert` option to `false` when you call `insert` or `update`.)
-1. Optimizes your operation so that empty string values will not be stored. (To skip this, set the `removeEmptyStrings` option to `false` when you call `insert` or `update`.)
-1. Adds automatic (forced or default) values based on your schema. Values are added only on the server and will make their way back to your client when your subscription is updated. (To skip this in server code, set the `getAutoValues` option to `false` when you call `insert` or `update`.)
-1. Validates your document or mongo modifier object. (To skip this, set the `validate` option to `false` when you call `insert` or `update`.)
+1. Removes properties from your document or mongo modifier object if they are not explicitly listed in the schema. (To skip this, set the `filter` option to `false` when you call `insertAsync` or `updateAsync`.)
+1. Automatically converts some properties to match what the schema expects, if possible. (To skip this, set the `autoConvert` option to `false` when you call `insertAsync` or `updateAsync`.)
+1. Optimizes your operation so that empty string values will not be stored. (To skip this, set the `removeEmptyStrings` option to `false` when you call `insertAsync` or `updateAsync`.)
+1. Adds automatic (forced or default) values based on your schema. Values are added only on the server and will make their way back to your client when your subscription is updated. (To skip this in server code, set the `getAutoValues` option to `false` when you call `insertAsync` or `updateAsync`.)
+1. Validates your document or mongo modifier object. (To skip this, set the `validate` option to `false` when you call `insertAsync` or `updateAsync`.)
 1. Performs the insert or update like normal, only if it was valid.
 
 For SimpleSchema schemas, Collection2 calls SimpleSchema methods to do these things. Zod schemas support defaults and experimental autoValues, but not SimpleSchema's other automatic cleaning features. AJV-style schemas use Collection2's validation adapter without SimpleSchema cleaning. Validation happens on both the client and the server for client-initiated actions, giving you client-side feedback along with server-side enforcement.
@@ -825,7 +819,7 @@ Every object in the `borrowedBy` array must have a `name` and `email` property.
 Now we discover that the name is incorrect in item 1, although the email address is correct. So we will just set the name to the correct value:
 
 ```js
-Books.update(id, { $set: { 'borrowedBy.1.name': 'Frank' } });
+await Books.updateAsync(id, { $set: { 'borrowedBy.1.name': 'Frank' } });
 ```
 
 However, this will not pass validation. Why? Because we don't know whether item 1 in the `borrowedBy` array already exists, so we don't know whether it will have the required `email` property after the update finishes.
